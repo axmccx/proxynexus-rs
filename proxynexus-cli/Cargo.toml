@@ -1,0 +1,8 @@
+[package]
+name = "proxynexus-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.55", features = ["derive"] }
+proxynexus-core = { version = "0.1.0", path = "../proxynexus-core" }

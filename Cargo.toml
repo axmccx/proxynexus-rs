@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "proxynexus-cli",
+    "proxynexus-core",
+]
+resolver = "2"
