@@ -1,3 +1,9 @@
+mod collection;
+pub mod collection_builder;
+mod csv_parser;
+mod db_schema;
+mod image_scanner;
+
 use krilla::Data;
 use krilla::Document;
 use krilla::geom::{Size, Transform};
@@ -7,13 +13,13 @@ use std::path::{Path, PathBuf};
 
 const POINTS_PER_INCH: f32 = 72.0;
 
-const LETTER_WIDTH: f32 = 8.5 * POINTS_PER_INCH;  // 612 points
+const LETTER_WIDTH: f32 = 8.5 * POINTS_PER_INCH; // 612 points
 const LETTER_HEIGHT: f32 = 11.0 * POINTS_PER_INCH; // 792 points
-const A4_WIDTH: f32 = 8.27 * POINTS_PER_INCH;      // ~595 points
-const A4_HEIGHT: f32 = 11.69 * POINTS_PER_INCH;    // ~842 points
+const A4_WIDTH: f32 = 8.27 * POINTS_PER_INCH; // ~595 points
+const A4_HEIGHT: f32 = 11.69 * POINTS_PER_INCH; // ~842 points
 
-const CARD_WIDTH: f32 = 178.54;   // 6.299 cm in points
-const CARD_HEIGHT: f32 = 249.09;  // 8.788 cm in points
+const CARD_WIDTH: f32 = 178.54; // 6.299 cm in points
+const CARD_HEIGHT: f32 = 249.09; // 8.788 cm in points
 
 pub enum PageSize {
     Letter,
