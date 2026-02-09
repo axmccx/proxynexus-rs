@@ -198,4 +198,19 @@ impl CollectionManager {
 
         Ok(())
     }
+
+    pub fn get_collections(
+        &self,
+    ) -> Result<Vec<(String, String, String)>, Box<dyn std::error::Error>> {
+        let app_conn = Connection::open(&self.app_db_path)?;
+
+        let mut stmt =
+            app_conn.prepare("SELECT name, version, language FROM collections ORDER BY name")?;
+
+        let collections = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(collections)
+    }
 }

@@ -138,8 +138,31 @@ fn handle_collection_add(path: PathBuf) {
 }
 
 fn handle_collection_list() {
-    println!("Installed collections:");
-    todo!("Implement collection list");
+    match CollectionManager::new() {
+        Ok(manager) => match manager.get_collections() {
+            Ok(collections) => {
+                if collections.is_empty() {
+                    println!(
+                        "No collections available. Use 'collection add <file.pnx>' to add one."
+                    );
+                } else {
+                    println!("Available collections:");
+                    for collection in &collections {
+                        let (name, version, language) = collection;
+                        println!("  {} (v{}, {})", name, version, language);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to list collections: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            eprintln!("Failed to initialize collection manager: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn handle_collection_remove(name: String) {
