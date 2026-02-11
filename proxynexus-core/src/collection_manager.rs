@@ -164,12 +164,12 @@ impl CollectionManager {
         for printing_result in printings {
             let (card_code, variant, file_name) = printing_result?;
 
-            let image_path = format!("{}/{}", collection_name, file_name);
+            let file_path = format!("{}/{}", collection_name, file_name);
 
             app_conn.execute(
-                "INSERT INTO printings (collection_id, card_code, variant, image_path)
+                "INSERT INTO printings (collection_id, card_code, variant, file_path)
                  VALUES (?1, ?2, ?3, ?4)",
-                params![collection_id, &card_code, &variant, &image_path,],
+                params![collection_id, &card_code, &variant, &file_path,],
             )?;
             printings_added += 1;
         }

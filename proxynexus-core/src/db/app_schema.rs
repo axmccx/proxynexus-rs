@@ -29,7 +29,7 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
             collection_id INTEGER NOT NULL,
             card_code TEXT NOT NULL,
             variant TEXT NOT NULL,
-            image_path TEXT NOT NULL,
+            file_path TEXT NOT NULL,
             UNIQUE(collection_id, card_code, variant),
             FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
             FOREIGN KEY (card_code) REFERENCES cards(code) ON DELETE CASCADE

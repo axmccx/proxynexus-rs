@@ -22,5 +22,5 @@ pub struct CardMetadata {
 pub struct Printing {
     pub card_code: String,
     pub variant: String,
-    pub file_name: String,
+    pub file_path: String,
 }

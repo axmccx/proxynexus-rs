@@ -88,9 +88,6 @@ impl CollectionBuilder {
                 .as_secs()
         ));
         fs::create_dir_all(&temp_dir)?;
-        let images_temp = temp_dir.join("images");
-        fs::create_dir_all(&images_temp)?;
-
         let db_path = temp_dir.join("index.db");
         let conn = Connection::open(&db_path)?;
         collection_schema::create_collection_schema(&conn)?;
@@ -106,13 +103,11 @@ impl CollectionBuilder {
                         .file_name()
                         .and_then(|f| f.to_str())
                         .ok_or("Invalid image filename")?;
-                    let dest_path = images_temp.join(filename);
-                    fs::copy(&img.path, &dest_path)?;
 
                     let printing = Printing {
                         card_code: card.code.clone(),
                         variant: img.variant.clone(),
-                        file_name: filename.to_string(),
+                        file_path: filename.to_string(),
                     };
 
                     collection_schema::insert_printing(&conn, &printing)?;
@@ -162,19 +157,17 @@ impl CollectionBuilder {
         let db_content = fs::read(&db_path)?;
         zip.write_all(&db_content)?;
 
-        let image_files: Vec<_> = fs::read_dir(&images_temp)?.filter_map(|e| e.ok()).collect();
-
-        for entry in image_files {
-            let path = entry.path();
-            if path.is_file() {
-                let filename = path
+        for images in image_map.values() {
+            for img in images {
+                let filename = img
+                    .path
                     .file_name()
                     .ok_or("Invalid filename")?
                     .to_string_lossy();
                 let zip_path = format!("images/{}", filename);
 
                 zip.start_file(&zip_path, options)?;
-                let image_content = fs::read(&path)?;
+                let image_content = fs::read(&img.path)?;
                 zip.write_all(&image_content)?;
             }
         }
