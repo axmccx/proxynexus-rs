@@ -1,3 +1,4 @@
+use crate::card_query::normalize_title;
 use crate::collection::{CardMetadata, Manifest};
 use crate::db::app_schema;
 use dirs;
@@ -105,11 +106,12 @@ impl CollectionManager {
             let card = card_result?;
 
             match app_conn.execute(
-                "INSERT INTO cards (code, title, set_code, set_name, release_date, side, quantity, first_seen_collection_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO cards (code, title, title_normalized, set_code, set_name, release_date, side, quantity, first_seen_collection_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     &card.code,
                     &card.title,
+                    &normalize_title(&card.title),
                     &card.set_code,
                     &card.set_name,
                     &card.release_date,

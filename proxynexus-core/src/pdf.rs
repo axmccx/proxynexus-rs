@@ -1,0 +1,122 @@
+use crate::card_query::CardQuery;
+use krilla::Data;
+use krilla::Document;
+use krilla::geom::{Size, Transform};
+use krilla::image::Image;
+use krilla::page::PageSettings;
+use std::collections::HashMap;
+use std::path::Path;
+
+const POINTS_PER_INCH: f32 = 72.0;
+
+const LETTER_WIDTH: f32 = 8.5 * POINTS_PER_INCH; // 612 points
+const LETTER_HEIGHT: f32 = 11.0 * POINTS_PER_INCH; // 792 points
+const A4_WIDTH: f32 = 8.27 * POINTS_PER_INCH; // ~595 points
+const A4_HEIGHT: f32 = 11.69 * POINTS_PER_INCH; // ~842 points
+
+const CARD_WIDTH: f32 = 178.54; // 6.299 cm in points
+const CARD_HEIGHT: f32 = 249.09; // 8.788 cm in points
+
+pub enum PageSize {
+    Letter,
+    A4,
+}
+
+impl PageSize {
+    fn dimensions(&self) -> (f32, f32) {
+        match self {
+            PageSize::Letter => (LETTER_WIDTH, LETTER_HEIGHT),
+            PageSize::A4 => (A4_WIDTH, A4_HEIGHT),
+        }
+    }
+
+    fn margins(&self) -> (f32, f32) {
+        match self {
+            PageSize::Letter => (36.0, 21.0),
+            PageSize::A4 => (30.0, 46.0),
+        }
+    }
+}
+
+fn calculate_card_position(card_index: usize, page_size: &PageSize) -> (f32, f32) {
+    let (left_margin, top_margin) = page_size.margins();
+
+    let col = card_index % 3;
+    let row = card_index / 3;
+
+    let x = left_margin + (col as f32 * CARD_WIDTH);
+    let y = top_margin + (row as f32 * CARD_HEIGHT);
+
+    (x, y)
+}
+
+fn generate_pdf(
+    query: CardQuery,
+    cards_with_qty: Vec<(String, u32)>,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
+
+    let available = query.get_available_printings(&card_codes)?;
+    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
+
+    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
+
+    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
+
+    let mut document = Document::new();
+    let (page_widht, page_width) = page_size.dimensions();
+
+    for chuck in image_paths.chunks(9) {
+        let page_settings = PageSettings::from_wh(page_widht, page_width).unwrap();
+        let mut page = document.start_page_with(page_settings);
+        let mut surface = page.surface();
+
+        for (index, image_path) in chuck.iter().enumerate() {
+            let image_data = std::fs::read(image_path)?;
+            let image = Image::from_jpeg(Data::from(image_data), true)?;
+            let size = Size::from_wh(CARD_WIDTH, CARD_HEIGHT).unwrap();
+
+            let (pos_x, pos_y) = calculate_card_position(index, &page_size);
+
+            surface.push_transform(&Transform::from_translate(pos_x, pos_y));
+            surface.draw_image(image, size);
+            surface.pop();
+        }
+
+        surface.finish();
+        page.finish();
+    }
+
+    let pdf = document.finish().unwrap();
+    std::fs::write(output_path, &pdf)?;
+
+    Ok(())
+}
+
+pub fn generate_pdf_from_cardlist(
+    cardlist: &str,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query = CardQuery::new()?;
+
+    let cards_with_qty: Vec<(String, u32)> = query.parse_cardlist_text(cardlist)?;
+    generate_pdf(query, cards_with_qty, output_path, page_size)?;
+
+    Ok(())
+}
+
+pub fn generate_pdf_from_set_name(
+    set_name: &str,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query = CardQuery::new()?;
+
+    let cards_with_qty = query.get_set_cards(&set_name)?;
+    generate_pdf(query, cards_with_qty, output_path, page_size)?;
+
+    Ok(())
+}

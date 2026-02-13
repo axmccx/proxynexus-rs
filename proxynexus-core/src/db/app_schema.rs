@@ -15,6 +15,7 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
         CREATE TABLE IF NOT EXISTS cards (
             code TEXT PRIMARY KEY,
             title TEXT NOT NULL,
+            title_normalized TEXT NOT NULL,
             set_code TEXT NOT NULL,
             set_name TEXT NOT NULL,
             release_date TEXT,
@@ -36,6 +37,7 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_cards_code ON cards(code);
+        CREATE INDEX IF NOT EXISTS idx_cards_title_normalized ON cards(title_normalized);
         CREATE INDEX IF NOT EXISTS idx_printings_card_code ON printings(card_code);
         CREATE INDEX IF NOT EXISTS idx_printings_collection ON printings(collection_id);
         ",

@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use proxynexus_core::collection_builder::CollectionBuilder;
 use proxynexus_core::collection_manager::CollectionManager;
+use proxynexus_core::pdf::{PageSize, generate_pdf_from_cardlist, generate_pdf_from_set_name};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -59,15 +60,20 @@ enum CollectionAction {
 
 #[derive(Subcommand)]
 enum GenerateType {
+    #[command(group(
+        clap::ArgGroup::new("input")
+            .required(true)
+            .args(["cardlist", "set_name"]),
+    ))]
     Pdf {
         #[arg(short, long)]
-        collections: String,
-
-        #[arg(short = 'i', long)]
-        card_ids: String,
+        cardlist: Option<String>,
 
         #[arg(short, long)]
-        output: PathBuf,
+        set_name: Option<String>,
+
+        #[arg(short, long, default_value = "output.pdf")]
+        output_path: PathBuf,
     },
 }
 
@@ -92,11 +98,15 @@ fn main() {
 
         Commands::Generate { output_type } => match output_type {
             GenerateType::Pdf {
-                collections,
-                card_ids,
-                output,
+                cardlist,
+                set_name,
+                output_path,
             } => {
-                handle_generate_pdf(collections, card_ids, output);
+                if let Some(list) = cardlist {
+                    handle_generate_pdf_from_cardlist(list, output_path);
+                } else if let Some(name) = set_name {
+                    handle_generate_from_set_name(name, output_path);
+                }
             }
         },
     }
@@ -195,13 +205,16 @@ fn handle_collection_remove(name: String) {
     }
 }
 
-fn handle_generate_pdf(collections: String, card_ids: String, output: PathBuf) {
-    println!("Generating {:?} from collections: {}", output, collections);
-    println!("Using card_ids: {}", card_ids);
-    println!("Generating PDF from collections: {}", collections);
-    // match proxynexus_core::create_pdf_with_images(images_path, &args.output_path, PageSize::Letter) {
-    //     Ok(_) => println!("PDF created successfully: {:?}", &args.output_path),
-    //     Err(e) => eprintln!("Error: {}", e),
-    // }
-    todo!("Implement PDF generation");
+fn handle_generate_pdf_from_cardlist(cardlist: String, output_path: PathBuf) {
+    match generate_pdf_from_cardlist(&cardlist, &output_path, PageSize::Letter) {
+        Ok(_) => println!("PDF created successfully: {:?}", output_path),
+        Err(e) => eprintln!("Error: {}", e),
+    }
+}
+
+fn handle_generate_from_set_name(set_name: String, output_path: PathBuf) {
+    match generate_pdf_from_set_name(&set_name, &output_path, PageSize::Letter) {
+        Ok(_) => println!("PDF created successfully: {:?}", output_path),
+        Err(e) => eprintln!("Error: {}", e),
+    }
 }
