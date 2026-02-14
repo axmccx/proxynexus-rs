@@ -1,3 +1,4 @@
+mod border_generator;
 pub mod card_query;
 mod collection;
 pub mod collection_builder;
