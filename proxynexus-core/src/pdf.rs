@@ -5,7 +5,7 @@ use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const POINTS_PER_INCH: f32 = 72.0;
 
@@ -51,25 +51,15 @@ fn calculate_card_position(card_index: usize, page_size: &PageSize) -> (f32, f32
 }
 
 fn generate_pdf(
-    query: CardQuery,
-    cards_with_qty: Vec<(String, u32)>,
+    image_paths: Vec<PathBuf>,
     output_path: &Path,
     page_size: PageSize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
-
-    let available = query.get_available_printings(&card_codes)?;
-    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
-
-    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
-
-    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
-
     let mut document = Document::new();
-    let (page_widht, page_width) = page_size.dimensions();
+    let (page_width, page_height) = page_size.dimensions();
 
     for chuck in image_paths.chunks(9) {
-        let page_settings = PageSettings::from_wh(page_widht, page_width).unwrap();
+        let page_settings = PageSettings::from_wh(page_width, page_height).unwrap();
         let mut page = document.start_page_with(page_settings);
         let mut surface = page.surface();
 
@@ -103,7 +93,14 @@ pub fn generate_pdf_from_cardlist(
     let query = CardQuery::new()?;
 
     let cards_with_qty: Vec<(String, u32)> = query.parse_cardlist_text(cardlist)?;
-    generate_pdf(query, cards_with_qty, output_path, page_size)?;
+
+    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
+    let available = query.get_available_printings(&card_codes)?;
+    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
+    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
+    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
+
+    generate_pdf(image_paths, output_path, page_size)?;
 
     Ok(())
 }
@@ -116,7 +113,14 @@ pub fn generate_pdf_from_set_name(
     let query = CardQuery::new()?;
 
     let cards_with_qty = query.get_set_cards(&set_name)?;
-    generate_pdf(query, cards_with_qty, output_path, page_size)?;
+
+    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
+    let available = query.get_available_printings(&card_codes)?;
+    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
+    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
+    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
+
+    generate_pdf(image_paths, output_path, page_size)?;
 
     Ok(())
 }
