@@ -1,4 +1,4 @@
-use crate::collection::CardMetadata;
+use crate::models::CardMetadata;
 use csv::ReaderBuilder;
 use std::path::Path;
 

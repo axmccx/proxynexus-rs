@@ -1,4 +1,4 @@
-use crate::collection::Printing;
+use crate::models::Printing;
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ impl CardQuery {
     pub fn parse_cardlist_text(
         &self,
         text: &str,
-    ) -> Result<Vec<(String, u32)>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let mut entries: Vec<(&str, u32)> = Vec::new();
 
         for line in text.lines() {
@@ -102,7 +102,8 @@ impl CardQuery {
 
         Ok(codes
             .into_iter()
-            .zip(entries.into_iter().map(|(_, qty)| qty))
+            .zip(entries.into_iter())
+            .flat_map(|(code, (_, qty))| std::iter::repeat(code).take(qty as usize))
             .collect())
     }
 
@@ -121,7 +122,7 @@ impl CardQuery {
     pub fn get_set_cards(
         &self,
         set_name: &str,
-    ) -> Result<Vec<(String, u32)>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
 
         let mut stmt = conn.prepare(
@@ -130,15 +131,18 @@ impl CardQuery {
              ORDER BY code",
         )?;
 
-        let result = stmt
+        let rows = stmt
             .query_map(params![set_name], |row| Ok((row.get(0)?, row.get(1)?)))?
             .collect::<Result<Vec<(String, u32)>, _>>()?;
 
-        if result.is_empty() {
+        if rows.is_empty() {
             return Err(format!("No cards found for set '{}'", set_name).into());
         }
 
-        Ok(result)
+        Ok(rows
+           .into_iter()
+           .flat_map(|(code, qty)| std::iter::repeat(code).take(qty as usize))
+           .collect())
     }
 
     pub fn get_available_printings(
@@ -156,7 +160,7 @@ impl CardQuery {
             .join(", ");
 
         let query = format!(
-            "SELECT p.card_code, p.variant, p.file_path
+            "SELECT p.card_code, p.variant, p.file_path, col.name, c.side
              FROM printings p
              JOIN cards c ON p.card_code = c.code
              JOIN collections col ON p.collection_id = col.id
@@ -176,64 +180,70 @@ impl CardQuery {
             let card_code: String = row.get(0)?;
             let variant: String = row.get(1)?;
             let file_path: String = row.get(2)?;
+            let collection: String = row.get(3)?;
+            let side: String = row.get(4)?;
 
             map.entry(card_code.clone()).or_default().push(Printing {
                 card_code,
                 variant,
                 file_path,
+                collection,
+                side,
             });
         }
 
         Ok(map)
     }
 
-    /// Select one printing per copy using default rules.
-    /// Returns a flat Vec with one Printing per copy (duplicated for quantity).
-    /// Preserves the order of card_codes as provided.
     pub fn select_default_printings(
         &self,
         available: &HashMap<String, Vec<Printing>>,
-        quantities: &HashMap<String, u32>,
-        card_codes: &[String],
-    ) -> Vec<Printing> {
-        let mut selections = Vec::new();
+    ) -> Result<HashMap<String, Printing>, Box<dyn std::error::Error>> {
+        let mut selected = HashMap::new();
 
-        for code in card_codes {
-            if let Some(printings) = available.get(code) {
-                let qty = *quantities.get(code).unwrap_or(&1);
+        for (code, printings) in available {
+            let chosen = printings
+                .iter()
+                .find(|p| p.variant == "original")
+                .unwrap_or(&printings[0])
+                .clone();
 
-                let selected = printings
-                    .iter()
-                    .find(|p| p.variant == "original")
-                    .unwrap_or(&printings[0]);
-
-                for _ in 0..qty {
-                    selections.push(selected.clone());
-                }
-            }
+            selected.insert(code.clone(), chosen);
         }
 
-        selections
+        Ok(selected)
     }
 
-    pub fn resolve_printings_to_full_paths(
+
+
+    fn resolve_printing_to_full_path(
         &self,
-        printings: &[Printing],
+        printing: &Printing,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let path = self.collections_dir.join(&printing.file_path);
+        if !path.exists() {
+            return Err(format!(
+                "Image file not found: {} (printing: {} {})",
+                path.display(),
+                printing.card_code,
+                printing.variant
+            )
+                .into());
+        }
+        Ok(path)
+    }
+
+    pub fn make_full_image_paths(
+        &self,
+        card_codes: &[String],
+        selected: &HashMap<String, Printing>,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-        printings
-            .iter()
-            .map(|p| {
-                let path = self.collections_dir.join(&p.file_path);
-                if !path.exists() {
-                    return Err(format!(
-                        "Image file not found: {} (printing: {} {})",
-                        path.display(),
-                        p.card_code,
-                        p.variant
-                    )
-                    .into());
-                }
-                Ok(path)
+        card_codes.iter()
+            .map(|code| {
+                let printing = selected.get(code)
+                    .ok_or_else(|| format!("No printing selected for code: {}", code))?;
+
+                self.resolve_printing_to_full_path(printing)
             })
             .collect()
     }

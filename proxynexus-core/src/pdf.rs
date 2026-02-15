@@ -4,7 +4,6 @@ use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const POINTS_PER_INCH: f32 = 72.0;
@@ -92,13 +91,11 @@ pub fn generate_pdf_from_cardlist(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let query = CardQuery::new()?;
 
-    let cards_with_qty: Vec<(String, u32)> = query.parse_cardlist_text(cardlist)?;
+    let card_codes = query.parse_cardlist_text(cardlist)?;
 
-    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
     let available = query.get_available_printings(&card_codes)?;
-    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
-    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
-    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
+    let selected = query.select_default_printings(&available)?;
+    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
 
     generate_pdf(image_paths, output_path, page_size)?;
 
@@ -112,13 +109,11 @@ pub fn generate_pdf_from_set_name(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let query = CardQuery::new()?;
 
-    let cards_with_qty = query.get_set_cards(&set_name)?;
+    let card_codes = query.get_set_cards(set_name)?;
 
-    let card_codes: Vec<_> = cards_with_qty.iter().map(|(c, _)| c.clone()).collect();
     let available = query.get_available_printings(&card_codes)?;
-    let qty_map: HashMap<_, _> = cards_with_qty.into_iter().collect();
-    let printings = query.select_default_printings(&available, &qty_map, &card_codes);
-    let image_paths = query.resolve_printings_to_full_paths(&printings)?;
+    let selected = query.select_default_printings(&available)?;
+    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
 
     generate_pdf(image_paths, output_path, page_size)?;
 

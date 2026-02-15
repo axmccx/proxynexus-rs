@@ -1,5 +1,5 @@
 use crate::card_query::normalize_title;
-use crate::collection::{CardMetadata, Manifest};
+use crate::models::{CardMetadata, Manifest};
 use crate::db::app_schema;
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};

@@ -19,8 +19,17 @@ pub struct CardMetadata {
 }
 
 #[derive(Debug, Clone)]
+pub struct CollectionPrinting {
+    pub card_code: String,
+    pub variant: String,
+    pub file_path: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct Printing {
     pub card_code: String,
     pub variant: String,
     pub file_path: String,
+    pub collection: String,
+    pub side: String,
 }

@@ -6,7 +6,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use zip::write::{FileOptions, ZipWriter};
 
-use crate::collection::{CardMetadata, Manifest, Printing};
+use crate::models::{CardMetadata, Manifest, CollectionPrinting};
 use crate::db::collection_schema;
 use crate::{csv_parser, image_scanner};
 
@@ -104,7 +104,7 @@ impl CollectionBuilder {
                         .and_then(|f| f.to_str())
                         .ok_or("Invalid image filename")?;
 
-                    let printing = Printing {
+                    let printing = CollectionPrinting {
                         card_code: card.code.clone(),
                         variant: img.variant.clone(),
                         file_path: filename.to_string(),
