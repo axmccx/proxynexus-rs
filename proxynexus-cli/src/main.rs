@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use proxynexus_core::collection_builder::CollectionBuilder;
 use proxynexus_core::collection_manager::CollectionManager;
+use proxynexus_core::mpc::{generate_mpc_zip_from_cardlist, generate_mpc_zip_from_set_name};
 use proxynexus_core::pdf::{PageSize, generate_pdf_from_cardlist, generate_pdf_from_set_name};
 use std::path::PathBuf;
 
@@ -75,6 +76,16 @@ enum GenerateType {
         #[arg(short, long, default_value = "output.pdf")]
         output_path: PathBuf,
     },
+    Mpc {
+        #[arg(short, long)]
+        cardlist: Option<String>,
+
+        #[arg(short, long)]
+        set_name: Option<String>,
+
+        #[arg(short, long, default_value = "output.zip")]
+        output_path: PathBuf,
+    },
 }
 
 fn main() {
@@ -105,7 +116,18 @@ fn main() {
                 if let Some(list) = cardlist {
                     handle_generate_pdf_from_cardlist(list, output_path);
                 } else if let Some(name) = set_name {
-                    handle_generate_from_set_name(name, output_path);
+                    handle_generate_pdf_from_set_name(name, output_path);
+                }
+            }
+            GenerateType::Mpc {
+                cardlist,
+                set_name,
+                output_path,
+            } => {
+                if let Some(list) = cardlist {
+                    handle_generate_mpc_zip_from_cardlist(list, output_path);
+                } else if let Some(name) = set_name {
+                    handle_generate_mpc_zip_from_set_name(name, output_path);
                 }
             }
         },
@@ -212,9 +234,23 @@ fn handle_generate_pdf_from_cardlist(cardlist: String, output_path: PathBuf) {
     }
 }
 
-fn handle_generate_from_set_name(set_name: String, output_path: PathBuf) {
+fn handle_generate_pdf_from_set_name(set_name: String, output_path: PathBuf) {
     match generate_pdf_from_set_name(&set_name, &output_path, PageSize::Letter) {
         Ok(_) => println!("PDF created successfully: {:?}", output_path),
+        Err(e) => eprintln!("Error: {}", e),
+    }
+}
+
+fn handle_generate_mpc_zip_from_cardlist(cardlist: String, output_path: PathBuf) {
+    match generate_mpc_zip_from_cardlist(&cardlist, &output_path) {
+        Ok(_) => println!("ZIP created successfully: {:?}", output_path),
+        Err(e) => eprintln!("Error: {}", e),
+    }
+}
+
+fn handle_generate_mpc_zip_from_set_name(set_name: String, output_path: PathBuf) {
+    match generate_mpc_zip_from_set_name(&set_name, &output_path) {
+        Ok(_) => println!("ZIP created successfully: {:?}", output_path),
         Err(e) => eprintln!("Error: {}", e),
     }
 }

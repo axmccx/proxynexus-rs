@@ -1,5 +1,5 @@
-use rusqlite::Connection;
 use crate::models::{CardMetadata, CollectionPrinting};
+use rusqlite::Connection;
 
 pub fn create_collection_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
@@ -31,10 +31,7 @@ pub fn create_collection_schema(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn insert_card(
-    conn: &Connection,
-    card: &CardMetadata,
-) -> rusqlite::Result<()> {
+pub fn insert_card(conn: &Connection, card: &CardMetadata) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO cards
          (code, title, set_code, set_name, release_date, side, quantity)
@@ -53,10 +50,7 @@ pub fn insert_card(
     Ok(())
 }
 
-pub fn insert_printing(
-    conn: &Connection,
-    printing: &CollectionPrinting,
-) -> rusqlite::Result<()> {
+pub fn insert_printing(conn: &Connection, printing: &CollectionPrinting) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT INTO printings (card_code, variant, file_name)
          VALUES (?1, ?2, ?3)",

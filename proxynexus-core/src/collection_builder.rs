@@ -6,8 +6,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use zip::write::{FileOptions, ZipWriter};
 
-use crate::models::{CardMetadata, Manifest, CollectionPrinting};
 use crate::db::collection_schema;
+use crate::models::{CardMetadata, CollectionPrinting, Manifest};
 use crate::{csv_parser, image_scanner};
 
 #[derive(Debug, Default)]

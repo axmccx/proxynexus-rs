@@ -119,10 +119,7 @@ impl CardQuery {
         Ok(results)
     }
 
-    pub fn get_set_cards(
-        &self,
-        set_name: &str,
-    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    pub fn get_set_cards(&self, set_name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
 
         let mut stmt = conn.prepare(
@@ -140,9 +137,9 @@ impl CardQuery {
         }
 
         Ok(rows
-           .into_iter()
-           .flat_map(|(code, qty)| std::iter::repeat(code).take(qty as usize))
-           .collect())
+            .into_iter()
+            .flat_map(|(code, qty)| std::iter::repeat(code).take(qty as usize))
+            .collect())
     }
 
     pub fn get_available_printings(
@@ -214,8 +211,6 @@ impl CardQuery {
         Ok(selected)
     }
 
-
-
     fn resolve_printing_to_full_path(
         &self,
         printing: &Printing,
@@ -228,7 +223,7 @@ impl CardQuery {
                 printing.card_code,
                 printing.variant
             )
-                .into());
+            .into());
         }
         Ok(path)
     }
@@ -238,12 +233,30 @@ impl CardQuery {
         card_codes: &[String],
         selected: &HashMap<String, Printing>,
     ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-        card_codes.iter()
+        card_codes
+            .iter()
             .map(|code| {
-                let printing = selected.get(code)
+                let printing = selected
+                    .get(code)
                     .ok_or_else(|| format!("No printing selected for code: {}", code))?;
 
                 self.resolve_printing_to_full_path(printing)
+            })
+            .collect()
+    }
+
+    pub fn make_printings_list(
+        &self,
+        card_codes: &[String],
+        selected: &HashMap<String, Printing>,
+    ) -> Result<Vec<Printing>, Box<dyn std::error::Error>> {
+        card_codes
+            .iter()
+            .map(|code| {
+                selected
+                    .get(code)
+                    .ok_or_else(|| format!("No printing selected for code: {}", code).into())
+                    .map(|p| p.clone())
             })
             .collect()
     }

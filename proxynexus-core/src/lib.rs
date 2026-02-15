@@ -1,9 +1,10 @@
 mod border_generator;
 pub mod card_query;
-mod models;
 pub mod collection_builder;
 pub mod collection_manager;
 mod csv_parser;
 mod db;
 mod image_scanner;
+mod models;
+pub mod mpc;
 pub mod pdf;

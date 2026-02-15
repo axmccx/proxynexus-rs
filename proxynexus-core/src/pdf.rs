@@ -37,6 +37,42 @@ impl PageSize {
     }
 }
 
+pub fn generate_pdf_from_cardlist(
+    cardlist: &str,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query = CardQuery::new()?;
+
+    let card_codes = query.parse_cardlist_text(cardlist)?;
+
+    let available = query.get_available_printings(&card_codes)?;
+    let selected = query.select_default_printings(&available)?;
+    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
+
+    generate_pdf(image_paths, output_path, page_size)?;
+
+    Ok(())
+}
+
+pub fn generate_pdf_from_set_name(
+    set_name: &str,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query = CardQuery::new()?;
+
+    let card_codes = query.get_set_cards(set_name)?;
+
+    let available = query.get_available_printings(&card_codes)?;
+    let selected = query.select_default_printings(&available)?;
+    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
+
+    generate_pdf(image_paths, output_path, page_size)?;
+
+    Ok(())
+}
+
 fn calculate_card_position(card_index: usize, page_size: &PageSize) -> (f32, f32) {
     let (left_margin, top_margin) = page_size.margins();
 
@@ -80,42 +116,6 @@ fn generate_pdf(
 
     let pdf = document.finish().unwrap();
     std::fs::write(output_path, &pdf)?;
-
-    Ok(())
-}
-
-pub fn generate_pdf_from_cardlist(
-    cardlist: &str,
-    output_path: &Path,
-    page_size: PageSize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let query = CardQuery::new()?;
-
-    let card_codes = query.parse_cardlist_text(cardlist)?;
-
-    let available = query.get_available_printings(&card_codes)?;
-    let selected = query.select_default_printings(&available)?;
-    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
-
-    generate_pdf(image_paths, output_path, page_size)?;
-
-    Ok(())
-}
-
-pub fn generate_pdf_from_set_name(
-    set_name: &str,
-    output_path: &Path,
-    page_size: PageSize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let query = CardQuery::new()?;
-
-    let card_codes = query.get_set_cards(set_name)?;
-
-    let available = query.get_available_printings(&card_codes)?;
-    let selected = query.select_default_printings(&available)?;
-    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
-
-    generate_pdf(image_paths, output_path, page_size)?;
 
     Ok(())
 }

@@ -1,9 +1,8 @@
 use opencv::{
-    core::{BORDER_REPLICATE, Mat, Scalar, copy_make_border},
+    core::{BORDER_REPLICATE, Mat, Scalar, Vec3b, Vector, copy_make_border},
     imgcodecs,
     prelude::*,
 };
-use std::path::Path;
 
 #[derive(Debug, Clone)]
 struct BorderConfig {
@@ -30,28 +29,22 @@ impl BorderConfig {
     }
 }
 
-pub fn generate_mpc_border(
-    input_path: &Path,
-    output_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let img = imgcodecs::imread(
-        input_path.to_str().ok_or("Invalid input path encoding")?,
-        imgcodecs::IMREAD_COLOR,
-    )?;
-
+pub fn generate_bordered_image(
+    img: &Mat,
+    marker_position: u32,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let width = img.cols() as u32;
     let height = img.rows() as u32;
 
     let config = BorderConfig::from_image_dimensions(width, height);
-    let bordered = replicate_edges_to_bleed(&img, &config)?;
+    let mut bordered = replicate_edges_to_bleed(img, &config)?;
 
-    imgcodecs::imwrite(
-        output_path.to_str().ok_or("Invalid output path encoding")?,
-        &bordered,
-        &opencv::core::Vector::new(),
-    )?;
+    apply_uniqueness_marker(&mut bordered, marker_position)?;
 
-    Ok(())
+    let mut buf = Vector::new();
+    imgcodecs::imencode(".jpg", &bordered, &mut buf, &Vector::new())?;
+
+    Ok(buf.to_vec())
 }
 
 fn replicate_edges_to_bleed(
@@ -86,6 +79,19 @@ fn replicate_edges_to_bleed(
     )?;
 
     Ok(dst)
+}
+
+// changes a few pixels near top left corner, based on position.
+// makes the image duplicate image unique, so that MPC doesn't deduplicate it on upload
+fn apply_uniqueness_marker(img: &mut Mat, position: u32) -> opencv::Result<()> {
+    let x = position as i32;
+    let y = 0;
+
+    let pixel = img.at_2d_mut::<Vec3b>(y, x)?;
+
+    pixel[2] = pixel[2].saturating_add((position * 10) as u8);
+
+    Ok(())
 }
 
 #[cfg(test)]
