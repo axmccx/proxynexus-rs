@@ -1,4 +1,5 @@
 use crate::card_query::CardQuery;
+use crate::netrunnerdb::fetch_decklist;
 use krilla::Data;
 use krilla::Document;
 use krilla::geom::{Size, Transform};
@@ -64,6 +65,23 @@ pub fn generate_pdf_from_set_name(
 
     let card_codes = query.get_set_cards(set_name)?;
 
+    let available = query.get_available_printings(&card_codes)?;
+    let selected = query.select_default_printings(&available)?;
+    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
+
+    generate_pdf(image_paths, output_path, page_size)?;
+
+    Ok(())
+}
+
+pub fn generate_pdf_from_nrdb_url(
+    url: &str,
+    output_path: &Path,
+    page_size: PageSize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let card_codes = fetch_decklist(url)?;
+
+    let query = CardQuery::new()?;
     let available = query.get_available_printings(&card_codes)?;
     let selected = query.select_default_printings(&available)?;
     let image_paths = query.make_full_image_paths(&card_codes, &selected)?;

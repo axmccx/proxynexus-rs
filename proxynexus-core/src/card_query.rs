@@ -148,8 +148,15 @@ impl CardQuery {
     ) -> Result<HashMap<String, Vec<Printing>>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
 
+        let unique_codes: Vec<String> = card_codes
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .cloned()
+            .collect();
+
         // build the "?1, ?2, ?3, ..." string for the in clause
-        let placeholders: String = card_codes
+        let placeholders: String = unique_codes
             .iter()
             .enumerate()
             .map(|(i, _)| format!("?{}", i + 1))
@@ -169,7 +176,7 @@ impl CardQuery {
         );
 
         let mut stmt = conn.prepare(&query)?;
-        let mut rows = stmt.query(rusqlite::params_from_iter(card_codes.iter()))?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(unique_codes.iter()))?;
 
         let mut map: HashMap<String, Vec<Printing>> = HashMap::new();
 
@@ -187,6 +194,22 @@ impl CardQuery {
                 collection,
                 side,
             });
+        }
+
+        let missing_codes: Vec<String> = unique_codes
+            .iter()
+            .filter(|code| !map.contains_key(*code))
+            .cloned()
+            .collect();
+
+        if !missing_codes.is_empty() {
+            eprintln!(
+                "Warning: {} card(s) not found in collections:",
+                missing_codes.len()
+            );
+            for code in &missing_codes {
+                eprintln!("  - {}", code);
+            }
         }
 
         Ok(map)
@@ -211,6 +234,21 @@ impl CardQuery {
         Ok(selected)
     }
 
+    pub fn make_full_image_paths(
+        &self,
+        card_codes: &[String],
+        selected: &HashMap<String, Printing>,
+    ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+        card_codes
+            .iter()
+            .filter_map(|code| {
+                selected
+                    .get(code)
+                    .map(|printing| self.resolve_printing_to_full_path(printing))
+            })
+            .collect()
+    }
+
     fn resolve_printing_to_full_path(
         &self,
         printing: &Printing,
@@ -226,38 +264,5 @@ impl CardQuery {
             .into());
         }
         Ok(path)
-    }
-
-    pub fn make_full_image_paths(
-        &self,
-        card_codes: &[String],
-        selected: &HashMap<String, Printing>,
-    ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-        card_codes
-            .iter()
-            .map(|code| {
-                let printing = selected
-                    .get(code)
-                    .ok_or_else(|| format!("No printing selected for code: {}", code))?;
-
-                self.resolve_printing_to_full_path(printing)
-            })
-            .collect()
-    }
-
-    pub fn make_printings_list(
-        &self,
-        card_codes: &[String],
-        selected: &HashMap<String, Printing>,
-    ) -> Result<Vec<Printing>, Box<dyn std::error::Error>> {
-        card_codes
-            .iter()
-            .map(|code| {
-                selected
-                    .get(code)
-                    .ok_or_else(|| format!("No printing selected for code: {}", code).into())
-                    .map(|p| p.clone())
-            })
-            .collect()
     }
 }

@@ -7,4 +7,5 @@ mod db;
 mod image_scanner;
 mod models;
 pub mod mpc;
+pub mod netrunnerdb;
 pub mod pdf;

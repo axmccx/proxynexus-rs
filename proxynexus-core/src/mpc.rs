@@ -18,7 +18,10 @@ pub fn generate_mpc_zip_from_cardlist(
 
     let available = query.get_available_printings(&card_codes)?;
     let selected = query.select_default_printings(&available)?;
-    let printings = query.make_printings_list(&card_codes, &selected)?;
+    let printings = card_codes
+        .iter()
+        .filter_map(|code| selected.get(code).cloned())
+        .collect();
 
     generate_mpc_zip(printings, output_path)?;
 
@@ -35,7 +38,29 @@ pub fn generate_mpc_zip_from_set_name(
 
     let available = query.get_available_printings(&card_codes)?;
     let selected = query.select_default_printings(&available)?;
-    let printings = query.make_printings_list(&card_codes, &selected)?;
+    let printings = card_codes
+        .iter()
+        .filter_map(|code| selected.get(code).cloned())
+        .collect();
+
+    generate_mpc_zip(printings, output_path)?;
+
+    Ok(())
+}
+
+pub fn generate_mpc_zip_from_nrdb_url(
+    url: &str,
+    output_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let card_codes = crate::netrunnerdb::fetch_decklist(url)?;
+
+    let query = CardQuery::new()?;
+    let available = query.get_available_printings(&card_codes)?;
+    let selected = query.select_default_printings(&available)?;
+    let printings = card_codes
+        .iter()
+        .filter_map(|code| selected.get(code).cloned())
+        .collect();
 
     generate_mpc_zip(printings, output_path)?;
 
