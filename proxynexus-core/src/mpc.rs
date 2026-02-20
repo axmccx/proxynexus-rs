@@ -13,15 +13,11 @@ pub fn generate_mpc_zip(
     card_source: &impl CardSource,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let card_codes = card_source.get_codes()?;
+    let card_requests = card_source.to_card_requests()?;
 
     let query = CardQuery::new()?;
-    let available = query.get_available_printings(&card_codes)?;
-    let selected = query.select_default_printings(&available)?;
-    let printings = card_codes
-        .iter()
-        .filter_map(|code| selected.get(code).cloned())
-        .collect::<Vec<Printing>>();
+    let available = query.get_available_printings(&card_requests)?;
+    let printings = query.resolve_printings(&card_requests, &available)?;
 
     let mut sides: HashMap<String, Vec<Printing>> = HashMap::new();
 

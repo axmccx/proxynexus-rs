@@ -5,7 +5,7 @@ use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const POINTS_PER_INCH: f32 = 72.0;
 
@@ -55,12 +55,15 @@ pub fn generate_pdf(
     output_path: &Path,
     page_size: PageSize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let card_codes = card_source.get_codes()?;
+    let card_requests = card_source.to_card_requests()?;
 
     let query = CardQuery::new()?;
-    let available = query.get_available_printings(&card_codes)?;
-    let selected = query.select_default_printings(&available)?;
-    let image_paths = query.make_full_image_paths(&card_codes, &selected)?;
+    let available = query.get_available_printings(&card_requests)?;
+    let printings = query.resolve_printings(&card_requests, &available)?;
+    let image_paths = printings
+        .iter()
+        .map(|printing| query.resolve_printing_to_full_path(printing))
+        .collect::<Result<Vec<PathBuf>, _>>()?;
 
     let mut document = Document::new();
     let (page_width, page_height) = page_size.dimensions();

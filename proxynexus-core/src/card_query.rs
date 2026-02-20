@@ -1,5 +1,5 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
-use crate::models::Printing;
+use crate::models::{CardRequest, Printing};
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};
 use std::collections::HashMap;
@@ -19,16 +19,16 @@ pub fn normalize_title(title: &str) -> String {
 }
 
 impl CardSource for Cardlist {
-    fn get_codes(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let query = CardQuery::new()?;
-        query.parse_cardlist_text(&self.0)
+        query.parse_cardlist_into_card_requests(&self.0)
     }
 }
 
 impl CardSource for SetName {
-    fn get_codes(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let query = CardQuery::new()?;
-        query.get_set_cards(&self.0)
+        query.get_card_requests_from_set_name(&self.0)
     }
 }
 
@@ -47,6 +47,103 @@ impl CardQuery {
             app_db_path,
             collections_dir,
         })
+    }
+
+    fn parse_cardlist_into_card_requests(
+        &self,
+        text: &str,
+    ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
+        let mut entries: Vec<(&str, u32, Option<String>, Option<String>)> = Vec::new();
+
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            let (qty, rest) = self.parse_quantity(line);
+            let (name, variant_pref, collection_pref) = self.parse_overrides(rest)?;
+
+            entries.push((name, qty, variant_pref, collection_pref));
+        }
+
+        let names: Vec<&str> = entries.iter().map(|(name, _, _, _)| *name).collect();
+        let codes = self.resolve_names_to_codes(&names)?;
+
+        Ok(codes
+            .into_iter()
+            .zip(entries)
+            .flat_map(|(code, (_, qty, variant, collection))| {
+                std::iter::repeat(CardRequest {
+                    code: code.clone(),
+                    variant: variant.clone(),
+                    collection: collection.clone(),
+                })
+                .take(qty as usize)
+            })
+            .collect())
+    }
+
+    fn parse_quantity<'a>(&self, line: &'a str) -> (u32, &'a str) {
+        if let Some((qty_str, card_name)) = line
+            .split_once("x ")
+            .filter(|(qty_str, _)| qty_str.chars().all(|c| c.is_ascii_digit()))
+        {
+            let qty: u32 = qty_str.parse().unwrap_or(1);
+            (qty, card_name.trim())
+        } else if let Some((prefix, rest)) = line.split_once(' ') {
+            if prefix.chars().all(|c| c.is_ascii_digit()) {
+                let qty: u32 = prefix.parse().unwrap_or(1);
+                (qty, rest.trim())
+            } else {
+                (1, line)
+            }
+        } else {
+            (1, line)
+        }
+    }
+
+    fn parse_overrides<'a>(
+        &self,
+        text: &'a str,
+    ) -> Result<(&'a str, Option<String>, Option<String>), Box<dyn std::error::Error>> {
+        if let Some(bracket_start) = text.find('[') {
+            let name = text[..bracket_start].trim();
+            let bracket_end = text.find(']').ok_or("Unclosed bracket in card override")?;
+
+            let override_text = text[bracket_start + 1..bracket_end]
+                .chars()
+                .filter(|c| !c.is_whitespace())
+                .collect::<String>();
+
+            if override_text.is_empty() {
+                return Err("Empty override brackets".into());
+            }
+
+            // Parse variant:collection format
+            let (variant_pref, collection_pref) =
+                if let Some((v, c)) = override_text.split_once(':') {
+                    let variant = if v.is_empty() {
+                        None
+                    } else {
+                        Some(v.to_string())
+                    };
+                    let collection = if c.is_empty() {
+                        None
+                    } else {
+                        Some(c.to_string())
+                    };
+                    (variant, collection)
+                } else {
+                    // Just variant, no colon
+                    (Some(override_text), None)
+                };
+
+            Ok((name, variant_pref, collection_pref))
+        } else {
+            // No overrides
+            Ok((text.trim(), None, None))
+        }
     }
 
     fn resolve_names_to_codes(
@@ -80,64 +177,17 @@ impl CardQuery {
         Ok(codes)
     }
 
-    fn parse_cardlist_text(&self, text: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        let mut entries: Vec<(&str, u32)> = Vec::new();
-
-        for line in text.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-
-            let (qty, name) = if let Some((qty_str, card_name)) = line
-                .split_once("x ")
-                .filter(|(qty_str, _)| qty_str.chars().all(|c| c.is_ascii_digit()))
-            {
-                let qty: u32 = qty_str.parse().unwrap_or(1);
-                (qty, card_name.trim())
-            } else if let Some((prefix, rest)) = line.split_once(' ') {
-                if prefix.chars().all(|c| c.is_ascii_digit()) {
-                    let qty: u32 = prefix.parse().unwrap_or(1);
-                    (qty, rest.trim())
-                } else {
-                    (1, line)
-                }
-            } else {
-                (1, line)
-            };
-
-            entries.push((name, qty));
-        }
-
-        let names: Vec<&str> = entries.iter().map(|(name, _)| *name).collect();
-        let codes = self.resolve_names_to_codes(&names)?;
-
-        Ok(codes
-            .into_iter()
-            .zip(entries.into_iter())
-            .flat_map(|(code, (_, qty))| std::iter::repeat(code).take(qty as usize))
-            .collect())
-    }
-
-    pub fn get_available_sets(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        let conn = Connection::open(&self.app_db_path)?;
-
-        let mut stmt = conn.prepare("SELECT DISTINCT set_name FROM cards ORDER BY set_name")?;
-
-        let results = stmt
-            .query_map([], |row| row.get(0))?
-            .collect::<Result<Vec<String>, _>>()?;
-
-        Ok(results)
-    }
-
-    fn get_set_cards(&self, set_name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn get_card_requests_from_set_name(
+        &self,
+        set_name: &str,
+    ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
 
         let mut stmt = conn.prepare(
-            "SELECT code, quantity FROM cards
-             WHERE set_name = ?1
-             ORDER BY code",
+            "SELECT code, quantity
+            FROM cards
+            WHERE set_name = ?1
+            ORDER BY code",
         )?;
 
         let rows = stmt
@@ -150,21 +200,28 @@ impl CardQuery {
 
         Ok(rows
             .into_iter()
-            .flat_map(|(code, qty)| std::iter::repeat(code).take(qty as usize))
+            .flat_map(|(code, qty)| {
+                std::iter::repeat(CardRequest {
+                    code: code.clone(),
+                    variant: None,
+                    collection: None,
+                })
+                .take(qty as usize)
+            })
             .collect())
     }
 
     pub fn get_available_printings(
         &self,
-        card_codes: &[String],
+        card_requests: &[CardRequest],
     ) -> Result<HashMap<String, Vec<Printing>>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
 
-        let unique_codes: Vec<String> = card_codes
+        let unique_codes: Vec<String> = card_requests
             .iter()
+            .map(|item| item.code.clone())
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
-            .cloned()
             .collect();
 
         // build the "?1, ?2, ?3, ..." string for the in clause
@@ -227,41 +284,113 @@ impl CardQuery {
         Ok(map)
     }
 
-    pub fn select_default_printings(
+    pub fn resolve_printings(
         &self,
+        requests: &[CardRequest],
         available: &HashMap<String, Vec<Printing>>,
-    ) -> Result<HashMap<String, Printing>, Box<dyn std::error::Error>> {
-        let mut selected = HashMap::new();
-
-        for (code, printings) in available {
-            let chosen = printings
-                .iter()
-                .find(|p| p.variant == "original")
-                .unwrap_or(&printings[0])
-                .clone();
-
-            selected.insert(code.clone(), chosen);
-        }
-
-        Ok(selected)
-    }
-
-    pub fn make_full_image_paths(
-        &self,
-        card_codes: &[String],
-        selected: &HashMap<String, Printing>,
-    ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-        card_codes
+    ) -> Result<Vec<Printing>, Box<dyn std::error::Error>> {
+        requests
             .iter()
-            .filter_map(|code| {
-                selected
-                    .get(code)
-                    .map(|printing| self.resolve_printing_to_full_path(printing))
+            .filter_map(|request| {
+                let printings = available.get(&request.code)?;
+                Some(self.select_printing(request, printings))
             })
             .collect()
     }
 
-    fn resolve_printing_to_full_path(
+    fn select_printing(
+        &self,
+        request: &CardRequest,
+        printings: &[Printing],
+    ) -> Result<Printing, Box<dyn std::error::Error>> {
+        let default_collection = self.get_default_collection()?;
+
+        // Try exact match: variant + collection
+        if let (Some(variant), Some(collection)) = (&request.variant, &request.collection) {
+            if let Some(p) = printings
+                .iter()
+                .find(|p| &p.variant == variant && &p.collection == collection)
+            {
+                return Ok(p.clone());
+            }
+            return Err(format!(
+                "Printing not found: variant '{}' in collection '{}' for card {}",
+                variant, collection, request.code
+            )
+            .into());
+        }
+
+        // Try variant only (check default collection first, then any)
+        if let Some(variant) = &request.variant {
+            if let Some(def_col) = default_collection {
+                if let Some(p) = printings
+                    .iter()
+                    .find(|p| &p.variant == variant && &p.collection == &def_col)
+                {
+                    return Ok(p.clone());
+                }
+            }
+
+            if let Some(p) = printings.iter().find(|p| &p.variant == variant) {
+                return Ok(p.clone());
+            }
+
+            return Err(
+                format!("Variant '{}' not found for card {}", variant, request.code).into(),
+            );
+        }
+
+        if let Some(collection) = &request.collection {
+            if let Some(p) = printings
+                .iter()
+                .find(|p| &p.collection == collection && p.variant == "original")
+            {
+                return Ok(p.clone());
+            }
+
+            if let Some(p) = printings.iter().find(|p| &p.collection == collection) {
+                return Ok(p.clone());
+            }
+
+            return Err(format!(
+                "Collection '{}' not found for card {}",
+                collection, request.code
+            )
+            .into());
+        }
+
+        // No preferences - use defaults
+        if let Some(def_col) = default_collection {
+            if let Some(p) = printings
+                .iter()
+                .find(|p| &p.collection == &def_col && p.variant == "original")
+            {
+                return Ok(p.clone());
+            }
+        }
+
+        if let Some(p) = printings.iter().find(|p| p.variant == "original") {
+            return Ok(p.clone());
+        }
+
+        Ok(printings[0].clone())
+    }
+
+    fn get_default_collection(&self) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        let conn = Connection::open(&self.app_db_path)?;
+
+        let result: Option<String> = conn
+            .query_row(
+                "SELECT name FROM collections ORDER BY added_date DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        Ok(result)
+    }
+
+    pub fn resolve_printing_to_full_path(
         &self,
         printing: &Printing,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {

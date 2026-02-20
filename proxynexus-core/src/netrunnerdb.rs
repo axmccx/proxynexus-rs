@@ -1,4 +1,5 @@
 use crate::card_source::{CardSource, NrdbUrl};
+use crate::models::CardRequest;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -13,12 +14,14 @@ struct NrdbDeck {
 }
 
 impl CardSource for NrdbUrl {
-    fn get_codes(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        fetch_decklist(&self.0)
+    fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
+        fetch_card_requests_from_nrdb_url(&self.0)
     }
 }
 
-fn fetch_decklist(url: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn fetch_card_requests_from_nrdb_url(
+    url: &str,
+) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
     let (deck_id, api_path) = parse_nrdb_url(url)?;
 
     let api_url = format!(
@@ -43,14 +46,17 @@ fn fetch_decklist(url: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> 
         .ok_or("Empty response from NetrunnerDB")?
         .cards;
 
-    let mut card_codes = Vec::new();
-    for (code, quantity) in cards {
-        for _ in 0..*quantity {
-            card_codes.push(code.clone());
-        }
-    }
-
-    Ok(card_codes)
+    Ok(cards
+        .into_iter()
+        .flat_map(|(code, qty)| {
+            std::iter::repeat(CardRequest {
+                code: code.clone(),
+                variant: None,
+                collection: None,
+            })
+            .take(*qty as usize)
+        })
+        .collect())
 }
 
 fn parse_nrdb_url(url: &str) -> Result<(String, String), Box<dyn std::error::Error>> {

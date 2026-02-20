@@ -33,3 +33,10 @@ pub struct Printing {
     pub collection: String,
     pub side: String,
 }
+
+#[derive(Debug, Clone)]
+pub struct CardRequest {
+    pub code: String,
+    pub variant: Option<String>,
+    pub collection: Option<String>,
+}

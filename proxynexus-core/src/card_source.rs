@@ -1,5 +1,7 @@
+use crate::models::CardRequest;
+
 pub trait CardSource {
-    fn get_codes(&self) -> Result<Vec<String>, Box<dyn std::error::Error>>;
+    fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>>;
 }
 
 pub struct Cardlist(pub String);
