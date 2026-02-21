@@ -1,13 +1,12 @@
-use opencv::{
-    core::{BORDER_REPLICATE, Mat, Scalar, Vec3b, Vector, copy_make_border},
-    imgcodecs,
-    prelude::*,
-};
+use image::{DynamicImage, GenericImageView, ImageBuffer, RgbImage};
+use turbojpeg;
 
 #[derive(Debug, Clone)]
 struct BorderConfig {
     bleed_width: u32,
     bleed_height: u32,
+    border_x: u32,
+    border_y: u32,
 }
 
 impl BorderConfig {
@@ -16,82 +15,54 @@ impl BorderConfig {
     /// Scales proportionally for any resolution
     fn from_image_dimensions(width: u32, height: u32) -> Self {
         let dpi_scale = width as f32 / 744.0;
-
-        let bleed_pixels_per_side = (36.0 * dpi_scale).round() as u32;
-
-        let bleed_width = width + (bleed_pixels_per_side * 2);
-        let bleed_height = height + (bleed_pixels_per_side * 2);
+        let border_per_side = (36.0 * dpi_scale).round() as u32;
 
         Self {
-            bleed_width,
-            bleed_height,
+            bleed_width: width + (border_per_side * 2),
+            bleed_height: height + (border_per_side * 2),
+            border_x: border_per_side,
+            border_y: border_per_side,
         }
     }
 }
 
 pub fn generate_bordered_image(
-    img: &Mat,
+    img: &DynamicImage,
     marker_position: u32,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let width = img.cols() as u32;
-    let height = img.rows() as u32;
-
+    let (width, height) = img.dimensions();
     let config = BorderConfig::from_image_dimensions(width, height);
-    let mut bordered = replicate_edges_to_bleed(img, &config)?;
 
-    apply_uniqueness_marker(&mut bordered, marker_position)?;
+    let mut bordered = replicate_edges_to_bleed(img, &config);
+    apply_uniqueness_marker(&mut bordered, marker_position);
 
-    let mut buf = Vector::new();
-    imgcodecs::imencode(".jpg", &bordered, &mut buf, &Vector::new())?;
-
-    Ok(buf.to_vec())
+    Ok(turbojpeg::compress_image(&bordered, 90, turbojpeg::Subsamp::Sub2x2)?.to_vec())
 }
 
-fn replicate_edges_to_bleed(
-    img: &Mat,
-    config: &BorderConfig,
-) -> Result<Mat, Box<dyn std::error::Error>> {
-    let height = img.rows() as u32;
-    let width = img.cols() as u32;
+fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbImage {
+    let (src_width, src_height) = img.dimensions();
+    let rgb_view = img.to_rgb8();
 
-    let border_width = (config.bleed_width.saturating_sub(width)) / 2;
-    let border_height = (config.bleed_height.saturating_sub(height)) / 2;
+    ImageBuffer::from_fn(config.bleed_width, config.bleed_height, |x, y| {
+        let src_x = (x as i32 - config.border_x as i32).clamp(0, src_width as i32 - 1) as u32;
+        let src_y = (y as i32 - config.border_y as i32).clamp(0, src_height as i32 - 1) as u32;
 
-    if config.bleed_width < width || config.bleed_height < height {
-        return Err(format!(
-            "Image {}×{} is already larger than bleed size {}×{}",
-            width, height, config.bleed_width, config.bleed_height
-        )
-        .into());
-    }
-
-    let mut dst = Mat::default();
-
-    copy_make_border(
-        img,
-        &mut dst,
-        border_height as i32,
-        border_height as i32,
-        border_width as i32,
-        border_width as i32,
-        BORDER_REPLICATE,
-        Scalar::default(),
-    )?;
-
-    Ok(dst)
+        *rgb_view.get_pixel(src_x, src_y)
+    })
 }
 
 // changes a few pixels near top left corner, based on position.
 // makes the image duplicate image unique, so that MPC doesn't deduplicate it on upload
-fn apply_uniqueness_marker(img: &mut Mat, position: u32) -> opencv::Result<()> {
-    let x = position as i32;
-    let y = 0;
+fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
+    if position == 0 {
+        return;
+    }
 
-    let pixel = img.at_2d_mut::<Vec3b>(y, x)?;
-
-    pixel[2] = pixel[2].saturating_add((position * 10) as u8);
-
-    Ok(())
+    let x = position;
+    if x < img.width() {
+        let pixel = img.get_pixel_mut(x, 0);
+        pixel.0[0] = pixel.0[0].saturating_add((position * 10) as u8);
+    }
 }
 
 #[cfg(test)]
@@ -109,8 +80,16 @@ mod tests {
         // Test with PopTartNZ-sized image (1461×2076)
         // DPI scale ≈ 1.96, so 36px scales to ~71px per side
         let config = BorderConfig::from_image_dimensions(1461, 2076);
-        let expected_bleed_per_side = (36.0 * (1461.0 / 744.0) as f32).round() as u32;
+        let expected_bleed_per_side = (36.0 * (1461.0 / 744.0_f32)).round() as u32;
         assert_eq!(config.bleed_width, 1461 + (expected_bleed_per_side * 2));
         assert_eq!(config.bleed_height, 2076 + (expected_bleed_per_side * 2));
+    }
+
+    #[test]
+    fn test_uniqueness_marker_bounds() {
+        let mut img = RgbImage::new(10, 10);
+        apply_uniqueness_marker(&mut img, 0);
+        apply_uniqueness_marker(&mut img, 5);
+        apply_uniqueness_marker(&mut img, 100);
     }
 }

@@ -2,7 +2,6 @@ use crate::border_generator::generate_bordered_image;
 use crate::card_db::CardDB;
 use crate::card_source::CardSource;
 use crate::models::Printing;
-use opencv::imgcodecs;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -21,7 +20,6 @@ pub fn generate_mpc_zip(
     let printings = db.resolve_printings(&card_requests, &available)?;
 
     let mut sides: HashMap<String, Vec<Printing>> = HashMap::new();
-
     for printing in printings {
         sides
             .entry(printing.side.clone())
@@ -66,14 +64,14 @@ fn process_side(
             .and_modify(|n| *n += 1)
             .or_insert(1);
 
-        let img = imgcodecs::imread(
-            printing
-                .file_path
-                .to_str()
-                .ok_or("Invalid input path encoding")?,
-            imgcodecs::IMREAD_COLOR,
-        )?;
+        let img = image::open(&printing.file_path)?;
+        let start = std::time::Instant::now();
         let bordered_bytes = generate_bordered_image(&img, *copy_num)?;
+        eprintln!(
+            "generate_bordered_image runtime for {:?}: {:?}",
+            printing.file_path,
+            start.elapsed()
+        );
 
         let filename = format!(
             "{}/{}-{}-{}-{}.jpg",

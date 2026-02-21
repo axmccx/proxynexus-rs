@@ -267,12 +267,15 @@ fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::
         } => {
             let source = determine_input_source(cardlist, set_name, nrdb_url);
 
+            let start = std::time::Instant::now();
+
             match source {
                 InputSource::Cardlist(list) => generate_mpc_zip(&Cardlist(list), &output_path)?,
                 InputSource::SetName(name) => generate_mpc_zip(&SetName(name), &output_path)?,
                 InputSource::NrdbUrl(url) => generate_mpc_zip(&NrdbUrl(url), &output_path)?,
             }
 
+            eprintln!("runtime: {:?}", start.elapsed());
             println!("MPC ZIP created successfully: {:?}", output_path);
             Ok(())
         }
