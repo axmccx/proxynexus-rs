@@ -1,12 +1,11 @@
-use image::{DynamicImage, GenericImageView, ImageBuffer, RgbImage};
+use image::{DynamicImage, GenericImageView, RgbImage};
 use turbojpeg;
 
 #[derive(Debug, Clone)]
 struct BorderConfig {
-    bleed_width: u32,
-    bleed_height: u32,
-    border_x: u32,
-    border_y: u32,
+    output_width: u32,
+    output_height: u32,
+    border_size: u32,
 }
 
 impl BorderConfig {
@@ -15,13 +14,12 @@ impl BorderConfig {
     /// Scales proportionally for any resolution
     fn from_image_dimensions(width: u32, height: u32) -> Self {
         let dpi_scale = width as f32 / 744.0;
-        let border_per_side = (36.0 * dpi_scale).round() as u32;
+        let border_size = (36.0 * dpi_scale).round() as u32;
 
         Self {
-            bleed_width: width + (border_per_side * 2),
-            bleed_height: height + (border_per_side * 2),
-            border_x: border_per_side,
-            border_y: border_per_side,
+            output_width: width + (border_size * 2),
+            output_height: height + (border_size * 2),
+            border_size,
         }
     }
 }
@@ -36,19 +34,45 @@ pub fn generate_bordered_image(
     let mut bordered = replicate_edges_to_bleed(img, &config);
     apply_uniqueness_marker(&mut bordered, marker_position);
 
-    Ok(turbojpeg::compress_image(&bordered, 90, turbojpeg::Subsamp::Sub2x2)?.to_vec())
+    Ok(turbojpeg::compress_image(&bordered, 95, turbojpeg::Subsamp::Sub2x2)?.to_vec())
 }
 
 fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbImage {
-    let (src_width, src_height) = img.dimensions();
+    let (src_w, src_h) = img.dimensions();
     let rgb_view = img.to_rgb8();
+    let src_raw = rgb_view.as_raw();
 
-    ImageBuffer::from_fn(config.bleed_width, config.bleed_height, |x, y| {
-        let src_x = (x as i32 - config.border_x as i32).clamp(0, src_width as i32 - 1) as u32;
-        let src_y = (y as i32 - config.border_y as i32).clamp(0, src_height as i32 - 1) as u32;
+    let mut dest_raw = vec![0u8; (config.output_width * config.output_height * 3) as usize];
 
-        *rgb_view.get_pixel(src_x, src_y)
-    })
+    for y in 0..config.output_height {
+        let src_y = (y as i32 - config.border_size as i32).clamp(0, src_h as i32 - 1) as u32;
+        let src_row_start = (src_y * src_w * 3) as usize;
+        let src_row_end = src_row_start + (src_w * 3) as usize;
+        let src_row = &src_raw[src_row_start..src_row_end];
+
+        let dest_row_start = (y * config.output_width * 3) as usize;
+
+        // 1. Fill Left Border (Repeat the first pixel of the source row)
+        let first_pixel = &src_row[0..3];
+        for x in 0..config.border_size {
+            let idx = dest_row_start + (x * 3) as usize;
+            dest_raw[idx..idx + 3].copy_from_slice(first_pixel);
+        }
+
+        // 2. Fill Center (Fast blit of the entire source row)
+        let center_start = dest_row_start + (config.border_size * 3) as usize;
+        let center_end = center_start + (src_w * 3) as usize;
+        dest_raw[center_start..center_end].copy_from_slice(src_row);
+
+        // 3. Fill Right Border (Repeat the last pixel of the source row)
+        let last_pixel = &src_row[(src_w as usize - 1) * 3..];
+        for x in (config.border_size + src_w)..config.output_width {
+            let idx = dest_row_start + (x * 3) as usize;
+            dest_raw[idx..idx + 3].copy_from_slice(last_pixel);
+        }
+    }
+
+    image::ImageBuffer::from_raw(config.output_width, config.output_height, dest_raw).unwrap()
 }
 
 // changes a few pixels near top left corner, based on position.
@@ -74,15 +98,15 @@ mod tests {
         // Test with NSG-sized image (744×1039)
         // Should add 36px per side at 300 DPI scale
         let config = BorderConfig::from_image_dimensions(744, 1039);
-        assert_eq!(config.bleed_width, 816); // 744 + (36*2)
-        assert_eq!(config.bleed_height, 1111); // 1039 + (36*2)
+        assert_eq!(config.output_width, 816); // 744 + (36*2)
+        assert_eq!(config.output_height, 1111); // 1039 + (36*2)
 
         // Test with PopTartNZ-sized image (1461×2076)
         // DPI scale ≈ 1.96, so 36px scales to ~71px per side
         let config = BorderConfig::from_image_dimensions(1461, 2076);
         let expected_bleed_per_side = (36.0 * (1461.0 / 744.0_f32)).round() as u32;
-        assert_eq!(config.bleed_width, 1461 + (expected_bleed_per_side * 2));
-        assert_eq!(config.bleed_height, 2076 + (expected_bleed_per_side * 2));
+        assert_eq!(config.output_width, 1461 + (expected_bleed_per_side * 2));
+        assert_eq!(config.output_height, 2076 + (expected_bleed_per_side * 2));
     }
 
     #[test]
