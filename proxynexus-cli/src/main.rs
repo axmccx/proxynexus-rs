@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
-use proxynexus_core::collection_builder::CollectionBuilder;
+use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::{PageSize, generate_pdf};
@@ -54,9 +54,6 @@ enum CollectionAction {
     Build {
         #[arg(short, long)]
         images: PathBuf,
-
-        #[arg(short, long)]
-        metadata: PathBuf,
 
         #[arg(short, long)]
         output: PathBuf,
@@ -151,14 +148,18 @@ fn handle_collection_action(
         CollectionAction::Build {
             output,
             images,
-            metadata,
             language,
             version,
         } => {
-            CollectionBuilder::new(output, images, metadata, language, version)
-                .verbose(verbose)
-                .build()
-                .map_err(|e| format!("Build failed: {}", e))?;
+            println!("Writing pnx file...");
+            let report = build_collection(&output, &images, language, version)?;
+            println!("Added {} printings", report.printings_added);
+            println!("Collection created: {:?}", output);
+            if verbose {
+                for path in &report.image_paths {
+                    println!("  {}", path.file_name().unwrap().to_string_lossy());
+                }
+            }
             Ok(())
         }
         CollectionAction::Add { path } => {

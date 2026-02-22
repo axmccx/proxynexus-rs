@@ -4,7 +4,7 @@ pub mod card_source;
 pub mod collection_builder;
 pub mod collection_manager;
 mod csv_parser;
-mod db;
+mod db_schema;
 mod image_scanner;
 mod models;
 pub mod mpc;

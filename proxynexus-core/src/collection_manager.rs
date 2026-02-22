@@ -1,5 +1,5 @@
 use crate::card_db::normalize_title;
-use crate::db::app_schema;
+use crate::db_schema;
 use crate::models::{CardMetadata, Manifest};
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -23,7 +23,7 @@ impl CollectionManager {
         fs::create_dir_all(&collections_dir)?;
 
         let conn = Connection::open(&app_db_path)?;
-        app_schema::create_app_schema(&conn)?;
+        db_schema::create_app_schema(&conn)?;
 
         Ok(Self {
             app_db_path,

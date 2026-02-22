@@ -20,9 +20,7 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
             set_name TEXT NOT NULL,
             release_date TEXT,
             side TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            first_seen_collection_id INTEGER,
-            FOREIGN KEY (first_seen_collection_id) REFERENCES collections(id)
+            quantity INTEGER NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS printings (
