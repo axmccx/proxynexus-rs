@@ -1,8 +1,14 @@
 use rusqlite::Connection;
 
 pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute("PRAGMA foreign_keys = ON;", [])?;
     conn.execute_batch(
         "
+        CREATE TABLE IF NOT EXISTS meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS collections (
             id INTEGER PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
@@ -12,15 +18,20 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
             last_updated TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS packs (
+            code TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            date_release TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS cards (
             code TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             title_normalized TEXT NOT NULL,
-            set_code TEXT NOT NULL,
-            set_name TEXT NOT NULL,
-            release_date TEXT,
+            pack_code TEXT NOT NULL,
             side TEXT NOT NULL,
-            quantity INTEGER NOT NULL
+            quantity INTEGER NOT NULL,
+            FOREIGN KEY (pack_code) REFERENCES packs(code) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS printings (
@@ -31,7 +42,7 @@ pub fn create_app_schema(conn: &Connection) -> rusqlite::Result<()> {
             file_path TEXT NOT NULL,
             UNIQUE(collection_id, card_code, variant),
             FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
-            FOREIGN KEY (card_code) REFERENCES cards(code) ON DELETE CASCADE
+            FOREIGN KEY (card_code) REFERENCES cards(code)
         );
 
         CREATE INDEX IF NOT EXISTS idx_cards_code ON cards(code);

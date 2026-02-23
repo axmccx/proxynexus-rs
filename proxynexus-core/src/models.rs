@@ -8,15 +8,20 @@ pub struct Manifest {
     pub generated_date: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct CardMetadata {
+#[derive(Debug, Clone, Deserialize)]
+pub struct Card {
     pub code: String,
     pub title: String,
-    pub set_code: String,
-    pub set_name: String,
-    pub release_date: Option<String>,
-    pub side: String,
+    pub pack_code: String,
+    pub side_code: String,
     pub quantity: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Pack {
+    pub code: String,
+    pub name: String,
+    pub date_release: Option<String>,
 }
 
 #[derive(Debug, Clone)]

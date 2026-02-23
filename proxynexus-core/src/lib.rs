@@ -1,6 +1,7 @@
 mod border_generator;
-pub mod card_db;
 pub mod card_source;
+pub mod card_store;
+pub mod catalog;
 pub mod collection_builder;
 pub mod collection_manager;
 mod db_schema;

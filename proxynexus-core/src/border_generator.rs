@@ -76,7 +76,7 @@ fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbIma
 }
 
 // changes a few pixels near top left corner, based on position.
-// makes the image duplicate image unique, so that MPC doesn't deduplicate it on upload
+// makes the duplicate image unique, so that MPC doesn't deduplicate it on upload
 fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
     if position == 0 {
         return;

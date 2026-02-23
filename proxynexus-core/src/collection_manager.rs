@@ -1,4 +1,3 @@
-use crate::db_schema;
 use crate::models::Manifest;
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -20,9 +19,6 @@ impl CollectionManager {
         let app_db_path = proxynexus_dir.join("proxynexus.db");
 
         fs::create_dir_all(&collections_dir)?;
-
-        let conn = Connection::open(&app_db_path)?;
-        db_schema::create_app_schema(&conn)?;
 
         Ok(Self {
             app_db_path,
@@ -57,9 +53,10 @@ impl CollectionManager {
             collection_name, manifest.version, manifest.language
         );
 
-        let app_conn = Connection::open(&self.app_db_path)?;
+        let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
-        let existing: Option<i64> = app_conn
+        let existing: Option<i64> = conn
             .query_row(
                 "SELECT id FROM collections WHERE name = ?1",
                 params![&collection_name],
@@ -71,13 +68,13 @@ impl CollectionManager {
             return Err(format!("Collection '{}' has already been added.", collection_name).into());
         }
 
-        app_conn.execute(
+        conn.execute(
             "INSERT INTO collections (name, version, language, added_date)
              VALUES (?1, ?2, ?3, datetime('now'))",
             params![&collection_name, &manifest.version, &manifest.language,],
         )?;
 
-        let collection_id: i64 = app_conn.last_insert_rowid();
+        let collection_id: i64 = conn.last_insert_rowid();
 
         let collection_dir = self.collections_dir.join(&collection_name);
         fs::create_dir_all(&collection_dir)?;
@@ -98,7 +95,7 @@ impl CollectionManager {
             let file_name = path.file_name().unwrap().to_string_lossy();
             let file_path = format!("{}/{}", collection_name, file_name);
 
-            app_conn.execute(
+            conn.execute(
                 "INSERT INTO printings (collection_id, card_code, variant, file_path)
                  VALUES (?1, ?2, ?3, ?4)",
                 params![collection_id, &card_code, &variant, &file_path,],
@@ -135,10 +132,11 @@ impl CollectionManager {
     pub fn get_collections(
         &self,
     ) -> Result<Vec<(String, String, String)>, Box<dyn std::error::Error>> {
-        let app_conn = Connection::open(&self.app_db_path)?;
+        let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         let mut stmt =
-            app_conn.prepare("SELECT name, version, language FROM collections ORDER BY name")?;
+            conn.prepare("SELECT name, version, language FROM collections ORDER BY name")?;
 
         let collections = stmt
             .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?

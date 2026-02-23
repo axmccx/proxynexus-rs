@@ -1,6 +1,6 @@
 use crate::border_generator::generate_bordered_image;
-use crate::card_db::CardDB;
 use crate::card_source::CardSource;
+use crate::card_store::CardStore;
 use crate::models::Printing;
 use std::collections::HashMap;
 use std::fs::File;
@@ -15,9 +15,9 @@ pub fn generate_mpc_zip(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let card_requests = card_source.to_card_requests()?;
 
-    let db = CardDB::new()?;
-    let available = db.get_available_printings(&card_requests)?;
-    let printings = db.resolve_printings(&card_requests, &available)?;
+    let store = CardStore::new()?;
+    let available = store.get_available_printings(&card_requests)?;
+    let printings = store.resolve_printings(&card_requests, &available)?;
 
     let mut sides: HashMap<String, Vec<Printing>> = HashMap::new();
     for printing in printings {

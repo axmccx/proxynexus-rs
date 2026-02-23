@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
+use proxynexus_core::catalog::Catalog;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::mpc::generate_mpc_zip;
@@ -24,7 +25,10 @@ enum Commands {
         #[command(subcommand)]
         output_type: GenerateType,
     },
-
+    Catalog {
+        #[command(subcommand)]
+        action: CatalogAction,
+    },
     Collection {
         #[command(subcommand)]
         action: CollectionAction,
@@ -50,6 +54,19 @@ enum Commands {
 }
 
 #[derive(Subcommand)]
+enum CatalogAction {
+    Update,
+    Info,
+    Import {
+        #[arg(short, long)]
+        cards: PathBuf,
+
+        #[arg(short, long)]
+        packs: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
 enum CollectionAction {
     Build {
         #[arg(short, long)]
@@ -64,13 +81,10 @@ enum CollectionAction {
         #[arg(short, long, default_value = "1.0.0")]
         version: String,
     },
-
     Add {
         path: PathBuf,
     },
-
     List,
-
     Remove {
         name: String,
     },
@@ -99,7 +113,6 @@ enum GenerateType {
         #[arg(long, default_value = "letter")]
         page_size: String,
     },
-
     #[command(group(
         clap::ArgGroup::new("input")
             .required(true)
@@ -123,6 +136,18 @@ enum GenerateType {
 fn main() {
     let cli = Cli::parse();
 
+    let catalog = match Catalog::new() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error initializing catalog: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    if let Err(e) = catalog.seed_if_empty() {
+        eprintln!("Warning: Could not seed catalog: {}", e);
+    }
+
     let result = match cli.command {
         Commands::Collection { action } => handle_collection_action(action, cli.verbose),
         Commands::Generate { output_type } => handle_generate(output_type),
@@ -132,6 +157,7 @@ fn main() {
             nrdb_url,
             list_sets,
         } => handle_query(cardlist, set_name, nrdb_url, list_sets),
+        Commands::Catalog { action } => handle_catalog_action(action, &catalog),
     };
 
     if let Err(e) = result {
@@ -208,6 +234,28 @@ fn handle_collection_action(
             Ok(())
         }
     }
+}
+
+fn handle_catalog_action(
+    action: CatalogAction,
+    catalog: &Catalog,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match action {
+        CatalogAction::Update => {
+            println!("Fetching latest card data from NetrunnerDB...");
+            catalog.update_from_api()?;
+            println!("Card catalog updated successfully!");
+        }
+        CatalogAction::Info => {
+            println!("{}", catalog.get_info()?);
+        }
+        CatalogAction::Import { cards, packs } => {
+            println!("Loading card data from local files...");
+            catalog.update_catalog_from_files(&cards, &packs)?;
+            println!("Card catalog updated successfully!");
+        }
+    }
+    Ok(())
 }
 
 enum InputSource {

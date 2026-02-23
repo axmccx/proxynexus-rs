@@ -1,38 +1,31 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
+use crate::catalog::normalize_title;
 use crate::models::{CardRequest, Printing};
 use dirs;
 use rusqlite::{Connection, OptionalExtension, params};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub struct CardDB {
+pub struct CardStore {
     app_db_path: PathBuf,
     collections_dir: PathBuf,
 }
 
-pub fn normalize_title(title: &str) -> String {
-    title
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '_' })
-        .collect()
-}
-
 impl CardSource for Cardlist {
     fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
-        let db = CardDB::new()?;
-        db.parse_cardlist_into_card_requests(&self.0)
+        let store = CardStore::new()?;
+        store.parse_cardlist_into_card_requests(&self.0)
     }
 }
 
 impl CardSource for SetName {
     fn to_card_requests(&self) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
-        let db = CardDB::new()?;
-        db.get_card_requests_from_set_name(&self.0)
+        let store = CardStore::new()?;
+        store.get_card_requests_from_set_name(&self.0)
     }
 }
 
-impl CardDB {
+impl CardStore {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let home = dirs::home_dir().ok_or("Could not find home directory")?;
         let proxynexus_dir = home.join(".proxynexus");
@@ -151,6 +144,8 @@ impl CardDB {
         names: &[&str],
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+
         let mut codes = Vec::new();
         let mut not_found = Vec::new();
 
@@ -179,6 +174,7 @@ impl CardDB {
 
     pub fn get_available_sets(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         let mut stmt = conn.prepare("SELECT DISTINCT set_name FROM cards ORDER BY set_name")?;
 
@@ -194,6 +190,7 @@ impl CardDB {
         set_name: &str,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         let mut stmt = conn.prepare(
             "SELECT code, quantity
@@ -228,6 +225,7 @@ impl CardDB {
         card_requests: &[CardRequest],
     ) -> Result<HashMap<String, Vec<Printing>>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         let unique_codes: HashSet<String> =
             card_requests.iter().map(|req| req.code.clone()).collect();
@@ -374,6 +372,7 @@ impl CardDB {
 
     fn get_default_collection(&self) -> Result<Option<String>, Box<dyn std::error::Error>> {
         let conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         let result: Option<String> = conn
             .query_row(

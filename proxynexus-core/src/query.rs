@@ -1,11 +1,11 @@
-use crate::card_db::CardDB;
 use crate::card_source::CardSource;
+use crate::card_store::CardStore;
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
 
 pub fn list_available_sets() -> Result<String, Box<dyn std::error::Error>> {
-    let db = CardDB::new()?;
-    let sets = db.get_available_sets()?;
+    let store = CardStore::new()?;
+    let sets = store.get_available_sets()?;
     Ok(sets
         .iter()
         .map(|s| format!("  - {}", s))
@@ -18,14 +18,14 @@ pub fn generate_query_output(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let card_requests = card_source.to_card_requests()?;
 
-    let db = CardDB::new()?;
-    let available = db.get_available_printings(&card_requests)?;
+    let store = CardStore::new()?;
+    let available = store.get_available_printings(&card_requests)?;
 
-    format_query_output(&db, &card_requests, &available)
+    format_query_output(&store, &card_requests, &available)
 }
 
 fn format_query_output(
-    db: &CardDB,
+    db: &CardStore,
     requests: &[CardRequest],
     available: &HashMap<String, Vec<Printing>>,
 ) -> Result<String, Box<dyn std::error::Error>> {
