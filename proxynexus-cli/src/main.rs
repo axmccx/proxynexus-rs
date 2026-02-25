@@ -215,6 +215,13 @@ fn handle_collection_action(
             Ok(())
         }
         CollectionAction::Remove { name } => {
+            let manager = CollectionManager::new()
+                .map_err(|e| format!("Failed to initialize collection manager: {}", e))?;
+
+            if !manager.collection_exists(&name)? {
+                return Err(format!("Collection '{}' not found. Run 'collection list' to see available collections.", name).into());
+            }
+
             println!(
                 "Are you sure you want to remove collection '{}'? (y/N)",
                 name
@@ -224,8 +231,6 @@ fn handle_collection_action(
             std::io::stdin().read_line(&mut input)?;
 
             if input.trim().to_lowercase() == "y" {
-                let manager = CollectionManager::new()
-                    .map_err(|e| format!("Failed to initialize collection manager: {}", e))?;
                 manager
                     .remove_collection(&name)
                     .map_err(|e| format!("Failed to remove collection: {}", e))?;

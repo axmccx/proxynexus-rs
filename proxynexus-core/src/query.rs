@@ -1,16 +1,21 @@
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
+use crate::catalog::normalize_title;
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
 
 pub fn list_available_sets() -> Result<String, Box<dyn std::error::Error>> {
     let store = CardStore::new()?;
-    let sets = store.get_available_sets()?;
-    Ok(sets
+    let sets = store.get_available_packs()?;
+
+    let max_name_len = sets.iter().map(|(name, _)| name.len()).max().unwrap_or(0);
+
+    let lines: Vec<String> = sets
         .iter()
-        .map(|s| format!("  - {}", s))
-        .collect::<Vec<_>>()
-        .join("\n"))
+        .map(|(name, meta)| format!("  - {:width$}    {}", name, meta, width = max_name_len))
+        .collect();
+
+    Ok(lines.join("\n"))
 }
 
 pub fn generate_query_output(
@@ -32,50 +37,50 @@ fn format_query_output(
     let mut order: Vec<String> = Vec::new();
     let mut counts: HashMap<String, u32> = HashMap::new();
     for req in requests {
-        if !counts.contains_key(&req.code) {
-            order.push(req.code.clone());
+        let normalized = normalize_title(&req.title);
+        if !counts.contains_key(&normalized) {
+            order.push(normalized.clone());
         }
-        *counts.entry(req.code.clone()).or_insert(0) += 1;
+        *counts.entry(normalized).or_insert(0) += 1;
     }
 
     let mut lines_data: Vec<(String, Vec<String>)> = Vec::new();
     let mut max_base_len = 0;
 
-    for code in &order {
-        let printings = match available.get(code) {
+    for normalized_title in &order {
+        let printings = match available.get(normalized_title) {
             Some(p) => p,
             None => continue,
         };
 
-        let count = counts.get(code).unwrap_or(&1);
-
+        let first = &printings[0];
         let default_request = CardRequest {
-            code: code.clone(),
+            title: first.card_title.clone(),
+            code: first.card_code.clone(),
             variant: None,
             collection: None,
+            pack_code: None,
         };
-        let default_printing = db.select_printing(&default_request, printings)?;
+
+        let default_p = db.select_printing(&default_request, printings)?;
+        let count = counts.get(normalized_title).unwrap_or(&1);
 
         let base = format!(
-            "{}x {} [{}:{}]",
+            "{}x {} [{}:{}:{}]",
             count,
-            default_printing.card_title,
-            default_printing.variant,
-            default_printing.collection
+            default_p.card_title,
+            default_p.variant,
+            default_p.collection,
+            default_p.pack_code,
         );
 
-        let alternatives: Vec<String> = printings
-            .iter()
-            .filter(|p| {
-                !(p.variant == default_printing.variant
-                    && p.collection == default_printing.collection)
-            })
-            .map(|p| format!("[{}:{}]", p.variant, p.collection))
-            .collect();
+        max_base_len = max_base_len.max(base.len());
 
-        if base.len() > max_base_len {
-            max_base_len = base.len();
-        }
+        let alternatives = printings
+            .iter()
+            .filter(|p| p.variant != default_p.variant || p.collection != default_p.collection)
+            .map(|p| format!("[{}:{}:{}]", p.variant, p.collection, p.pack_code))
+            .collect();
 
         lines_data.push((base, alternatives));
     }

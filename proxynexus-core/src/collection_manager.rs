@@ -145,13 +145,24 @@ impl CollectionManager {
         Ok(collections)
     }
 
+    pub fn collection_exists(&self, name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        let conn = Connection::open(&self.app_db_path)?;
+        let count: u32 = conn.query_row(
+            "SELECT COUNT(*) FROM collections WHERE name = ?1",
+            [name],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
     pub fn remove_collection(
         &self,
         collection_name: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut app_conn = Connection::open(&self.app_db_path)?;
+        let mut conn = Connection::open(&self.app_db_path)?;
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
-        let collection_id: i64 = app_conn
+        let collection_id: i64 = conn
             .query_row(
                 "SELECT id FROM collections WHERE name = ?",
                 [collection_name],
@@ -159,7 +170,7 @@ impl CollectionManager {
             )
             .map_err(|_| format!("Collection '{}' not found", collection_name))?;
 
-        let tx = app_conn.transaction()?;
+        let tx = conn.transaction()?;
 
         tx.execute(
             "DELETE FROM printings WHERE collection_id = ?",

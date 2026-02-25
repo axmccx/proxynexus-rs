@@ -32,11 +32,14 @@ pub struct Printing {
     pub file_path: PathBuf,
     pub collection: String,
     pub side: String,
+    pub pack_code: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct CardRequest {
+    pub title: String,
     pub code: String,
     pub variant: Option<String>,
     pub collection: Option<String>,
+    pub pack_code: Option<String>,
 }

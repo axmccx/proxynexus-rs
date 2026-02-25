@@ -1,5 +1,7 @@
 use crate::card_source::{CardSource, NrdbUrl};
 use crate::models::CardRequest;
+use dirs;
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -46,17 +48,54 @@ fn fetch_card_requests_from_nrdb_url(
         .ok_or("Empty response from NetrunnerDB")?
         .cards;
 
-    Ok(cards
-        .into_iter()
-        .flat_map(|(code, qty)| {
-            std::iter::repeat(CardRequest {
-                code: code.clone(),
-                variant: None,
-                collection: None,
-            })
-            .take(*qty as usize)
-        })
-        .collect())
+    let requests = resolve_requests_from_db(cards)?;
+
+    Ok(requests)
+}
+
+fn resolve_requests_from_db(
+    cards: &HashMap<String, u32>,
+) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
+    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let app_db_path = home.join(".proxynexus/proxynexus.db");
+
+    let conn = Connection::open(&app_db_path)?;
+    conn.execute("PRAGMA foreign_keys = ON", [])?;
+
+    let mut requests = Vec::new();
+
+    for (code, qty) in cards {
+        let result: Option<String> = conn
+            .query_row(
+                "SELECT title FROM cards WHERE code = ?1",
+                params![code],
+                |row| Ok(row.get(0)?),
+            )
+            .optional()?;
+
+        match result {
+            Some(title) => {
+                for _ in 0..*qty {
+                    requests.push(CardRequest {
+                        title: title.clone(),
+                        code: code.clone(),
+                        variant: None,
+                        collection: None,
+                        pack_code: None,
+                    });
+                }
+            }
+            None => {
+                eprintln!(
+                    "Warning: Card code '{}' from NetrunnerDB not found in local catalog",
+                    code
+                );
+                eprintln!("  Consider running 'proxynexus catalog update'");
+            }
+        }
+    }
+
+    Ok(requests)
 }
 
 fn parse_nrdb_url(url: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
