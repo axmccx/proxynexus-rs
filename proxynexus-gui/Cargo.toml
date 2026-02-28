@@ -10,3 +10,4 @@ dioxus = { version = "0.7.1", features = ["router"] }
 [features]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
+web = ["dioxus/web"]
