@@ -2,5 +2,6 @@
 members = [
     "proxynexus-cli",
     "proxynexus-core",
+    "proxynexus-gui",
 ]
 resolver = "2"
