@@ -4,9 +4,9 @@ use crate::catalog::normalize_title;
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
 
-pub fn list_available_sets() -> Result<String, Box<dyn std::error::Error>> {
-    let store = CardStore::new()?;
-    let sets = store.get_available_packs()?;
+pub async fn list_available_sets() -> Result<String, Box<dyn std::error::Error>> {
+    let store = CardStore::new().await?;
+    let sets = store.get_available_packs().await?;
 
     let max_name_len = sets.iter().map(|(name, _)| name.len()).max().unwrap_or(0);
 
@@ -18,19 +18,18 @@ pub fn list_available_sets() -> Result<String, Box<dyn std::error::Error>> {
     Ok(lines.join("\n"))
 }
 
-pub fn generate_query_output(
+pub async fn generate_query_output(
     card_source: &impl CardSource,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let card_requests = card_source.to_card_requests()?;
+    let card_requests = card_source.to_card_requests().await?;
 
-    let store = CardStore::new()?;
-    let available = store.get_available_printings(&card_requests)?;
+    let store = CardStore::new().await?;
+    let available = store.get_available_printings(&card_requests).await?;
 
-    format_query_output(&store, &card_requests, &available)
+    format_query_output(&card_requests, &available)
 }
 
 fn format_query_output(
-    db: &CardStore,
     requests: &[CardRequest],
     available: &HashMap<String, Vec<Printing>>,
 ) -> Result<String, Box<dyn std::error::Error>> {
@@ -62,7 +61,7 @@ fn format_query_output(
             pack_code: None,
         };
 
-        let default_p = db.select_printing(&default_request, printings)?;
+        let default_p = CardStore::select_printing(&default_request, printings)?;
         let count = counts.get(normalized_title).unwrap_or(&1);
 
         let base = format!(
