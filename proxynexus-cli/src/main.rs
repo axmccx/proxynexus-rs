@@ -4,7 +4,7 @@ use proxynexus_core::catalog::Catalog;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::mpc::generate_mpc_zip;
-use proxynexus_core::pdf::{PageSize, generate_pdf};
+use proxynexus_core::pdf::{generate_pdf, PageSize};
 use proxynexus_core::query::{generate_query_output, list_available_sets};
 use std::path::PathBuf;
 
@@ -133,10 +133,11 @@ enum GenerateType {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
-    let catalog = match Catalog::new() {
+    let mut catalog = match Catalog::new().await {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Error initializing catalog: {}", e);
@@ -144,20 +145,20 @@ fn main() {
         }
     };
 
-    if let Err(e) = catalog.seed_if_empty() {
+    if let Err(e) = catalog.seed_if_empty().await {
         eprintln!("Warning: Could not seed catalog: {}", e);
     }
 
     let result = match cli.command {
-        Commands::Collection { action } => handle_collection_action(action, cli.verbose),
-        Commands::Generate { output_type } => handle_generate(output_type),
+        Commands::Collection { action } => handle_collection_action(action, cli.verbose).await,
+        Commands::Generate { output_type } => handle_generate(output_type).await,
         Commands::Query {
             cardlist,
             set_name,
             nrdb_url,
             list_sets,
-        } => handle_query(cardlist, set_name, nrdb_url, list_sets),
-        Commands::Catalog { action } => handle_catalog_action(action, &catalog),
+        } => handle_query(cardlist, set_name, nrdb_url, list_sets).await,
+        Commands::Catalog { action } => handle_catalog_action(action, &mut catalog).await,
     };
 
     if let Err(e) = result {
@@ -166,7 +167,7 @@ fn main() {
     }
 }
 
-fn handle_collection_action(
+async fn handle_collection_action(
     action: CollectionAction,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -190,18 +191,22 @@ fn handle_collection_action(
         }
         CollectionAction::Add { path } => {
             let manager = CollectionManager::new()
+                .await
                 .map_err(|e| format!("Failed to initialize collection manager: {}", e))?;
             manager
                 .add_collection(&path)
+                .await
                 .map_err(|e| format!("Failed to add collection: {}", e))?;
             println!("Collection added successfully");
             Ok(())
         }
         CollectionAction::List => {
             let manager = CollectionManager::new()
+                .await
                 .map_err(|e| format!("Failed to initialize collection manager: {}", e))?;
             let collections = manager
                 .get_collections()
+                .await
                 .map_err(|e| format!("Failed to list collections: {}", e))?;
 
             if collections.is_empty() {
@@ -215,10 +220,11 @@ fn handle_collection_action(
             Ok(())
         }
         CollectionAction::Remove { name } => {
-            let manager = CollectionManager::new()
+            let mut manager = CollectionManager::new()
+                .await
                 .map_err(|e| format!("Failed to initialize collection manager: {}", e))?;
 
-            if !manager.collection_exists(&name)? {
+            if !manager.collection_exists(&name).await? {
                 return Err(format!("Collection '{}' not found. Run 'collection list' to see available collections.", name).into());
             }
 
@@ -233,6 +239,7 @@ fn handle_collection_action(
             if input.trim().to_lowercase() == "y" {
                 manager
                     .remove_collection(&name)
+                    .await
                     .map_err(|e| format!("Failed to remove collection: {}", e))?;
                 println!("Collection '{}' removed successfully.", name);
             }
@@ -241,22 +248,22 @@ fn handle_collection_action(
     }
 }
 
-fn handle_catalog_action(
+async fn handle_catalog_action(
     action: CatalogAction,
-    catalog: &Catalog,
+    catalog: &mut Catalog,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         CatalogAction::Update => {
             println!("Fetching latest card data from NetrunnerDB...");
-            catalog.update_from_api()?;
+            catalog.update_from_api().await?;
             println!("Card catalog updated successfully!");
         }
         CatalogAction::Info => {
-            println!("{}", catalog.get_info()?);
+            println!("{}", catalog.get_info().await?);
         }
         CatalogAction::Import { cards, packs } => {
             println!("Loading card data from local files...");
-            catalog.update_catalog_from_files(&cards, &packs)?;
+            catalog.update_catalog_from_files(&cards, &packs).await?;
             println!("Card catalog updated successfully!");
         }
     }
@@ -285,7 +292,7 @@ fn determine_input_source(
     }
 }
 
-fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::Error>> {
     match output_type {
         GenerateType::Pdf {
             cardlist,
@@ -299,13 +306,13 @@ fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::
 
             match source {
                 InputSource::Cardlist(list) => {
-                    generate_pdf(&Cardlist(list), &output_path, page_size_enum)?
+                    generate_pdf(&Cardlist(list), &output_path, page_size_enum).await?
                 }
                 InputSource::SetName(name) => {
-                    generate_pdf(&SetName(name), &output_path, page_size_enum)?
+                    generate_pdf(&SetName(name), &output_path, page_size_enum).await?
                 }
                 InputSource::NrdbUrl(url) => {
-                    generate_pdf(&NrdbUrl(url), &output_path, page_size_enum)?
+                    generate_pdf(&NrdbUrl(url), &output_path, page_size_enum).await?
                 }
             }
 
@@ -324,9 +331,9 @@ fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::
             let start = std::time::Instant::now();
 
             match source {
-                InputSource::Cardlist(list) => generate_mpc_zip(&Cardlist(list), &output_path)?,
-                InputSource::SetName(name) => generate_mpc_zip(&SetName(name), &output_path)?,
-                InputSource::NrdbUrl(url) => generate_mpc_zip(&NrdbUrl(url), &output_path)?,
+                InputSource::Cardlist(list) => generate_mpc_zip(&Cardlist(list), &output_path).await?,
+                InputSource::SetName(name) => generate_mpc_zip(&SetName(name), &output_path).await?,
+                InputSource::NrdbUrl(url) => generate_mpc_zip(&NrdbUrl(url), &output_path).await?,
             }
 
             eprintln!("runtime: {:?}", start.elapsed());
@@ -336,7 +343,7 @@ fn handle_generate(output_type: GenerateType) -> Result<(), Box<dyn std::error::
     }
 }
 
-fn handle_query(
+async fn handle_query(
     cardlist: Option<String>,
     set_name: Option<String>,
     nrdb_url: Option<String>,
@@ -344,16 +351,16 @@ fn handle_query(
 ) -> Result<(), Box<dyn std::error::Error>> {
     if list_sets {
         println!("\nAvailable Sets:\n");
-        println!("{}", list_available_sets()?);
+        println!("{}", list_available_sets().await?);
         return Ok(());
     }
 
     let source = determine_input_source(cardlist, set_name, nrdb_url);
 
     let output = match source {
-        InputSource::Cardlist(list) => generate_query_output(&Cardlist(list)),
-        InputSource::SetName(name) => generate_query_output(&SetName(name)),
-        InputSource::NrdbUrl(url) => generate_query_output(&NrdbUrl(url)),
+        InputSource::Cardlist(list) => generate_query_output(&Cardlist(list)).await,
+        InputSource::SetName(name) => generate_query_output(&SetName(name)).await,
+        InputSource::NrdbUrl(url) => generate_query_output(&NrdbUrl(url)).await,
     };
 
     println!("\nQuery Results:\n");
