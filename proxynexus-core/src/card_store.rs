@@ -40,6 +40,8 @@ pub struct CardStore {
     conn: Connection,
 }
 
+type CardOverride<'a> = (&'a str, Option<String>, Option<String>, Option<String>);
+
 impl CardStore {
     pub fn new(conn: Connection) -> Result<Self, Box<dyn std::error::Error>> {
         let home = dirs::home_dir().ok_or("Could not find home directory")?;
@@ -56,8 +58,8 @@ impl CardStore {
         &self,
         text: &str,
     ) -> Result<(Vec<CardRequest>, Vec<String>), Box<dyn std::error::Error>> {
-        let mut entries: Vec<(&str, u32, Option<String>, Option<String>, Option<String>)> =
-            Vec::new();
+        type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<String>, Option<String>);
+        let mut entries: Vec<CardlistEntry> = Vec::new();
 
         for line in text.lines() {
             let line = line.split('#').next().unwrap_or("").trim();
@@ -122,7 +124,7 @@ impl CardStore {
 
     fn parse_overrides(
         text: &str,
-    ) -> Result<(&str, Option<String>, Option<String>, Option<String>), Box<dyn std::error::Error>>
+    ) -> Result<CardOverride<'_>, Box<dyn std::error::Error>>
     {
         if let Some(bracket_start) = text.find('[') {
             let name = text[..bracket_start].trim();

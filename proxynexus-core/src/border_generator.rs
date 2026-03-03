@@ -1,5 +1,4 @@
 use image::{DynamicImage, GenericImageView, RgbImage};
-use turbojpeg;
 
 #[derive(Debug, Clone)]
 struct BorderConfig {
