@@ -8,4 +8,4 @@ clap = { version = "4.5.55", features = ["derive"] }
 dirs = "6.0.0"
 proxynexus-core = { version = "0.1.0", path = "../proxynexus-core" }
 tokio = { version = "1.0", features = ["full"] }
-turso = "0.4.4"
+turso = "0.5.0-pre.18"

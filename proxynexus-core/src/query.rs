@@ -1,6 +1,5 @@
 use crate::card_source::CardSource;
-use crate::card_store::CardStore;
-use crate::catalog::normalize_title;
+use crate::card_store::{CardStore, normalize_title};
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
 use turso::Connection;

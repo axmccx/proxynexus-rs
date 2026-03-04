@@ -1,11 +1,24 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
-use crate::catalog::normalize_title;
-use crate::db_schema::build_placeholders;
 use crate::models::{CardRequest, Printing};
 use dirs;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use turso::{Connection, params, params_from_iter};
+
+pub fn normalize_title(title: &str) -> String {
+    title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect()
+}
+
+fn build_placeholders(count: usize) -> String {
+    (1..=count)
+        .map(|i| format!("?{}", i))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 impl CardSource for Cardlist {
     async fn to_card_requests(

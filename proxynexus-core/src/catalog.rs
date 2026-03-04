@@ -1,3 +1,4 @@
+use crate::card_store::normalize_title;
 use crate::models::{Card, Pack};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -15,14 +16,6 @@ struct CardsResponse {
 #[derive(Debug, Deserialize)]
 struct PacksResponse {
     data: Vec<Pack>,
-}
-
-pub fn normalize_title(title: &str) -> String {
-    title
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '_' })
-        .collect()
 }
 
 pub struct Catalog {

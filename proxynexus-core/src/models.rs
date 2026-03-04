@@ -1,6 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
     pub version: String,
@@ -8,6 +10,7 @@ pub struct Manifest {
     pub generated_date: String,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone, Deserialize)]
 pub struct Card {
     pub code: String,
@@ -17,6 +20,7 @@ pub struct Card {
     pub quantity: u32,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone, Deserialize)]
 pub struct Pack {
     pub code: String,

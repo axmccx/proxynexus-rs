@@ -1,12 +1,5 @@
 use turso::Connection;
 
-pub fn build_placeholders(count: usize) -> String {
-    (1..=count)
-        .map(|i| format!("?{}", i))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
 pub async fn create_app_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     conn.execute_batch(
         "
