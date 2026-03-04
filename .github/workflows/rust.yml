@@ -21,8 +21,17 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libturbojpeg0-dev nasm
 
+    - name: Install WASM target
+      run: rustup target add wasm32-unknown-unknown
+
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
+
+    - name: Clippy
+      run: cargo clippy -- -D warnings
+
+    - name: Check WASM compatibility
+      run: cargo check --target wasm32-unknown-unknown -p proxynexus-core
       
     - name: Run tests
       run: cargo test --verbose
