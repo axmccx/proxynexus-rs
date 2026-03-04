@@ -33,7 +33,25 @@ pub fn generate_bordered_image(
     let mut bordered = replicate_edges_to_bleed(img, &config);
     apply_uniqueness_marker(&mut bordered, marker_position);
 
-    Ok(turbojpeg::compress_image(&bordered, 95, turbojpeg::Subsamp::Sub2x2)?.to_vec())
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Ok(turbojpeg::compress_image(&bordered, 95, turbojpeg::Subsamp::Sub2x2)?.to_vec())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut jpeg_bytes = Vec::new();
+        let encoder = jpeg_encoder::Encoder::new(&mut jpeg_bytes, 95);
+
+        encoder.encode(
+            bordered.as_raw(),
+            bordered.width() as u16,
+            bordered.height() as u16,
+            jpeg_encoder::ColorType::Rgb,
+        )?;
+
+        Ok(jpeg_bytes)
+    }
 }
 
 fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbImage {

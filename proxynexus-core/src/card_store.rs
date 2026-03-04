@@ -122,10 +122,7 @@ impl CardStore {
         }
     }
 
-    fn parse_overrides(
-        text: &str,
-    ) -> Result<CardOverride<'_>, Box<dyn std::error::Error>>
-    {
+    fn parse_overrides(text: &str) -> Result<CardOverride<'_>, Box<dyn std::error::Error>> {
         if let Some(bracket_start) = text.find('[') {
             let name = text[..bracket_start].trim();
             let bracket_end = text.find(']').ok_or("Unclosed bracket in card override")?;
