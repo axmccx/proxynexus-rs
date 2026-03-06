@@ -7,8 +7,7 @@ pub mod catalog;
 pub mod collection_builder;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod collection_manager;
-#[cfg(not(target_arch = "wasm32"))]
-mod db_schema;
+pub mod db_storage;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod local_image_provider;
 mod models;
@@ -17,18 +16,7 @@ pub mod netrunnerdb;
 pub mod pdf;
 pub mod query;
 
-use turso::Connection;
-
 pub trait ImageProvider: Send + Sync {
     #![allow(async_fn_in_trait)]
     async fn get_image_bytes(&self, key: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
-}
-
-pub async fn setup_database(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute("PRAGMA foreign_keys = ON", ()).await?;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    db_schema::create_app_schema(conn).await?;
-
-    Ok(())
 }
