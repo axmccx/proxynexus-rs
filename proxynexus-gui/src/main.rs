@@ -3,6 +3,8 @@ use dioxus::prelude::*;
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
 fn main() {
+    dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
+
     #[cfg(feature = "desktop")]
     {
         LaunchBuilder::desktop()
@@ -39,6 +41,31 @@ fn WasmSandbox() -> Element {
 }
 
 async fn test_core_function() -> Result<(), String> {
+    use gluesql::prelude::*;
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    let sqls = vec![
+        "CREATE TABLE test (id INTEGER, name TEXT);",
+        "INSERT INTO test VALUES (1, 'Hello WASM');",
+        "SELECT * FROM test;",
+    ];
+
+    for sql in sqls {
+        match glue.execute(sql).await {
+            Ok(payloads) => {
+                for payload in payloads {
+                    info!("Query OK: {:?}", payload);
+                }
+            }
+            Err(e) => {
+                error!("Query Error: {:?}", e);
+                return Err(e.to_string());
+            }
+        }
+    }
+
     Ok(())
 }
 

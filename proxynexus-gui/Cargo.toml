@@ -6,6 +6,10 @@ edition = "2024"
 
 [dependencies]
 dioxus = { version = "0.7.1", features = ["router"] }
+dioxus-logger = "0.7.3"
+getrandom = { version = "0.2", features = ["js"] }
+gluesql = { version = "0.19.0", default-features = false, features = ["gluesql_memory_storage"] }
+tracing = "0.1.44"
 
 [features]
 default = ["desktop"]
