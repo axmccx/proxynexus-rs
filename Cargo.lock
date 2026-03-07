@@ -2515,8 +2515,6 @@ checksum = "ae8bc857ba69fdef276301dcd8b15ab2d933802135a12ca8eaf2cfa3a799ed82"
 dependencies = [
  "gluesql-core",
  "gluesql-macros",
- "gluesql_memory_storage",
- "gluesql_sled_storage",
 ]
 
 [[package]]
@@ -4508,8 +4506,9 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "dioxus-logger",
- "getrandom 0.2.17",
- "gluesql",
+ "dirs",
+ "gloo-net",
+ "proxynexus-core",
  "tracing",
 ]
 

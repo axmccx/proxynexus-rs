@@ -1,4 +1,6 @@
 use dioxus::prelude::*;
+use proxynexus_core::db_storage::DbStorage;
+use tracing::error;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
@@ -18,65 +20,77 @@ fn main() {
 
     #[cfg(feature = "web")]
     {
-        dioxus::launch(App);
+        launch(App);
     }
 }
 
-#[component]
-fn WasmSandbox() -> Element {
-    use_effect(move || {
-        spawn(async move {
-            info!("--- STARTING WASM CORE POC ---");
-            let result = test_core_function().await;
-            info!("--- WASM CORE POC RESULT: {:?} ---", result);
-        });
-    });
-
-    rsx! {
-        div {
-            class: "m-4 p-4 bg-yellow-100 border-2 border-yellow-500 rounded text-black",
-            h2 { class: "font-bold", "Wasm Debug Sandbox Active" }
-        }
+fn get_db_storage() -> DbStorage {
+    #[cfg(target_arch = "wasm32")]
+    {
+        DbStorage::new_memory()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let home = dirs::home_dir().expect("Could not find home directory");
+        let db_path = home.join(".proxynexus").join("proxynexus_data");
+        DbStorage::new_sled(&db_path).expect("Failed to initialize sled storage")
     }
 }
 
-async fn test_core_function() -> Result<(), String> {
-    use gluesql::prelude::*;
+#[cfg(target_arch = "wasm32")]
+async fn hydrate_wasm_db(db: &mut DbStorage) -> Result<(), String> {
+    use gloo_net::http::Request;
 
-    let storage = MemoryStorage::default();
-    let mut glue = Glue::new(storage);
-
-    let sqls = vec![
-        "CREATE TABLE test (id INTEGER, name TEXT);",
-        "INSERT INTO test VALUES (1, 'Hello WASM');",
-        "SELECT * FROM test;",
-    ];
-
-    for sql in sqls {
-        match glue.execute(sql).await {
-            Ok(payloads) => {
-                for payload in payloads {
-                    info!("Query OK: {:?}", payload);
-                }
-            }
-            Err(e) => {
-                error!("Query Error: {:?}", e);
-                return Err(e.to_string());
-            }
-        }
+    let response = Request::get("/init.sql")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch init.sql: {}", e))?;
+    
+    if !response.ok() {
+        return Err(format!("Failed to fetch init.sql: HTTP {}", response.status()));
     }
 
+    let sql = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read init.sql text: {}", e))?;
+        
+    info!("Executing init.sql (size: {} bytes)...", sql.len());
+    
+    db.execute(&sql)
+        .await
+        .map_err(|e| format!("Hydration execution error: {}", e))?;
+        
+    info!("WASM Hydration Complete!");
     Ok(())
 }
 
 #[component]
 fn App() -> Element {
+    let mut db_signal = use_signal(get_db_storage);
+    let mut db_ready = use_signal(|| false);
+
+    use_effect(move || {
+        spawn(async move {
+            let mut db = db_signal.write();
+
+            if let Err(e) = db.initialize_schema().await {
+                error!("Schema init failed: {}", e);
+            }
+            
+            #[cfg(target_arch = "wasm32")]
+            {
+                if let Err(e) = hydrate_wasm_db(&mut db).await {
+                    error!("WASM Hydration failed: {}", e);
+                }
+            }
+            
+            db_ready.set(true);
+        });
+    });
+
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
-
-        if cfg!(target_arch = "wasm32") {
-            WasmSandbox {}
-        }
 
         div {
             class: "w-full p-4 bg-gray-800 shadow-md border-b border-gray-700",
@@ -88,6 +102,20 @@ fn App() -> Element {
                 }
             }
         }
-
+        
+        div {
+            class: "p-4",
+            if db_ready() {
+                div {
+                    class: "text-green-500 font-bold",
+                    "Database initialized and ready!"
+                }
+            } else {
+                div {
+                    class: "text-yellow-500 font-bold animate-pulse",
+                    "Loading database..."
+                }
+            }
+        }
     }
 }

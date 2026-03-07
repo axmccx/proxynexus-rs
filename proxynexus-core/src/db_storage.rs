@@ -155,7 +155,6 @@ impl DbStorage {
         path: &std::path::Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut sql = String::new();
-        sql.push_str("BEGIN;\n");
 
         let meta_payloads = self.execute("SELECT * FROM meta").await?;
         if let Some(payload) = meta_payloads.into_iter().next() {
@@ -241,7 +240,6 @@ impl DbStorage {
             }
         }
 
-        sql.push_str("COMMIT;\n");
         std::fs::write(path, sql)?;
         Ok(())
     }
