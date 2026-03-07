@@ -1,7 +1,51 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
+use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::models::{CardRequest, Printing};
+use gluesql::FromGlueRow;
+use gluesql::core::row_conversion::SelectExt;
+use gluesql::prelude::*;
 use std::collections::{HashMap, HashSet};
-use turso::{Connection, params, params_from_iter};
+
+#[derive(FromGlueRow)]
+struct PackRow {
+    pack_name: String,
+    pack_code: String,
+    coll_name: Option<String>,
+    coll_count: i64,
+    date_release: Option<String>,
+}
+
+#[derive(FromGlueRow)]
+struct CardNameRow {
+    code: String,
+    title: String,
+    pack_code: String,
+    title_normalized: String,
+}
+
+#[derive(FromGlueRow)]
+struct CardRequestRow {
+    code: String,
+    title: String,
+    quantity: i64,
+}
+
+#[derive(FromGlueRow)]
+struct CardRow {
+    code: String,
+    title: String,
+}
+
+#[derive(FromGlueRow)]
+struct AvailablePrintingRow {
+    title: String,
+    code: String,
+    variant: String,
+    file_path: String,
+    name: String,
+    side: String,
+    pack_code: String,
+}
 
 pub fn normalize_title(title: &str) -> String {
     title
@@ -11,17 +55,10 @@ pub fn normalize_title(title: &str) -> String {
         .collect()
 }
 
-fn build_placeholders(count: usize) -> String {
-    (1..=count)
-        .map(|i| format!("?{}", i))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
 impl CardSource for Cardlist {
     async fn to_card_requests(
         &self,
-        store: &CardStore,
+        store: &mut CardStore<'_>,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let (requests, not_found) = store.parse_cardlist_into_card_requests(&self.0).await?;
 
@@ -40,25 +77,25 @@ impl CardSource for Cardlist {
 impl CardSource for SetName {
     async fn to_card_requests(
         &self,
-        store: &CardStore,
+        store: &mut CardStore<'_>,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         store.get_card_requests_from_set_name(&self.0).await
     }
 }
 
-pub struct CardStore {
-    conn: Connection,
+pub struct CardStore<'a> {
+    db: &'a mut DbStorage,
 }
 
 type CardOverride<'a> = (&'a str, Option<String>, Option<String>, Option<String>);
 
-impl CardStore {
-    pub fn new(conn: Connection) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(Self { conn })
+impl<'a> CardStore<'a> {
+    pub fn new(db: &'a mut DbStorage) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self { db })
     }
 
     async fn parse_cardlist_into_card_requests(
-        &self,
+        &mut self,
         text: &str,
     ) -> Result<(Vec<CardRequest>, Vec<String>), Box<dyn std::error::Error>> {
         type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<String>, Option<String>);
@@ -158,7 +195,7 @@ impl CardStore {
     }
 
     async fn resolve_names_to_cards(
-        &self,
+        &mut self,
         names: &[&str],
     ) -> Result<(HashMap<String, (String, String, String)>, Vec<String>), Box<dyn std::error::Error>>
     {
@@ -167,30 +204,33 @@ impl CardStore {
             .map(|&name| (name, normalize_title(name)))
             .collect();
 
-        let placeholders = build_placeholders(normalized_name_map.len());
+        let unique_normalized_name: HashSet<&str> =
+            normalized_name_map.values().map(|s| s.as_str()).collect();
+        let in_clause = build_in_clause(unique_normalized_name);
 
         let query = format!(
             "SELECT c.code, c.title, c.pack_code, c.title_normalized
              FROM cards c
              JOIN packs p ON c.pack_code = p.code
              WHERE c.title_normalized IN ({})
-             ORDER BY (p.date_release IS NULL) ASC, p.date_release DESC",
-            placeholders
+             ORDER BY
+                 CASE WHEN p.date_release IS NULL THEN 1 ELSE 0 END,
+                 p.date_release DESC",
+            in_clause
         );
 
-        let mut stmt = self.conn.prepare(&query).await?;
-        let unique_normalized_name: HashSet<&str> =
-            normalized_name_map.values().map(|s| s.as_str()).collect();
-        let mut rows = stmt.query(params_from_iter(unique_normalized_name)).await?;
-
+        let payloads = self.db.execute(&query).await?;
         let mut resolved_map: HashMap<String, (String, String, String)> = HashMap::new();
-        while let Some(row) = rows.next().await? {
-            let code: String = row.get(0)?;
-            let title: String = row.get(1)?;
-            let pack_code: String = row.get(2)?;
-            let norm: String = row.get(3)?;
 
-            resolved_map.entry(norm).or_insert((code, title, pack_code));
+        if let Some(payload) = payloads.into_iter().next() {
+            let name_rows = payload.rows_as::<CardNameRow>()?;
+            for row in name_rows {
+                resolved_map.entry(row.title_normalized).or_insert((
+                    row.code,
+                    row.title,
+                    row.pack_code,
+                ));
+            }
         }
 
         if resolved_map.is_empty() && !names.is_empty() {
@@ -214,81 +254,108 @@ impl CardStore {
     }
 
     pub async fn get_available_packs(
-        &self,
+        &mut self,
     ) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
-        let mut stmt = self
-            .conn
-            .prepare(
-                "SELECT
-                pack_name,
-                GROUP_CONCAT(coll_count || ' in ' || coll_name, ', ') as meta
-             FROM (
-                SELECT
-                    p.name as pack_name,
-                    p.code as pack_code,
-                    col.name as coll_name,
-                    COUNT(pr.card_code) as coll_count,
-                    p.date_release
-                FROM packs p
-                JOIN cards c ON c.pack_code = p.code
-                LEFT JOIN printings pr ON pr.card_code = c.code
-                LEFT JOIN collections col ON pr.collection_id = col.id
-                GROUP BY p.code, col.id
-             )
-             GROUP BY pack_code
-             ORDER BY date_release",
-            )
-            .await?;
-        let mut rows = stmt.query(()).await?;
+        let query = "
+            SELECT
+                p.name as pack_name,
+                p.code as pack_code,
+                col.name as coll_name,
+                COUNT(pr.card_code) as coll_count,
+                p.date_release
+            FROM packs p
+            JOIN cards c ON c.pack_code = p.code
+            LEFT JOIN printings pr ON pr.card_code = c.code
+            LEFT JOIN collections col ON pr.collection_id = col.id
+            GROUP BY p.code, col.id
+        ";
+
+        let payloads = self.db.execute(query).await?;
+
+        struct PackGroup {
+            name: String,
+            date_release: String,
+            collections: Vec<String>,
+        }
+
+        let mut pack_data: HashMap<String, PackGroup> = HashMap::new();
+
+        if let Some(payload) = payloads.into_iter().next() {
+            let pack_rows = payload.rows_as::<PackRow>()?;
+
+            for row in pack_rows {
+                let date_release = row.date_release.unwrap_or_default();
+
+                let entry = pack_data.entry(row.pack_code).or_insert_with(|| PackGroup {
+                    name: row.pack_name,
+                    date_release,
+                    collections: Vec::new(),
+                });
+
+                if let Some(name) = row.coll_name
+                    && row.coll_count > 0
+                {
+                    entry
+                        .collections
+                        .push(format!("{} in {}", row.coll_count, name));
+                }
+            }
+        }
+
+        let mut sorted_packs: Vec<_> = pack_data.into_values().collect();
+        sorted_packs.sort_by(|a, b| a.date_release.cmp(&b.date_release));
+
         let mut results = Vec::new();
 
-        while let Some(row) = rows.next().await? {
-            let name: String = row.get(0)?;
-            let meta: Option<String> = row.get(1)?;
+        for mut pack in sorted_packs {
+            pack.collections.sort();
+            let meta = if pack.collections.is_empty() {
+                None
+            } else {
+                Some(pack.collections.join(", "))
+            };
 
             let display_meta = meta
                 .map(|m| format!("# {}", m))
                 .unwrap_or_else(|| "# no printings available".to_string());
 
-            results.push((name, display_meta));
+            results.push((pack.name, display_meta));
         }
 
         Ok(results)
     }
 
     async fn get_card_requests_from_set_name(
-        &self,
+        &mut self,
         set_name: &str,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
-        let mut stmt = self
-            .conn
-            .prepare(
-                "SELECT c.code, c.title, c.quantity
+        let query = format!(
+            "SELECT c.code, c.title, c.quantity
              FROM cards c
              JOIN packs p ON c.pack_code = p.code
-             WHERE LOWER(p.name) = ?1
+             WHERE LOWER(p.name) = {}
              ORDER BY c.code",
-            )
-            .await?;
+            quote_sql_string(&set_name.to_lowercase())
+        );
 
-        let mut rows = stmt.query(params![set_name.to_lowercase()]).await?;
+        let payloads = self.db.execute(&query).await?;
         let mut results = Vec::new();
 
-        while let Some(row) = rows.next().await? {
-            let code: String = row.get(0)?;
-            let title: String = row.get(1)?;
-            let qty: u32 = row.get(2)?;
+        if let Some(payload) = payloads.into_iter().next() {
+            let request_rows = payload.rows_as::<CardRequestRow>()?;
 
-            results.extend(std::iter::repeat_n(
-                CardRequest {
-                    title: title.clone(),
-                    code: code.clone(),
-                    variant: None,
-                    collection: None,
-                    pack_code: None,
-                },
-                qty as usize,
-            ));
+            for row in request_rows {
+                results.extend(std::iter::repeat_n(
+                    CardRequest {
+                        title: row.title,
+                        code: row.code,
+                        variant: None,
+                        collection: None,
+                        pack_code: None,
+                    },
+                    row.quantity as usize,
+                ));
+            }
         }
 
         if results.is_empty() {
@@ -299,28 +366,28 @@ impl CardStore {
     }
 
     pub async fn resolve_codes_to_card_requests(
-        &self,
+        &mut self,
         codes: &HashMap<String, u32>,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         if codes.is_empty() {
             return Ok(Vec::new());
         }
 
-        let placeholders = build_placeholders(codes.len());
+        let in_clause = build_in_clause(codes.keys());
 
         let query = format!(
             "SELECT code, title FROM cards WHERE code IN ({})",
-            placeholders
+            in_clause
         );
 
-        let mut stmt = self.conn.prepare(&query).await?;
-        let mut rows = stmt.query(params_from_iter(codes.keys().cloned())).await?;
-
+        let payloads = self.db.execute(&query).await?;
         let mut resolved_titles = HashMap::new();
-        while let Some(row) = rows.next().await? {
-            let code: String = row.get(0)?;
-            let title: String = row.get(1)?;
-            resolved_titles.insert(code, title);
+
+        if let Some(payload) = payloads.into_iter().next() {
+            let card_rows = payload.rows_as::<CardRow>()?;
+            for row in card_rows {
+                resolved_titles.insert(row.code, row.title);
+            }
         }
 
         if resolved_titles.is_empty() && !codes.is_empty() {
@@ -353,7 +420,7 @@ impl CardStore {
     }
 
     pub async fn get_available_printings(
-        &self,
+        &mut self,
         card_requests: &[CardRequest],
     ) -> Result<HashMap<String, Vec<Printing>>, Box<dyn std::error::Error>> {
         let unique_titles: HashSet<String> = card_requests
@@ -361,7 +428,8 @@ impl CardStore {
             .map(|r| normalize_title(&r.title))
             .collect();
 
-        let placeholders = build_placeholders(unique_titles.len());
+        let in_clause = build_in_clause(&unique_titles);
+
         let query = format!(
             "SELECT c.title, c.code, p.variant, p.file_path, col.name, c.side, c.pack_code
              FROM printings p
@@ -371,32 +439,36 @@ impl CardStore {
              WHERE c.title_normalized IN ({})
              ORDER BY
                 CASE WHEN p.variant = 'original' THEN 0 ELSE 1 END,
+                CASE WHEN pks.date_release IS NULL THEN 1 ELSE 0 END,
                 pks.date_release DESC,
                 col.added_date",
-            placeholders
+            in_clause
         );
 
-        let mut stmt = self.conn.prepare(&query).await?;
-        let mut rows = stmt.query(params_from_iter(unique_titles)).await?;
-
+        let payloads = self.db.execute(&query).await?;
         let mut resolved_printings: HashMap<String, Vec<Printing>> = HashMap::new();
-        while let Some(row) = rows.next().await? {
-            let title: String = row.get(0)?;
-            let normalized = normalize_title(&title);
-            let image_key: String = row.get(3)?;
-            let printing = Printing {
-                card_title: title,
-                card_code: row.get(1)?,
-                variant: row.get(2)?,
-                image_key,
-                collection: row.get(4)?,
-                side: row.get(5)?,
-                pack_code: row.get(6)?,
-            };
-            resolved_printings
-                .entry(normalized)
-                .or_default()
-                .push(printing);
+
+        if let Some(payload) = payloads.into_iter().next() {
+            let printing_rows = payload.rows_as::<AvailablePrintingRow>()?;
+
+            for row in printing_rows {
+                let normalized = normalize_title(&row.title);
+
+                let printing = Printing {
+                    card_title: row.title,
+                    card_code: row.code,
+                    variant: row.variant,
+                    image_key: row.file_path,
+                    collection: row.name,
+                    side: row.side,
+                    pack_code: row.pack_code,
+                };
+
+                resolved_printings
+                    .entry(normalized)
+                    .or_default()
+                    .push(printing);
+            }
         }
 
         if resolved_printings.is_empty() && !card_requests.is_empty() {

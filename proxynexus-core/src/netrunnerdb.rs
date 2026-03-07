@@ -17,7 +17,7 @@ struct NrdbDeck {
 impl CardSource for NrdbUrl {
     async fn to_card_requests(
         &self,
-        store: &CardStore,
+        store: &mut CardStore<'_>,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>> {
         let codes = fetch_codes_from_nrdb_url(&self.0).await?;
         store.resolve_codes_to_card_requests(&codes).await

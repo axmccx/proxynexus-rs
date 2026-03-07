@@ -1,12 +1,12 @@
 use crate::ImageProvider;
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
+use crate::db_storage::DbStorage;
 use krilla::Data;
 use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
-use turso::Connection;
 
 const POINTS_PER_INCH: f32 = 72.0;
 
@@ -52,13 +52,13 @@ fn calculate_card_position(card_index: usize, page_size: &PageSize) -> (f32, f32
 }
 
 pub async fn generate_pdf(
-    conn: &Connection,
+    db: &mut DbStorage,
     card_source: &impl CardSource,
     image_provider: &impl ImageProvider,
     page_size: PageSize,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let store = CardStore::new(conn.clone())?;
-    let card_requests = card_source.to_card_requests(&store).await?;
+    let mut store = CardStore::new(db)?;
+    let card_requests = card_source.to_card_requests(&mut store).await?;
 
     let available = store.get_available_printings(&card_requests).await?;
     let printings = store.resolve_printings(&card_requests, &available)?;

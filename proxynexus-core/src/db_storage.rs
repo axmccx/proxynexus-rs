@@ -72,3 +72,25 @@ impl DbStorage {
         Ok(())
     }
 }
+
+pub fn quote_sql_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('\'');
+    for c in s.chars() {
+        if c == '\'' {
+            out.push_str("''");
+        } else {
+            out.push(c);
+        }
+    }
+    out.push('\'');
+    out
+}
+
+pub fn build_in_clause(items: impl IntoIterator<Item = impl AsRef<str>>) -> String {
+    items
+        .into_iter()
+        .map(|s| quote_sql_string(s.as_ref()))
+        .collect::<Vec<_>>()
+        .join(", ")
+}

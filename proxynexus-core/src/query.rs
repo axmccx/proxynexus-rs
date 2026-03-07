@@ -1,11 +1,11 @@
 use crate::card_source::CardSource;
 use crate::card_store::{CardStore, normalize_title};
+use crate::db_storage::DbStorage;
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
-use turso::Connection;
 
-pub async fn list_available_sets(conn: &Connection) -> Result<String, Box<dyn std::error::Error>> {
-    let store = CardStore::new(conn.clone())?;
+pub async fn list_available_sets(db: &mut DbStorage) -> Result<String, Box<dyn std::error::Error>> {
+    let mut store = CardStore::new(db)?;
     let sets = store.get_available_packs().await?;
 
     let max_name_len = sets.iter().map(|(name, _)| name.len()).max().unwrap_or(0);
@@ -20,10 +20,10 @@ pub async fn list_available_sets(conn: &Connection) -> Result<String, Box<dyn st
 
 pub async fn generate_query_output(
     card_source: &impl CardSource,
-    conn: &Connection,
+    db: &mut DbStorage,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let store = CardStore::new(conn.clone())?;
-    let card_requests = card_source.to_card_requests(&store).await?;
+    let mut store = CardStore::new(db)?;
+    let card_requests = card_source.to_card_requests(&mut store).await?;
 
     let available = store.get_available_printings(&card_requests).await?;
 

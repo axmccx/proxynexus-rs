@@ -2,20 +2,20 @@ use crate::ImageProvider;
 use crate::border_generator::generate_bordered_image;
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
+use crate::db_storage::DbStorage;
 use crate::models::Printing;
 use std::collections::HashMap;
 use std::io::{Cursor, Seek, Write};
-use turso::Connection;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
 pub async fn generate_mpc_zip(
-    conn: &Connection,
+    db: &mut DbStorage,
     card_source: &impl CardSource,
     image_provider: &impl ImageProvider,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let store = CardStore::new(conn.clone())?;
-    let card_requests = card_source.to_card_requests(&store).await?;
+    let mut store = CardStore::new(db)?;
+    let card_requests = card_source.to_card_requests(&mut store).await?;
 
     let available = store.get_available_printings(&card_requests).await?;
     let printings = store.resolve_printings(&card_requests, &available)?;

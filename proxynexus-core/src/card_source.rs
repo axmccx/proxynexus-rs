@@ -5,7 +5,7 @@ pub trait CardSource {
     #![allow(async_fn_in_trait)]
     async fn to_card_requests(
         &self,
-        store: &CardStore,
+        store: &mut CardStore<'_>,
     ) -> Result<Vec<CardRequest>, Box<dyn std::error::Error>>;
 }
 
