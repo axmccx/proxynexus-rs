@@ -45,22 +45,25 @@ async fn hydrate_wasm_db(db: &mut DbStorage) -> Result<(), String> {
         .send()
         .await
         .map_err(|e| format!("Failed to fetch init.sql: {}", e))?;
-    
+
     if !response.ok() {
-        return Err(format!("Failed to fetch init.sql: HTTP {}", response.status()));
+        return Err(format!(
+            "Failed to fetch init.sql: HTTP {}",
+            response.status()
+        ));
     }
 
     let sql = response
         .text()
         .await
         .map_err(|e| format!("Failed to read init.sql text: {}", e))?;
-        
+
     info!("Executing init.sql (size: {} bytes)...", sql.len());
-    
+
     db.execute(&sql)
         .await
         .map_err(|e| format!("Hydration execution error: {}", e))?;
-        
+
     info!("WASM Hydration Complete!");
     Ok(())
 }
@@ -77,14 +80,14 @@ fn App() -> Element {
             if let Err(e) = db.initialize_schema().await {
                 error!("Schema init failed: {}", e);
             }
-            
+
             #[cfg(target_arch = "wasm32")]
             {
                 if let Err(e) = hydrate_wasm_db(&mut db).await {
                     error!("WASM Hydration failed: {}", e);
                 }
             }
-            
+
             db_ready.set(true);
         });
     });
@@ -102,7 +105,7 @@ fn App() -> Element {
                 }
             }
         }
-        
+
         div {
             class: "p-4",
             if db_ready() {

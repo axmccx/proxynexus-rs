@@ -92,42 +92,55 @@ impl<'a> CollectionManager<'a> {
 
         let src_images = temp_path.join("images");
 
-        let mut printings_added = 0;
         self.db.execute("BEGIN").await?;
 
         let mut next_print_id = self.db.get_next_id("printings").await?;
 
-        for entry in fs::read_dir(&src_images)? {
-            let entry = entry?;
-            let path = entry.path();
+        let tx_result: Result<i32, Box<dyn std::error::Error>> = async {
+            let mut printings_added = 0;
+            for entry in fs::read_dir(&src_images)? {
+                let entry = entry?;
+                let path = entry.path();
 
-            let (card_code, variant) = match Self::parse_filename(&path) {
-                Some(parsed) => parsed,
-                None => continue,
-            };
+                let (card_code, variant) = match Self::parse_filename(&path) {
+                    Some(parsed) => parsed,
+                    None => continue,
+                };
 
-            let file_name = path.file_name().unwrap().to_string_lossy();
-            let file_path = format!("{}/{}", collection_name, file_name);
+                let file_name = path.file_name().unwrap().to_string_lossy();
+                let file_path = format!("{}/{}", collection_name, file_name);
 
-            let insert_print_q = format!(
-                "INSERT INTO printings (id, collection_id, card_code, variant, file_path) VALUES ({}, {}, {}, {}, {})",
-                next_print_id,
-                collection_id,
-                quote_sql_string(&card_code),
-                quote_sql_string(&variant),
-                quote_sql_string(&file_path)
-            );
+                let insert_print_q = format!(
+                    "INSERT INTO printings (id, collection_id, card_code, variant, file_path) VALUES ({}, {}, {}, {}, {})",
+                    next_print_id,
+                    collection_id,
+                    quote_sql_string(&card_code),
+                    quote_sql_string(&variant),
+                    quote_sql_string(&file_path)
+                );
 
-            self.db.execute(&insert_print_q).await?;
-            next_print_id += 1;
+                self.db.execute(&insert_print_q).await?;
+                next_print_id += 1;
 
-            let dst_path = collection_dir.join(path.file_name().unwrap());
-            fs::copy(entry.path(), dst_path)?;
+                let dst_path = collection_dir.join(path.file_name().unwrap());
+                fs::copy(entry.path(), dst_path)?;
 
-            printings_added += 1;
+                printings_added += 1;
+            }
+            Ok(printings_added)
         }
+        .await;
 
-        self.db.execute("COMMIT").await?;
+        let printings_added = match tx_result {
+            Ok(count) => {
+                self.db.execute("COMMIT").await?;
+                count
+            }
+            Err(e) => {
+                let _ = self.db.execute("ROLLBACK").await;
+                return Err(e);
+            }
+        };
 
         println!("Added {} printings", printings_added);
         println!("Collection '{}' added successfully!", collection_name);
@@ -226,16 +239,29 @@ impl<'a> CollectionManager<'a> {
 
         self.db.execute("BEGIN").await?;
 
-        let del_print_q = format!(
-            "DELETE FROM printings WHERE collection_id = {}",
-            collection_id
-        );
-        self.db.execute(&del_print_q).await?;
+        let tx_result: Result<(), Box<dyn std::error::Error>> = async {
+            let del_print_q = format!(
+                "DELETE FROM printings WHERE collection_id = {}",
+                collection_id
+            );
+            self.db.execute(&del_print_q).await?;
 
-        let del_coll_q = format!("DELETE FROM collections WHERE id = {}", collection_id);
-        self.db.execute(&del_coll_q).await?;
+            let del_coll_q = format!("DELETE FROM collections WHERE id = {}", collection_id);
+            self.db.execute(&del_coll_q).await?;
 
-        self.db.execute("COMMIT").await?;
+            Ok(())
+        }
+        .await;
+
+        match tx_result {
+            Ok(_) => {
+                self.db.execute("COMMIT").await?;
+            }
+            Err(e) => {
+                let _ = self.db.execute("ROLLBACK").await;
+                return Err(e);
+            }
+        }
 
         let collection_dir = self.collections_dir.join(collection_name);
         if collection_dir.exists() {
