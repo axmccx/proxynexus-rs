@@ -4466,7 +4466,9 @@ dependencies = [
  "dioxus-logger",
  "dirs",
  "gloo-net",
+ "gloo-timers",
  "proxynexus-core",
+ "tokio",
  "tracing",
 ]
 

@@ -1,9 +1,25 @@
 use dioxus::prelude::*;
 use proxynexus_core::db_storage::DbStorage;
+use proxynexus_core::query::generate_query_output;
+use std::time::Duration;
 use tracing::{error, info};
+
+mod components;
+use components::card_input::CardInput;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+
+async fn sleep(ms: u64) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        gloo_timers::future::sleep(Duration::from_millis(ms)).await;
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        tokio::time::sleep(Duration::from_millis(ms)).await;
+    }
+}
 
 fn main() {
     dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
@@ -100,14 +116,45 @@ fn App() -> Element {
     rsx! {
         Stylesheet { href: MAIN_CSS }
         Stylesheet { href: TAILWIND_CSS }
-        Workspace {}
+        Workspace { db_signal }
     }
 }
 
 #[component]
-fn Workspace() -> Element {
+fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let mut sidebar_width = use_signal(|| 400.0);
     let mut drag_state = use_signal(|| None::<(f64, f64)>);
+
+    let immediate_text = use_signal(String::new);
+    let mut debounced_text = use_signal(String::new);
+    let mut debounce_task = use_signal(|| None::<dioxus::dioxus_core::Task>);
+
+    use_effect(move || {
+        let current_text = immediate_text();
+
+        if let Some(task) = debounce_task.take() {
+            task.cancel();
+        }
+
+        debounce_task.set(Some(spawn(async move {
+            sleep(300).await;
+            debounced_text.set(current_text);
+        })));
+    });
+
+    let query_result = use_resource(move || async move {
+        let text = debounced_text();
+        if text.trim().is_empty() {
+            return String::new();
+        }
+
+        let source = proxynexus_core::card_source::Cardlist(text);
+        let mut db = db_signal.write();
+
+        generate_query_output(&source, &mut db)
+            .await
+            .unwrap_or_else(|e| format!("Error: {}", e))
+    });
 
     rsx! {
         div {
@@ -128,7 +175,20 @@ fn Workspace() -> Element {
             },
 
             div {
-                class: "flex-1 flex flex-col bg-gray-50 min-w-0",
+                class: "flex-1 flex flex-col bg-gray-50 min-w-0 p-6 overflow-auto",
+                h2 { class: "text-xl font-bold text-gray-800 mb-4", "Query Output" }
+                if let Some(result) = query_result.read().as_ref() {
+                    if result.is_empty() {
+                         div { class: "text-gray-500", "Enter some cards to see the query output..." }
+                    } else {
+                        pre {
+                            class: "whitespace-pre-wrap font-mono text-sm text-gray-700 bg-white p-4 rounded-md shadow-sm border border-gray-200",
+                            "{result}"
+                        }
+                    }
+                } else {
+                    div { class: "text-gray-500", "Loading..." }
+                }
             }
 
             div {
@@ -141,12 +201,8 @@ fn Workspace() -> Element {
 
             div {
                 style: "width: {sidebar_width()}px;",
-                class: "bg-white flex-shrink-0 flex flex-col p-4",
-                textarea {
-                    class: "w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 resize-none",
-                    rows: 10,
-                    placeholder: "Enter your card list here...",
-                }
+                class: "bg-white flex-shrink-0 flex flex-col h-full",
+                CardInput { text_state: immediate_text }
             }
         }
     }
