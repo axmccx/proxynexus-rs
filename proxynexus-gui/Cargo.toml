@@ -5,7 +5,7 @@ authors = ["Alex McCulloch <alexmccx@gmail.com>"]
 edition = "2024"
 
 [dependencies]
-dioxus = { version = "0.7.1", features = ["router"] }
+dioxus = { version = "0.7.1" }
 dioxus-logger = "0.7.3"
 tracing = "0.1.44"
 proxynexus-core = { path = "../proxynexus-core" }

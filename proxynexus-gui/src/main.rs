@@ -1,8 +1,9 @@
 use dioxus::prelude::*;
 use proxynexus_core::db_storage::DbStorage;
-use tracing::error;
+use tracing::{error, info};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
+const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
     dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
@@ -92,31 +93,57 @@ fn App() -> Element {
         });
     });
 
+    if !*db_ready.read() {
+        return rsx! { div { class: "flex h-screen items-center justify-center bg-gray-50 text-gray-500", "Loading Database..." } };
+    }
+
     rsx! {
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
+        Stylesheet { href: MAIN_CSS }
+        Stylesheet { href: TAILWIND_CSS }
+        Workspace {}
+    }
+}
 
+#[component]
+fn Workspace() -> Element {
+    let mut sidebar_width = use_signal(|| 300.0);
+    let mut drag_state = use_signal(|| None::<(f64, f64)>);
+
+    rsx! {
         div {
-            class: "w-full p-4 bg-gray-800 shadow-md border-b border-gray-700",
+            class: "absolute inset-0 flex overflow-hidden select-none",
+            onmousemove: move |evt| {
+                let current_x = evt.data.client_coordinates().x;
+
+                if let Some((start_x, start_width)) = *drag_state.read() {
+                    let delta = current_x - start_x;
+                    sidebar_width.set((start_width + delta).clamp(150.0, 800.0));
+                }
+            },
+            onmouseup: move |_| {
+                drag_state.set(None);
+            },
+            onmouseleave: move |_| {
+                drag_state.set(None);
+            },
+
             div {
-                class: "container mx-auto flex items-center justify-between",
-                div {
-                    class: "text-xl font-bold text-white hover:text-blue-400 transition-colors",
-                    "ProxyNexus"
-                }
+                style: "width: {sidebar_width()}px;",
+                class: "bg-gray-50 flex-shrink-0",
             }
-        }
 
-        div {
-            class: "p-4",
-            if db_ready() {
-                div {
-                    class: "text-green-500 font-bold",
-                    "Database initialized and ready!"
-                }
-            } else {
-                div {
-                    class: "text-yellow-500 font-bold animate-pulse",
-                    "Loading database..."
+            div {
+                class: "w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors flex-shrink-0 z-10",
+                onmousedown: move |evt| {
+                    evt.prevent_default();
+                    drag_state.set(Some((evt.data.client_coordinates().x, sidebar_width())));
+                },
+            }
+
+            div {
+                class: "flex-1 flex flex-col bg-white min-w-0",
+                textarea {
+                    class: "flex-1 w-full p-4 shadow-inner outline-none resize-none",
                 }
             }
         }
