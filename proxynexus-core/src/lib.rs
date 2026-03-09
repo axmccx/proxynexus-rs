@@ -10,7 +10,7 @@ pub mod collection_manager;
 pub mod db_storage;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod local_image_provider;
-mod models;
+pub mod models;
 pub mod mpc;
 pub mod netrunnerdb;
 pub mod pdf;

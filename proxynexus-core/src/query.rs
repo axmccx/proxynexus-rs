@@ -30,6 +30,17 @@ pub async fn generate_query_output(
     format_query_output(&card_requests, &available)
 }
 
+pub async fn resolve_query_printings(
+    card_source: &impl CardSource,
+    db: &mut DbStorage,
+) -> Result<Vec<Printing>, Box<dyn std::error::Error>> {
+    let mut store = CardStore::new(db)?;
+    let card_requests = card_source.to_card_requests(&mut store).await?;
+
+    let available = store.get_available_printings(&card_requests).await?;
+    store.resolve_printings(&card_requests, &available)
+}
+
 fn format_query_output(
     requests: &[CardRequest],
     available: &HashMap<String, Vec<Printing>>,

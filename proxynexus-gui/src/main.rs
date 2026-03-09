@@ -1,11 +1,12 @@
 use dioxus::prelude::*;
 use proxynexus_core::db_storage::DbStorage;
-use proxynexus_core::query::generate_query_output;
+use proxynexus_core::query::resolve_query_printings;
 use std::time::Duration;
 use tracing::{error, info};
 
 mod components;
 use components::card_input::CardInput;
+use components::preview_grid::PreviewGrid;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -145,15 +146,13 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let query_result = use_resource(move || async move {
         let text = debounced_text();
         if text.trim().is_empty() {
-            return String::new();
+            return Ok(Vec::new());
         }
 
         let source = proxynexus_core::card_source::Cardlist(text);
         let mut db = db_signal.write();
 
-        generate_query_output(&source, &mut db)
-            .await
-            .unwrap_or_else(|e| format!("Error: {}", e))
+        resolve_query_printings(&source, &mut db).await
     });
 
     rsx! {
@@ -176,15 +175,17 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
             div {
                 class: "flex-1 flex flex-col bg-gray-50 min-w-0 p-6 overflow-auto",
-                h2 { class: "text-xl font-bold text-gray-800 mb-4", "Query Output" }
                 if let Some(result) = query_result.read().as_ref() {
-                    if result.is_empty() {
-                         div { class: "text-gray-500", "Enter some cards to see the query output..." }
-                    } else {
-                        pre {
-                            class: "whitespace-pre-wrap font-mono text-sm text-gray-700 bg-white p-4 rounded-md shadow-sm border border-gray-200",
-                            "{result}"
-                        }
+                    match result {
+                        Ok(printings) if printings.is_empty() => rsx! {
+                            div { class: "text-gray-500", "Preview of selected cards..." }
+                        },
+                        Ok(printings) => rsx! {
+                            PreviewGrid { printings: printings.clone() }
+                        },
+                        Err(e) => rsx! {
+                            div { class: "text-red-500 font-bold", "Error: {e}" }
+                        },
                     }
                 } else {
                     div { class: "text-gray-500", "Loading..." }

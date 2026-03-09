@@ -27,7 +27,7 @@ pub struct Pack {
     pub date_release: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Printing {
     pub card_code: String,
     pub card_title: String,
