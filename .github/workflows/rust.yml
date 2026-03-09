@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,8 +21,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libturbojpeg0-dev nasm
 
-    - name: Install WASM target
-      run: rustup target add wasm32-unknown-unknown
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: "wasm32-unknown-unknown"
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
@@ -35,3 +37,20 @@ jobs:
       
     - name: Run tests
       run: cargo test --verbose
+
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+
+    - name: Install Dioxus CLI
+      run: cargo binstall -y dioxus-cli
+
+    - name: Build Web App
+      run: dx build --release -p proxynexus-gui --platform web
+
+    - name: Deploy to Cloudflare Pages
+      if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        command: pages deploy target/dx/proxynexus-gui/release/web/public --project-name=proxynexus
