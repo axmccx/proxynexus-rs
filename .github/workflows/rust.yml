@@ -30,6 +30,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         cache-on-failure: true
+        cache-bin: true
 
     - name: Clippy
       run: cargo clippy -- -D warnings
@@ -40,8 +41,11 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
+
     - name: Install Dioxus CLI
-      run: cargo install --locked --force dioxus-cli
+      run: cargo binstall -y dioxus-cli
 
     - name: Cache Dioxus target directory
       uses: actions/cache@v4
