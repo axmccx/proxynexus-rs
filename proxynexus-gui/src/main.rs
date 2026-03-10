@@ -6,7 +6,9 @@ use tracing::{error, info};
 
 mod components;
 use components::card_input::CardInput;
+use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
+use proxynexus_core::pdf::PageSize;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -256,8 +258,13 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
             div {
                 style: "width: {sidebar_width()}px;",
-                class: "bg-white flex-shrink-0 flex flex-col h-full",
+                class: "bg-white flex-shrink-0 flex flex-col h-full border-l border-gray-200",
                 CardInput { text_state: immediate_text }
+                ExportControls {
+                    on_generate: move |page_size: PageSize| {
+                        info!("Generate clicked with page size: {:?}", page_size);
+                    }
+                }
             }
         }
     }
