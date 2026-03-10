@@ -26,8 +26,6 @@ cargo run --bin proxynexus-cli -- --help
 
 ## Essential Usage
 
-*Note: The card catalog (names, codes, and set info) is automatically obtained from NetrunnerDB on first run.*
-
 ```bash
 # Build a collection from a folder of card images
 # Images must be named by NetrunnerDB card code (e.g., 01050.jpg)

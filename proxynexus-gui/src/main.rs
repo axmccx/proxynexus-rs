@@ -5,9 +5,11 @@ use std::time::Duration;
 use tracing::{error, info};
 
 mod components;
+mod export;
 use components::card_input::CardInput;
 use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
+use export::run_pdf_export;
 use proxynexus_core::pdf::PageSize;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -182,12 +184,12 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let mut sidebar_width = use_signal(|| 400.0);
     let mut drag_state = use_signal(|| None::<(f64, f64)>);
 
-    let immediate_text = use_signal(String::new);
+    let cardlist_text = use_signal(String::new);
     let mut debounced_text = use_signal(String::new);
     let mut debounce_task = use_signal(|| None::<dioxus::dioxus_core::Task>);
 
     use_effect(move || {
-        let current_text = immediate_text();
+        let current_text = cardlist_text();
 
         if let Some(task) = debounce_task.take() {
             task.cancel();
@@ -259,10 +261,11 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             div {
                 style: "width: {sidebar_width()}px;",
                 class: "bg-white flex-shrink-0 flex flex-col h-full border-l border-gray-200",
-                CardInput { text_state: immediate_text }
+                CardInput { text_state: cardlist_text }
                 ExportControls {
                     on_generate: move |page_size: PageSize| {
-                        info!("Generate clicked with page size: {:?}", page_size);
+                        let text = cardlist_text();
+                        spawn(run_pdf_export(db_signal, text, page_size));
                     }
                 }
             }

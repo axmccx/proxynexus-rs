@@ -18,7 +18,21 @@ web = ["dioxus/web"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dirs = "6.0.0"
 tokio = { version = "1.37.0", features = ["time"] }
+rfd = "0.17.2"
 
 [target.wasm32-unknown-unknown.dependencies]
 gloo-net = "0.6.0"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
+wasm-bindgen = "0.2.92"
+js-sys = "0.3.69"
+
+[target.wasm32-unknown-unknown.dependencies.web-sys]
+version = "0.3.69"
+features = [
+  "Blob",
+  "BlobPropertyBag",
+  "Document",
+  "HtmlElement",
+  "Url",
+  "Window",
+]
