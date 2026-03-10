@@ -34,18 +34,44 @@ async fn fetch_codes_from_nrdb_url(
         api_path, deck_id
     );
 
-    let http_response = reqwest::get(&api_url)
-        .await
-        .map_err(|e| format!("Failed to connect to NetrunnerDB: {}", e))?;
+    let response: NrdbResponse = {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let http_response = reqwest::get(&api_url)
+                .await
+                .map_err(|e| format!("Failed to connect to NetrunnerDB: {}", e))?;
 
-    if !http_response.status().is_success() {
-        return Err(format!("NetrunnerDB returned error: {}", http_response.status()).into());
-    }
+            if !http_response.status().is_success() {
+                return Err(
+                    format!("NetrunnerDB returned error: {}", http_response.status()).into(),
+                );
+            }
 
-    let response: NrdbResponse = http_response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse NetrunnerDB response: {}", e))?;
+            http_response
+                .json()
+                .await
+                .map_err(|e| format!("Failed to parse NetrunnerDB response: {}", e))?
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let http_response = gloo_net::http::Request::get(&api_url)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to connect to NetrunnerDB: {}", e))?;
+
+            if !http_response.ok() {
+                return Err(
+                    format!("NetrunnerDB returned error: {}", http_response.status()).into(),
+                );
+            }
+
+            http_response
+                .json()
+                .await
+                .map_err(|e| format!("Failed to parse NetrunnerDB response: {}", e))?
+        }
+    };
 
     let cards = response
         .data

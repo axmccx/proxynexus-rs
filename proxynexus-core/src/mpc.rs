@@ -1,8 +1,8 @@
-use crate::ImageProvider;
 use crate::border_generator::generate_bordered_image;
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
 use crate::db_storage::DbStorage;
+use crate::image_provider::ImageProvider;
 use crate::models::Printing;
 use std::collections::HashMap;
 use std::io::{Cursor, Seek, Write};

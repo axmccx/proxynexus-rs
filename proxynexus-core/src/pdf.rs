@@ -1,7 +1,7 @@
-use crate::ImageProvider;
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
 use crate::db_storage::DbStorage;
+use crate::image_provider::ImageProvider;
 use krilla::Data;
 use krilla::Document;
 use krilla::geom::{Size, Transform};
