@@ -67,7 +67,7 @@ fn scan_images(dir: &Path) -> Vec<PathBuf> {
             p.extension()
                 .map(|ext| {
                     let ext = ext.to_string_lossy().to_lowercase();
-                    ext == "jpg" || ext == "jpeg"
+                    ext == "jpg" || ext == "jpeg" || ext == "png"
                 })
                 .unwrap_or(false)
         })

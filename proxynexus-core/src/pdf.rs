@@ -2,6 +2,7 @@ use crate::card_source::CardSource;
 use crate::card_store::CardStore;
 use crate::db_storage::DbStorage;
 use crate::image_provider::ImageProvider;
+use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
 use krilla::geom::{Size, Transform};
@@ -84,7 +85,14 @@ pub async fn generate_pdf(
             }
 
             let image_data = image_cache.get(image_key).unwrap();
-            let image = Image::from_jpeg(Data::from(image_data.clone()), true)?;
+            let format = image::guess_format(image_data).unwrap_or(ImageFormat::Jpeg);
+            
+            let image = if format == ImageFormat::Png {
+                Image::from_png(Data::from(image_data.clone()), true)?
+            } else {
+                Image::from_jpeg(Data::from(image_data.clone()), true)?
+            };
+            
             let size = Size::from_wh(CARD_WIDTH, CARD_HEIGHT).unwrap();
 
             let (pos_x, pos_y) = calculate_card_position(index, &page_size);

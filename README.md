@@ -28,8 +28,8 @@ cargo run --bin proxynexus-cli -- --help
 
 ```bash
 # Build a collection from a folder of card images
-# Images must be named by NetrunnerDB card code (e.g., 01050.jpg)
-# Variants use an underscore (e.g., 01050_alt1.jpg, 01050_promo.jpg)
+# Images must be named by NetrunnerDB card code (e.g., 01050.jpg or 01050.png)
+# Variants use an underscore (e.g., 01050_alt1.jpg, 01050_promo.png)
 ./target/release/proxynexus-cli collection build --images ./core_set_scans --output core_set.pnx
 
 # Add the built collection to your local library

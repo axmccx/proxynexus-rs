@@ -1,4 +1,4 @@
-use image::{DynamicImage, GenericImageView, RgbImage};
+use image::{DynamicImage, GenericImageView, ImageFormat, RgbImage};
 
 #[derive(Debug, Clone)]
 struct BorderConfig {
@@ -26,12 +26,19 @@ impl BorderConfig {
 pub fn generate_bordered_image(
     img: &DynamicImage,
     marker_position: u32,
+    format: ImageFormat,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let (width, height) = img.dimensions();
     let config = BorderConfig::from_image_dimensions(width, height);
 
     let mut bordered = replicate_edges_to_bleed(img, &config);
     apply_uniqueness_marker(&mut bordered, marker_position);
+
+    if format == ImageFormat::Png {
+        let mut png_bytes = std::io::Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(bordered).write_to(&mut png_bytes, ImageFormat::Png)?;
+        return Ok(png_bytes.into_inner());
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     {

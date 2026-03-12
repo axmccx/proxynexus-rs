@@ -64,10 +64,18 @@ fn main() {
 
                                 match tokio::fs::read(&full_path).await {
                                     Ok(bytes) => {
+                                        let content_type =
+                                            if full_path.extension().and_then(|e| e.to_str())
+                                                == Some("png")
+                                            {
+                                                "image/png"
+                                            } else {
+                                                "image/jpeg"
+                                            };
                                         responder.respond(
                                             Response::builder()
                                                 .status(StatusCode::OK)
-                                                .header("Content-Type", "image/jpeg")
+                                                .header("Content-Type", content_type)
                                                 .header("Access-Control-Allow-Origin", "*")
                                                 .body(Cow::Owned(bytes))
                                                 .unwrap(),

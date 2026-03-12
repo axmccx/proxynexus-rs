@@ -4,6 +4,7 @@ use crate::card_store::CardStore;
 use crate::db_storage::DbStorage;
 use crate::image_provider::ImageProvider;
 use crate::models::Printing;
+use image::ImageFormat;
 use std::collections::HashMap;
 use std::io::{Cursor, Seek, Write};
 use zip::ZipWriter;
@@ -83,12 +84,13 @@ async fn process_side<W: Write + Seek>(
             data
         };
 
+        let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
         let img = image::load_from_memory(&image_data)?;
 
         #[cfg(not(target_arch = "wasm32"))]
         let start = std::time::Instant::now();
 
-        let bordered_bytes = generate_bordered_image(&img, *copy_num)?;
+        let bordered_bytes = generate_bordered_image(&img, *copy_num, image_format)?;
 
         #[cfg(not(target_arch = "wasm32"))]
         eprintln!(
@@ -97,9 +99,10 @@ async fn process_side<W: Write + Seek>(
             start.elapsed()
         );
 
+        let ext = if image_format == ImageFormat::Png { "png" } else { "jpg" };
         let filename = format!(
-            "{}/{}-{}-{}-{}.jpg",
-            folder_name, printing.card_code, printing.variant, printing.collection, copy_num
+            "{}/{}-{}-{}-{}.{}",
+            folder_name, printing.card_code, printing.variant, printing.collection, copy_num, ext
         );
 
         let options =
