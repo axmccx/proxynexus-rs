@@ -8,8 +8,8 @@ use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
-use web_time::Instant;
 use tracing::info;
+use web_time::Instant;
 
 const POINTS_PER_INCH: f32 = 72.0;
 
@@ -67,7 +67,7 @@ pub async fn generate_pdf(
 
     let available = store.get_available_printings(&card_requests).await?;
     let printings = store.resolve_printings(&card_requests, &available)?;
-    
+
     let mut image_keys: Vec<String> = Vec::new();
     for p in &printings {
         image_keys.push(p.image_key.clone());
@@ -97,13 +97,13 @@ pub async fn generate_pdf(
 
             let image_data = image_cache.get(image_key).unwrap();
             let format = image::guess_format(image_data).unwrap_or(ImageFormat::Jpeg);
-            
+
             let image = if format == ImageFormat::Png {
                 Image::from_png(Data::from(image_data.clone()), true)?
             } else {
                 Image::from_jpeg(Data::from(image_data.clone()), true)?
             };
-            
+
             let size = Size::from_wh(CARD_WIDTH, CARD_HEIGHT).unwrap();
 
             let (pos_x, pos_y) = calculate_card_position(index, &page_size);
@@ -112,11 +112,7 @@ pub async fn generate_pdf(
             surface.draw_image(image, size);
             surface.pop();
 
-            info!(
-                "Runtime for image {}: {:?}",
-                image_key,
-                start.elapsed()
-            );
+            info!("Runtime for image {}: {:?}", image_key, start.elapsed());
         }
 
         surface.finish();

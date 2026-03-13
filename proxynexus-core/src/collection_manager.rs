@@ -5,6 +5,7 @@ use gluesql::core::row_conversion::SelectExt;
 use gluesql::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::info;
 use zip::ZipArchive;
 
 #[derive(FromGlueRow)]
@@ -62,7 +63,7 @@ impl<'a> CollectionManager<'a> {
             .ok_or("Invalid filename")?
             .to_string();
 
-        println!(
+        info!(
             "Adding collection: {} (v{}, {})",
             collection_name, manifest.version, manifest.language
         );
@@ -143,8 +144,8 @@ impl<'a> CollectionManager<'a> {
             }
         };
 
-        println!("Added {} printings", printings_added);
-        println!("Collection '{}' added successfully!", collection_name);
+        info!("Added {} printings", printings_added);
+        info!("Collection '{}' added successfully!", collection_name);
 
         Ok(())
     }
@@ -288,7 +289,11 @@ mod tests {
     fn test_parse_filename_variants() {
         assert_eq!(
             CollectionManager::parse_filename(Path::new("01001.jpg")),
-            Some(("01001".to_string(), "original".to_string(), "front".to_string()))
+            Some((
+                "01001".to_string(),
+                "original".to_string(),
+                "front".to_string()
+            ))
         );
 
         assert_eq!(
@@ -298,7 +303,11 @@ mod tests {
 
         assert_eq!(
             CollectionManager::parse_filename(Path::new("01001-rear.png")),
-            Some(("01001".to_string(), "original".to_string(), "rear".to_string()))
+            Some((
+                "01001".to_string(),
+                "original".to_string(),
+                "rear".to_string()
+            ))
         );
 
         assert_eq!(

@@ -9,8 +9,8 @@ use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::{PageSize, generate_pdf};
 use proxynexus_core::query::{generate_query_output, list_available_sets};
 use std::path::PathBuf;
-use web_time::Instant;
 use tracing::info;
+use web_time::Instant;
 
 #[derive(Parser)]
 #[command(name = "proxynexus-cli")]

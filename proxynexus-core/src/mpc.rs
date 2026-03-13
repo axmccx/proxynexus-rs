@@ -7,10 +7,10 @@ use crate::models::Printing;
 use image::ImageFormat;
 use std::collections::HashMap;
 use std::io::{Cursor, Seek, Write};
+use tracing::info;
+use web_time::Instant;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
-use web_time::Instant;
-use tracing::info;
 
 pub async fn generate_mpc_zip(
     db: &mut DbStorage,
@@ -78,8 +78,9 @@ async fn process_side<W: Write + Seek>(
             .and_modify(|n| *n += 1)
             .or_insert(1);
 
-        let image_keys_to_process = std::iter::once(("front".to_string(), printing.image_key.clone()))
-            .chain(printing.parts.into_iter().map(|a| (a.name, a.image_key)));
+        let image_keys_to_process =
+            std::iter::once(("front".to_string(), printing.image_key.clone()))
+                .chain(printing.parts.into_iter().map(|a| (a.name, a.image_key)));
 
         for (part_name, current_image_key) in image_keys_to_process {
             let start = Instant::now();
@@ -97,17 +98,32 @@ async fn process_side<W: Write + Seek>(
 
             let bordered_bytes = generate_bordered_image(&img, *copy_num, image_format)?;
 
-            let ext = if image_format == ImageFormat::Png { "png" } else { "jpg" };
-            
+            let ext = if image_format == ImageFormat::Png {
+                "png"
+            } else {
+                "jpg"
+            };
+
             let filename = if part_name == "front" {
                 format!(
                     "{}/{}-{}-{}-{}.{}",
-                    folder_name, printing.card_code, printing.variant, printing.collection, copy_num, ext
+                    folder_name,
+                    printing.card_code,
+                    printing.variant,
+                    printing.collection,
+                    copy_num,
+                    ext
                 )
             } else {
                 format!(
                     "{}/{}-{}-{}-{}-{}.{}",
-                    folder_name, printing.card_code, printing.variant, printing.collection, copy_num, part_name, ext
+                    folder_name,
+                    printing.card_code,
+                    printing.variant,
+                    printing.collection,
+                    copy_num,
+                    part_name,
+                    ext
                 )
             };
 

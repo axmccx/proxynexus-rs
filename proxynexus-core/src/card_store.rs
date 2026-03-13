@@ -1,4 +1,3 @@
-use std::string::String;
 use crate::card_source::{CardSource, Cardlist, SetName};
 use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::models::{CardRequest, Printing, PrintingPart};
@@ -6,6 +5,8 @@ use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
 use gluesql::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::string::String;
+use tracing::warn;
 
 #[derive(FromGlueRow)]
 struct PackRow {
@@ -65,11 +66,12 @@ impl CardSource for Cardlist {
         let (requests, not_found) = store.parse_cardlist_into_card_requests(&self.0).await?;
 
         if !not_found.is_empty() {
-            eprintln!("Warning: {} card(s) not found in catalog:", not_found.len());
-            for name in &not_found {
-                eprintln!("  - {}", name);
-            }
-            eprintln!("Consider running 'proxynexus catalog update'");
+            warn!(
+                "{} card(s) not found in catalog: {:?}",
+                not_found.len(),
+                not_found
+            );
+            warn!("Consider running 'proxynexus catalog update'");
         }
 
         Ok(requests)
@@ -410,11 +412,11 @@ impl<'a> CardStore<'a> {
                     *qty as usize,
                 ));
             } else {
-                eprintln!(
-                    "Warning: Card code '{}' from NetrunnerDB not found in local catalog",
+                warn!(
+                    "Card code '{}' from NetrunnerDB not found in local catalog",
                     code
                 );
-                eprintln!("  Consider running 'proxynexus catalog update'");
+                warn!("Consider running 'proxynexus catalog update'");
             }
         }
 
@@ -453,11 +455,17 @@ impl<'a> CardStore<'a> {
         if let Some(payload) = payloads.into_iter().next() {
             let printing_rows = payload.rows_as::<AvailablePrintingRow>()?;
 
-            let mut groups: HashMap<(String, String, String, String), Vec<AvailablePrintingRow>> = HashMap::new();
-            
+            let mut groups: HashMap<(String, String, String, String), Vec<AvailablePrintingRow>> =
+                HashMap::new();
+
             for row in printing_rows {
                 let normalized = normalize_title(&row.title);
-                let key = (normalized, row.code.clone(), row.variant.clone(), row.name.clone());
+                let key = (
+                    normalized,
+                    row.code.clone(),
+                    row.variant.clone(),
+                    row.name.clone(),
+                );
                 groups.entry(key).or_default().push(row);
             }
 
@@ -515,8 +523,8 @@ impl<'a> CardStore<'a> {
         for req in card_requests {
             let norm = normalize_title(&req.title);
             if !resolved_printings.contains_key(&norm) && missing_titles.insert(norm) {
-                eprintln!(
-                    "Warning: No printings found for '{}' in your collections.",
+                warn!(
+                    "No printings found for '{}' in your collections.",
                     req.title
                 );
             }
@@ -539,9 +547,9 @@ impl<'a> CardStore<'a> {
                 match Self::select_printing(request, printings) {
                     Ok(printing) => result.push(printing),
                     Err(e) => {
-                        eprintln!("Warning: {}", e);
+                        warn!("{}", e);
                         if let Some(fallback) = printings.first() {
-                            eprintln!("  Using: {} from {}", fallback.variant, fallback.collection);
+                            warn!("  Using: {} from {}", fallback.variant, fallback.collection);
                             result.push(fallback.clone());
                         }
                     }
