@@ -17,9 +17,6 @@ struct CountRow {
     count: i64,
 }
 
-const CARDS_JSON: &str = include_str!("../data/netrunnerdb_cards.json");
-const PACKS_JSON: &str = include_str!("../data/netrunnerdb_packs.json");
-
 #[derive(Debug, Deserialize)]
 struct CardsResponse {
     data: Vec<Card>,
@@ -44,9 +41,19 @@ impl<'a> Catalog<'a> {
         let count = self.get_card_count().await?;
 
         if count == 0 {
-            println!("Seeding card catalog...");
-            self.seed_from_json(CARDS_JSON, PACKS_JSON).await?;
-            println!("Card catalog seeded successfully!");
+            println!("Seeding card catalog from NetrunnerDB API...");
+            match self.update_from_api().await {
+                Ok(_) => println!("Card catalog seeded successfully!"),
+                Err(e) => {
+                    eprintln!("Failed to fetch catalog from NetrunnerDB: {}", e);
+                    eprintln!("If you do not have internet access, you can download the data manually:");
+                    eprintln!("  curl -o cards.json https://netrunnerdb.com/api/2.0/public/cards");
+                    eprintln!("  curl -o packs.json https://netrunnerdb.com/api/2.0/public/packs");
+                    eprintln!("Then use the CLI to import them:");
+                    eprintln!("  proxynexus-cli catalog import cards.json packs.json");
+                    return Err(e);
+                }
+            }
         }
 
         Ok(())
