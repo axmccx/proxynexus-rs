@@ -9,6 +9,8 @@ use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::{PageSize, generate_pdf};
 use proxynexus_core::query::{generate_query_output, list_available_sets};
 use std::path::PathBuf;
+use web_time::Instant;
+use tracing::info;
 
 #[derive(Parser)]
 #[command(name = "proxynexus-cli")]
@@ -141,6 +143,7 @@ enum GenerateType {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     let cli = Cli::parse();
 
     let home = dirs::home_dir().expect("Could not find home directory");
@@ -372,7 +375,7 @@ async fn handle_generate(
         } => {
             let source = determine_input_source(cardlist, set_name, nrdb_url);
 
-            let start = std::time::Instant::now();
+            let start = Instant::now();
 
             let mpc_bytes = match source {
                 InputSource::Cardlist(list) => {
@@ -387,7 +390,7 @@ async fn handle_generate(
             };
 
             std::fs::write(&output_path, mpc_bytes)?;
-            eprintln!("runtime: {:?}", start.elapsed());
+            info!("runtime: {:?}", start.elapsed());
             println!("MPC ZIP created successfully: {:?}", output_path);
             Ok(())
         }

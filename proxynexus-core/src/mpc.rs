@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::io::{Cursor, Seek, Write};
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
+use web_time::Instant;
+use tracing::info;
 
 pub async fn generate_mpc_zip(
     db: &mut DbStorage,
@@ -80,6 +82,8 @@ async fn process_side<W: Write + Seek>(
             .chain(printing.parts.into_iter().map(|a| (a.name, a.image_key)));
 
         for (part_name, current_image_key) in image_keys_to_process {
+            let start = Instant::now();
+
             let image_data = if let Some(cached) = image_cache.get(&current_image_key) {
                 cached.clone()
             } else {
@@ -91,17 +95,7 @@ async fn process_side<W: Write + Seek>(
             let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
             let img = image::load_from_memory(&image_data)?;
 
-            #[cfg(not(target_arch = "wasm32"))]
-            let start = std::time::Instant::now();
-
             let bordered_bytes = generate_bordered_image(&img, *copy_num, image_format)?;
-
-            #[cfg(not(target_arch = "wasm32"))]
-            eprintln!(
-                "generate_bordered_image runtime for {}: {:?}",
-                current_image_key,
-                start.elapsed()
-            );
 
             let ext = if image_format == ImageFormat::Png { "png" } else { "jpg" };
             
@@ -122,6 +116,12 @@ async fn process_side<W: Write + Seek>(
 
             zip.start_file(&filename, options)?;
             zip.write_all(&bordered_bytes)?;
+
+            info!(
+                "Runtime for image {}: {:?}",
+                current_image_key,
+                start.elapsed()
+            );
         }
     }
 

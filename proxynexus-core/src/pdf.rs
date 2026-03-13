@@ -8,6 +8,8 @@ use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
+use web_time::Instant;
+use tracing::info;
 
 const POINTS_PER_INCH: f32 = 72.0;
 
@@ -86,6 +88,8 @@ pub async fn generate_pdf(
         let mut surface = page.surface();
 
         for (index, image_key) in chunk.iter().enumerate() {
+            let start = Instant::now();
+
             if !image_cache.contains_key(image_key) {
                 let image_data = image_provider.get_image_bytes(image_key).await?;
                 image_cache.insert(image_key.clone(), image_data);
@@ -107,6 +111,12 @@ pub async fn generate_pdf(
             surface.push_transform(&Transform::from_translate(pos_x, pos_y));
             surface.draw_image(image, size);
             surface.pop();
+
+            info!(
+                "Runtime for image {}: {:?}",
+                image_key,
+                start.elapsed()
+            );
         }
 
         surface.finish();
