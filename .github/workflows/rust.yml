@@ -61,6 +61,8 @@ jobs:
 
     - name: Build Web App
       run: dx build --release -p proxynexus-gui --platform web
+      env:
+        POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
     - name: Deploy to Cloudflare Pages
       if: github.ref == 'refs/heads/master' && github.event_name == 'push'

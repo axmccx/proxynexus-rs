@@ -70,9 +70,9 @@ pub fn send_report(report: GenerationReport) {
     let Some(key) = API_KEY else { return };
 
     let logs = if let Ok(mut buf) = LOG_BUFFER.lock() {
-        std::mem::take(&mut *buf).join("\n")
+        std::mem::take(&mut *buf)
     } else {
-        String::new()
+        Vec::new()
     };
 
     let payload = json!({
@@ -86,7 +86,7 @@ pub fn send_report(report: GenerationReport) {
             "page_size": report.page_size,
             "runtime_ms": report.runtime_ms,
             "success": report.success,
-            "cardlist": report.cardlist,
+            "cardlist": report.cardlist.lines().collect::<Vec<_>>(),
             "error_message": report.error_message,
             "logs": logs,
         }
