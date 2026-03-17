@@ -21,7 +21,7 @@ const A4_HEIGHT: f32 = 11.69 * POINTS_PER_INCH; // ~842 points
 const CARD_WIDTH: f32 = 178.54; // 6.299 cm in points
 const CARD_HEIGHT: f32 = 249.09; // 8.788 cm in points
 
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum PageSize {
     #[default]
     Letter,

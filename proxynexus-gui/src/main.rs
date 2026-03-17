@@ -13,8 +13,6 @@ mod export;
 use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
 use components::source_selector::{ActiveSource, SourceSelector};
-use export::run_pdf_export;
-use proxynexus_core::pdf::PageSize;
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -322,9 +320,9 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 class: "bg-white flex-shrink-0 flex flex-col h-full border-l border-gray-200",
                 SourceSelector { source_state: active_source, db_signal }
                 ExportControls {
-                    on_generate: move |page_size: PageSize| {
+                    on_generate: move |config: components::export_controls::ExportConfig| {
                         let source = active_source();
-                        spawn(run_pdf_export(db_signal, source, page_size));
+                        spawn(export::run_export(db_signal, source, config));
                     }
                 }
             }

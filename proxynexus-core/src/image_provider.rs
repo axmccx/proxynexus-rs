@@ -22,7 +22,9 @@ impl LocalImageProvider {
 impl ImageProvider for LocalImageProvider {
     async fn get_image_bytes(&self, key: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let full_path = self.base_path.join(key);
-        let bytes = std::fs::read(full_path)?;
+        let bytes = std::fs::read(&full_path).map_err(|e| {
+            format!("Failed to read image with key {:?} at {:?}: {}", key, full_path, e)
+        })?;
         Ok(bytes)
     }
 }

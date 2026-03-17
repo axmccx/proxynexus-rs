@@ -1,21 +1,30 @@
 use crate::analytics;
+use crate::components::export_controls::ExportConfig;
 use crate::components::source_selector::ActiveSource;
 use dioxus::prelude::*;
 use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
-use proxynexus_core::pdf::{PageSize, generate_pdf};
+use proxynexus_core::mpc::generate_mpc_zip;
+use proxynexus_core::pdf::generate_pdf;
 use tracing::{error, info};
 use web_time::Instant;
 
-pub async fn run_pdf_export(
+struct ExportMeta {
+    format: &'static str,
+    page_size: String,
+    filename: &'static str,
+    filter: &'static str,
+    ext: &'static str,
+    mime: &'static str,
+}
+
+pub async fn run_export(
     mut db_signal: Signal<DbStorage>,
     active_source: ActiveSource,
-    page_size: PageSize,
+    config: ExportConfig,
 ) {
     analytics::start_capture();
     let start_time = Instant::now();
-    let page_size_str = format!("{:?}", page_size);
-    info!("Starting PDF generation with page size: {}", page_size_str);
 
     let mut db = db_signal.write();
 
@@ -29,36 +38,77 @@ pub async fn run_pdf_export(
     #[cfg(target_arch = "wasm32")]
     let provider = proxynexus_core::image_provider::RemoteImageProvider;
 
-    let (result, source_text, source_type) = match active_source {
-        ActiveSource::Cardlist(text) => (
-            generate_pdf(&mut db, &Cardlist(text.clone()), &provider, page_size).await,
-            text,
-            "Cardlist",
-        ),
-        ActiveSource::SetName(name) => (
-            generate_pdf(&mut db, &SetName(name.clone()), &provider, page_size).await,
-            name,
-            "SetName",
-        ),
-        ActiveSource::NrdbUrl(url) => (
-            generate_pdf(&mut db, &NrdbUrl(url.clone()), &provider, page_size).await,
-            url,
-            "NrdbUrl",
-        ),
+    let meta = match config {
+        ExportConfig::Pdf(page_size) => ExportMeta {
+            format: "pdf",
+            page_size: format!("{:?}", page_size),
+            filename: "proxynexus_export.pdf",
+            filter: "PDF Document",
+            ext: "pdf",
+            mime: "application/pdf",
+        },
+        ExportConfig::Mpc => ExportMeta {
+            format: "mpc",
+            page_size: "N/A".to_string(),
+            filename: "proxynexus_export.zip",
+            filter: "ZIP Archive",
+            ext: "zip",
+            mime: "application/zip",
+        },
+    };
+
+    info!("Starting {} export", meta.format);
+
+    let (source_text, source_type, result) = match active_source {
+        ActiveSource::Cardlist(text) => {
+            let source_text = text.clone();
+            let source = Cardlist(text);
+            let result = match config {
+                ExportConfig::Pdf(page_size) => {
+                    generate_pdf(&mut db, &source, &provider, page_size).await
+                }
+                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
+            };
+            (source_text, "Cardlist", result)
+        }
+        ActiveSource::SetName(name) => {
+            let source_text = name.clone();
+            let source = SetName(name);
+            let result = match config {
+                ExportConfig::Pdf(page_size) => {
+                    generate_pdf(&mut db, &source, &provider, page_size).await
+                }
+                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
+            };
+            (source_text, "SetName", result)
+        }
+        ActiveSource::NrdbUrl(url) => {
+            let source_text = url.clone();
+            let source = NrdbUrl(url);
+            let result = match config {
+                ExportConfig::Pdf(page_size) => {
+                    generate_pdf(&mut db, &source, &provider, page_size).await
+                }
+                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
+            };
+            (source_text, "NrdbUrl", result)
+        }
     };
 
     let mut success = false;
     let mut error_message = None;
 
     match result {
-        Ok(pdf_bytes) => {
+        Ok(bytes) => {
             info!(
-                "Successfully generated PDF. Size: {} bytes",
-                pdf_bytes.len()
+                "Successfully generated {}. Size: {} bytes",
+                meta.format,
+                bytes.len()
             );
 
-            if let Err(e) = save_pdf(&pdf_bytes).await {
-                let msg = format!("Failed to save PDF: {:?}", e);
+            if let Err(e) = save_file(&bytes, meta.filename, meta.filter, meta.ext, meta.mime).await
+            {
+                let msg = format!("Failed to save {}: {:?}", meta.format, e);
                 error!("{}", msg);
                 error_message = Some(msg);
             } else {
@@ -66,15 +116,15 @@ pub async fn run_pdf_export(
             }
         }
         Err(e) => {
-            let msg = format!("Failed to generate PDF: {}", e);
+            let msg = format!("Failed to generate {}: {}", meta.format, e);
             error!("{}", msg);
             error_message = Some(msg);
         }
     }
 
     analytics::send_report(analytics::GenerationReport {
-        format: "pdf".to_string(),
-        page_size: page_size_str,
+        format: meta.format.to_string(),
+        page_size: meta.page_size,
         runtime_ms: start_time.elapsed().as_millis(),
         success,
         source_type,
@@ -84,15 +134,21 @@ pub async fn run_pdf_export(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-async fn save_pdf(bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+async fn save_file(
+    bytes: &[u8],
+    file_name: &str,
+    filter_name: &str,
+    extension: &str,
+    _mime_type: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(path) = rfd::AsyncFileDialog::new()
-        .add_filter("PDF Document", &["pdf"])
-        .set_file_name("proxynexus_export.pdf")
+        .add_filter(filter_name, &[extension])
+        .set_file_name(file_name)
         .save_file()
         .await
     {
         tokio::fs::write(path.path(), bytes).await?;
-        info!("Saved PDF successfully to {:?}", path.path());
+        info!("Saved successfully to {:?}", path.path());
     } else {
         info!("User cancelled the save dialog.");
     }
@@ -101,16 +157,20 @@ async fn save_pdf(bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn save_pdf(bytes: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
-    // Using native browser APIs to create a Blob directly from WASM memory.
-    // This avoids JSON serialization overhead of Dioxus eval, which causes overflow errors on large PDFs
+async fn save_file(
+    bytes: &[u8],
+    file_name: &str,
+    _filter_name: &str,
+    _extension: &str,
+    mime_type: &str,
+) -> Result<(), wasm_bindgen::JsValue> {
     use wasm_bindgen::JsCast;
 
     let uint8_array = js_sys::Uint8Array::from(bytes);
     let parts = js_sys::Array::of1(&uint8_array);
 
     let options = web_sys::BlobPropertyBag::new();
-    options.set_type("application/pdf");
+    options.set_type(mime_type);
 
     let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &options)?;
     let url = web_sys::Url::create_object_url_with_blob(&blob)?;
@@ -125,7 +185,7 @@ async fn save_pdf(bytes: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
         .dyn_into::<web_sys::HtmlElement>()?;
 
     a.set_attribute("href", &url)?;
-    a.set_attribute("download", "proxynexus_result.pdf")?;
+    a.set_attribute("download", file_name)?;
     a.click();
 
     web_sys::Url::revoke_object_url(&url)?;
