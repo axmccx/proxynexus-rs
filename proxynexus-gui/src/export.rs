@@ -2,7 +2,7 @@ use crate::analytics;
 use crate::components::export_controls::ExportConfig;
 use crate::components::source_selector::ActiveSource;
 use dioxus::prelude::*;
-use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
+use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::generate_pdf;
@@ -25,8 +25,6 @@ pub async fn run_export(
 ) {
     analytics::start_capture();
     let start_time = Instant::now();
-
-    let mut db = db_signal.write();
 
     #[cfg(not(target_arch = "wasm32"))]
     let provider = {
@@ -59,40 +57,54 @@ pub async fn run_export(
 
     info!("Starting {} export", meta.format);
 
-    let (source_text, source_type, result) = match active_source {
-        ActiveSource::Cardlist(text) => {
-            let source_text = text.clone();
-            let source = Cardlist(text);
-            let result = match config {
-                ExportConfig::Pdf(page_size) => {
-                    generate_pdf(&mut db, &source, &provider, page_size).await
+    let (source_text, source_type, resolved_printings) = {
+        let mut db = db_signal.write();
+        let mut store =
+            proxynexus_core::card_store::CardStore::new(&mut db).expect("Failed to create store");
+
+        match active_source {
+            ActiveSource::Cardlist(text) => {
+                let source_text = text.clone();
+                let source = Cardlist(text);
+                let res = async {
+                    let reqs = source.to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)
                 }
-                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
-            };
-            (source_text, "Cardlist", result)
-        }
-        ActiveSource::SetName(name) => {
-            let source_text = name.clone();
-            let source = SetName(name);
-            let result = match config {
-                ExportConfig::Pdf(page_size) => {
-                    generate_pdf(&mut db, &source, &provider, page_size).await
+                .await;
+                (source_text, "Cardlist", res)
+            }
+            ActiveSource::SetName(name) => {
+                let source_text = name.clone();
+                let source = SetName(name);
+                let res = async {
+                    let reqs = source.to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)
                 }
-                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
-            };
-            (source_text, "SetName", result)
-        }
-        ActiveSource::NrdbUrl(url) => {
-            let source_text = url.clone();
-            let source = NrdbUrl(url);
-            let result = match config {
-                ExportConfig::Pdf(page_size) => {
-                    generate_pdf(&mut db, &source, &provider, page_size).await
+                .await;
+                (source_text, "SetName", res)
+            }
+            ActiveSource::NrdbUrl(url) => {
+                let source_text = url.clone();
+                let source = NrdbUrl(url);
+                let res = async {
+                    let reqs = source.to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)
                 }
-                ExportConfig::Mpc => generate_mpc_zip(&mut db, &source, &provider).await,
-            };
-            (source_text, "NrdbUrl", result)
+                .await;
+                (source_text, "NrdbUrl", res)
+            }
         }
+    };
+
+    let result = match resolved_printings {
+        Ok(printings) => match config {
+            ExportConfig::Pdf(page_size) => generate_pdf(printings, &provider, page_size).await,
+            ExportConfig::Mpc => generate_mpc_zip(printings, &provider).await,
+        },
+        Err(e) => Err(e),
     };
 
     let mut success = false;

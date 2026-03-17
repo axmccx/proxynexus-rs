@@ -682,10 +682,19 @@ mod tests {
         // valid trailing characters remain
         assert_eq!(clean_card_name("Snare!"), "Snare!");
         assert_eq!(clean_card_name("Eli 1.0"), "Eli 1.0");
-        assert_eq!(clean_card_name("The World is Yours*"), "The World is Yours*");
+        assert_eq!(
+            clean_card_name("The World is Yours*"),
+            "The World is Yours*"
+        );
         assert_eq!(clean_card_name("Masterwork (v37)"), "Masterwork (v37)");
-        assert_eq!(clean_card_name("\"Freedom Through Equality\""), "\"Freedom Through Equality\"");
-        assert_eq!(clean_card_name("Title (with parens)"), "Title (with parens)");
+        assert_eq!(
+            clean_card_name("\"Freedom Through Equality\""),
+            "\"Freedom Through Equality\""
+        );
+        assert_eq!(
+            clean_card_name("Title (with parens)"),
+            "Title (with parens)"
+        );
 
         // invalid trailing characters get stripped
         assert_eq!(clean_card_name("Hedge Fund ●"), "Hedge Fund");

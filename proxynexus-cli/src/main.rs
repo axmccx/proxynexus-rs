@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
+use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
 use proxynexus_core::catalog::Catalog;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
@@ -339,6 +339,8 @@ async fn handle_generate(
     image_provider: &LocalImageProvider,
     output_type: GenerateType,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut store = proxynexus_core::card_store::CardStore::new(db)?;
+
     match output_type {
         GenerateType::Pdf {
             cardlist,
@@ -350,17 +352,25 @@ async fn handle_generate(
             let page_size_enum = parse_page_size(&page_size)?;
             let source = determine_input_source(cardlist, set_name, nrdb_url);
 
-            let pdf_bytes = match source {
+            let printings = match source {
                 InputSource::Cardlist(list) => {
-                    generate_pdf(db, &Cardlist(list), image_provider, page_size_enum).await?
+                    let card_requests = Cardlist(list).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&card_requests).await?;
+                    store.resolve_printings(&card_requests, &available)?
                 }
                 InputSource::SetName(name) => {
-                    generate_pdf(db, &SetName(name), image_provider, page_size_enum).await?
+                    let reqs = SetName(name).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)?
                 }
                 InputSource::NrdbUrl(url) => {
-                    generate_pdf(db, &NrdbUrl(url), image_provider, page_size_enum).await?
+                    let reqs = NrdbUrl(url).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)?
                 }
             };
+
+            let pdf_bytes = generate_pdf(printings, image_provider, page_size_enum).await?;
 
             std::fs::write(&output_path, pdf_bytes)?;
             println!("PDF created successfully: {:?}", output_path);
@@ -374,20 +384,27 @@ async fn handle_generate(
             output_path,
         } => {
             let source = determine_input_source(cardlist, set_name, nrdb_url);
-
             let start = Instant::now();
 
-            let mpc_bytes = match source {
+            let printings = match source {
                 InputSource::Cardlist(list) => {
-                    generate_mpc_zip(db, &Cardlist(list), image_provider).await?
+                    let reqs = Cardlist(list).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)?
                 }
                 InputSource::SetName(name) => {
-                    generate_mpc_zip(db, &SetName(name), image_provider).await?
+                    let reqs = SetName(name).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)?
                 }
                 InputSource::NrdbUrl(url) => {
-                    generate_mpc_zip(db, &NrdbUrl(url), image_provider).await?
+                    let reqs = NrdbUrl(url).to_card_requests(&mut store).await?;
+                    let available = store.get_available_printings(&reqs).await?;
+                    store.resolve_printings(&reqs, &available)?
                 }
             };
+
+            let mpc_bytes = generate_mpc_zip(printings, image_provider).await?;
 
             std::fs::write(&output_path, mpc_bytes)?;
             info!("runtime: {:?}", start.elapsed());

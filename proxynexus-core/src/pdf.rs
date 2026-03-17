@@ -1,7 +1,5 @@
-use crate::card_source::CardSource;
-use crate::card_store::CardStore;
-use crate::db_storage::DbStorage;
 use crate::image_provider::ImageProvider;
+use crate::models::Printing;
 use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
@@ -58,17 +56,10 @@ fn calculate_card_position(card_index: usize, page_size: &PageSize) -> (f32, f32
 }
 
 pub async fn generate_pdf(
-    db: &mut DbStorage,
-    card_source: &impl CardSource,
+    printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     page_size: PageSize,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let mut store = CardStore::new(db)?;
-    let card_requests = card_source.to_card_requests(&mut store).await?;
-
-    let available = store.get_available_printings(&card_requests).await?;
-    let printings = store.resolve_printings(&card_requests, &available)?;
-
     let mut image_keys: Vec<String> = Vec::new();
     for p in &printings {
         image_keys.push(p.image_key.clone());
