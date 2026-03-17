@@ -8,6 +8,7 @@ use krilla::Document;
 use krilla::geom::{Size, Transform};
 use krilla::image::Image;
 use krilla::page::PageSettings;
+use std::collections::HashMap;
 use tracing::info;
 use web_time::Instant;
 
@@ -79,8 +80,7 @@ pub async fn generate_pdf(
     let mut document = Document::new();
     let (page_width, page_height) = page_size.dimensions();
 
-    let mut image_cache: std::collections::HashMap<String, Vec<u8>> =
-        std::collections::HashMap::new();
+    let mut image_cache: HashMap<String, Image> = HashMap::new();
 
     for chunk in image_keys.chunks(9) {
         let page_settings = PageSettings::from_wh(page_width, page_height).unwrap();
@@ -92,18 +92,18 @@ pub async fn generate_pdf(
 
             if !image_cache.contains_key(image_key) {
                 let image_data = image_provider.get_image_bytes(image_key).await?;
-                image_cache.insert(image_key.clone(), image_data);
+                let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
+
+                let image = if format == ImageFormat::Png {
+                    Image::from_png(Data::from(image_data), true)?
+                } else {
+                    Image::from_jpeg(Data::from(image_data), true)?
+                };
+                
+                image_cache.insert(image_key.clone(), image);
             }
 
-            let image_data = image_cache.get(image_key).unwrap();
-            let format = image::guess_format(image_data).unwrap_or(ImageFormat::Jpeg);
-
-            let image = if format == ImageFormat::Png {
-                Image::from_png(Data::from(image_data.clone()), true)?
-            } else {
-                Image::from_jpeg(Data::from(image_data.clone()), true)?
-            };
-
+            let image = image_cache.get(image_key).unwrap().clone();
             let size = Size::from_wh(CARD_WIDTH, CARD_HEIGHT).unwrap();
 
             let (pos_x, pos_y) = calculate_card_position(index, &page_size);

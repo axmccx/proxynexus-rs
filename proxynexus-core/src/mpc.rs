@@ -1,4 +1,4 @@
-use crate::border_generator::generate_bordered_image;
+use crate::border_generator::{apply_uniqueness_marker, create_bordered_base, encode_image};
 use crate::card_source::CardSource;
 use crate::card_store::CardStore;
 use crate::db_storage::DbStorage;
@@ -35,7 +35,7 @@ pub async fn generate_mpc_zip(
     let mut zip = ZipWriter::new(&mut zip_buffer);
 
     let single_side = sides.len() == 1;
-    let mut image_cache: HashMap<String, Vec<u8>> = HashMap::new();
+    let mut image_cache: HashMap<String, (image::RgbImage, ImageFormat)> = HashMap::new();
 
     for (side_name, side_printings) in sides {
         let folder_name = if single_side {
@@ -63,7 +63,7 @@ async fn process_side<W: Write + Seek>(
     image_provider: &impl ImageProvider,
     zip: &mut ZipWriter<W>,
     folder_name: &str,
-    image_cache: &mut HashMap<String, Vec<u8>>,
+    image_cache: &mut HashMap<String, (image::RgbImage, ImageFormat)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut copy_counters: HashMap<(String, String, String), u32> = HashMap::new();
 
@@ -85,20 +85,20 @@ async fn process_side<W: Write + Seek>(
         for (part_name, current_image_key) in image_keys_to_process {
             let start = Instant::now();
 
-            let image_data = if let Some(cached) = image_cache.get(&current_image_key) {
-                cached.clone()
-            } else {
+            if !image_cache.contains_key(&current_image_key) {
                 let data = image_provider.get_image_bytes(&current_image_key).await?;
-                image_cache.insert(current_image_key.clone(), data.clone());
-                data
-            };
+                let image_format = image::guess_format(&data).unwrap_or(ImageFormat::Jpeg);
+                let img = image::load_from_memory(&data)?;
+                let bordered_base = create_bordered_base(&img);
+                image_cache.insert(current_image_key.clone(), (bordered_base, image_format));
+            }
 
-            let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-            let img = image::load_from_memory(&image_data)?;
+            let (bordered_base, image_format) = image_cache.get(&current_image_key).unwrap();
+            let mut final_image = bordered_base.clone();
+            apply_uniqueness_marker(&mut final_image, *copy_num);
+            let bordered_bytes = encode_image(final_image, *image_format)?;
 
-            let bordered_bytes = generate_bordered_image(&img, *copy_num, image_format)?;
-
-            let ext = if image_format == ImageFormat::Png {
+            let ext = if *image_format == ImageFormat::Png {
                 "png"
             } else {
                 "jpg"

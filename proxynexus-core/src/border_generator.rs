@@ -23,45 +23,10 @@ impl BorderConfig {
     }
 }
 
-pub fn generate_bordered_image(
-    img: &DynamicImage,
-    marker_position: u32,
-    format: ImageFormat,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn create_bordered_base(img: &DynamicImage) -> RgbImage {
     let (width, height) = img.dimensions();
     let config = BorderConfig::from_image_dimensions(width, height);
 
-    let mut bordered = replicate_edges_to_bleed(img, &config);
-    apply_uniqueness_marker(&mut bordered, marker_position);
-
-    if format == ImageFormat::Png {
-        let mut png_bytes = std::io::Cursor::new(Vec::new());
-        DynamicImage::ImageRgb8(bordered).write_to(&mut png_bytes, ImageFormat::Png)?;
-        return Ok(png_bytes.into_inner());
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        Ok(turbojpeg::compress_image(&bordered, 95, turbojpeg::Subsamp::Sub2x2)?.to_vec())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let mut jpeg_bytes = Vec::new();
-        let encoder = jpeg_encoder::Encoder::new(&mut jpeg_bytes, 95);
-
-        encoder.encode(
-            bordered.as_raw(),
-            bordered.width() as u16,
-            bordered.height() as u16,
-            jpeg_encoder::ColorType::Rgb,
-        )?;
-
-        Ok(jpeg_bytes)
-    }
-}
-
-fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbImage {
     let (src_w, src_h) = img.dimensions();
     let rgb_view = img.to_rgb8();
     let src_raw = rgb_view.as_raw();
@@ -101,7 +66,7 @@ fn replicate_edges_to_bleed(img: &DynamicImage, config: &BorderConfig) -> RgbIma
 
 // changes a few pixels near top left corner, based on position.
 // makes the duplicate image unique, so that MPC doesn't deduplicate it on upload
-fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
+pub fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
     if position == 0 {
         return;
     }
@@ -110,6 +75,37 @@ fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
     if x < img.width() {
         let pixel = img.get_pixel_mut(x, 0);
         pixel.0[0] = pixel.0[0].saturating_add((position * 10) as u8);
+    }
+}
+
+pub fn encode_image(
+    bordered: RgbImage,
+    format: ImageFormat,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    if format == ImageFormat::Png {
+        let mut png_bytes = std::io::Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(bordered).write_to(&mut png_bytes, ImageFormat::Png)?;
+        return Ok(png_bytes.into_inner());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Ok(turbojpeg::compress_image(&bordered, 95, turbojpeg::Subsamp::Sub2x2)?.to_vec())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut jpeg_bytes = Vec::new();
+        let encoder = jpeg_encoder::Encoder::new(&mut jpeg_bytes, 95);
+
+        encoder.encode(
+            bordered.as_raw(),
+            bordered.width() as u16,
+            bordered.height() as u16,
+            jpeg_encoder::ColorType::Rgb,
+        )?;
+
+        Ok(jpeg_bytes)
     }
 }
 
