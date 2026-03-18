@@ -71,7 +71,11 @@ fn main() {
             .with_cfg(
                 dioxus::desktop::Config::new()
                     .with_menu(None)
-                    .with_window(dioxus::desktop::WindowBuilder::new().with_title("Proxy Nexus"))
+                    .with_window(
+                        dioxus::desktop::WindowBuilder::new()
+                            .with_title("Proxy Nexus")
+                            .with_inner_size(dioxus::desktop::LogicalSize::new(1200.0, 1000.0)),
+                    )
                     .with_asynchronous_custom_protocol(
                         "proxynexus",
                         |_webview_id, request, responder| {
