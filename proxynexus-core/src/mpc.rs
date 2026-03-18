@@ -12,7 +12,11 @@ use zip::write::SimpleFileOptions;
 pub async fn generate_mpc_zip(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
+    progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
+    let mut processed_images = 0;
+
     let mut sides: HashMap<String, Vec<Printing>> = HashMap::new();
     for printing in printings {
         sides
@@ -40,6 +44,9 @@ pub async fn generate_mpc_zip(
             &mut zip,
             &folder_name,
             &mut image_cache,
+            &progress,
+            &mut processed_images,
+            total_images,
         )
         .await?;
     }
@@ -48,12 +55,16 @@ pub async fn generate_mpc_zip(
     Ok(zip_buffer.into_inner())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_side<W: Write + Seek>(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     zip: &mut ZipWriter<W>,
     folder_name: &str,
     image_cache: &mut HashMap<String, (image::RgbImage, ImageFormat)>,
+    progress: &Option<Box<dyn Fn(f32) + Send + Sync>>,
+    processed_images: &mut usize,
+    total_images: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut copy_counters: HashMap<(String, String, String), u32> = HashMap::new();
     let mut uniqueness_counter: u32 = 0;
@@ -124,6 +135,20 @@ async fn process_side<W: Write + Seek>(
 
             zip.start_file(&filename, options)?;
             zip.write_all(&bordered_bytes)?;
+
+            *processed_images += 1;
+            if let Some(cb) = progress
+                && total_images > 0
+            {
+                cb(*processed_images as f32 / total_images as f32);
+            }
+
+            if (*processed_images).is_multiple_of(8) || *processed_images == total_images {
+                #[cfg(not(target_arch = "wasm32"))]
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                #[cfg(target_arch = "wasm32")]
+                gloo_timers::future::TimeoutFuture::new(0).await;
+            }
 
             info!(
                 "Runtime for image {}: {:?}",

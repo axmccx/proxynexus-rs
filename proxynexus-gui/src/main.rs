@@ -225,6 +225,7 @@ fn App() -> Element {
 fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let mut sidebar_width = use_signal(|| 400.0);
     let mut drag_state = use_signal(|| None::<(f64, f64)>);
+    let progress = use_signal(|| None::<f32>);
 
     let active_source = use_signal(ActiveSource::default);
     let mut debounced_source = use_signal(ActiveSource::default);
@@ -320,9 +321,10 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 class: "bg-white flex-shrink-0 flex flex-col h-full border-l border-gray-200",
                 SourceSelector { source_state: active_source, db_signal }
                 ExportControls {
+                    progress,
                     on_generate: move |config: components::export_controls::ExportConfig| {
                         let source = active_source();
-                        spawn(export::run_export(db_signal, source, config));
+                        spawn(export::run_export(db_signal, source, config, progress));
                     }
                 }
             }

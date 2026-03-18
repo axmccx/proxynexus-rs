@@ -9,6 +9,7 @@ pub enum ExportConfig {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ExportControlsProps {
+    pub progress: Signal<Option<f32>>,
     pub on_generate: EventHandler<ExportConfig>,
 }
 
@@ -25,6 +26,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
             div { class: "flex flex-col gap-2",
                 label { class: "text-sm font-medium text-gray-700", "Format" }
                 select {
+                    disabled: (props.progress)().is_some(),
                     class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm",
                     value: "{export_format()}",
                     onchange: move |evt| {
@@ -39,6 +41,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                 div { class: "flex flex-col gap-2",
                     label { class: "text-sm font-medium text-gray-700", "Page Size" }
                     select {
+                        disabled: (props.progress)().is_some(),
                         class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm",
                         value: match page_size() {
                             PageSize::A4 => "A4",
@@ -57,16 +60,30 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                 }
             }
 
-            button {
-                class: "w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-sm transition-colors mt-2",
-                onclick: move |_| {
-                    let config = match export_format().as_str() {
-                        "mpc" => ExportConfig::Mpc,
-                        _ => ExportConfig::Pdf(page_size()),
-                    };
-                    props.on_generate.call(config);
-                },
-                "Generate"
+            if let Some(p) = (props.progress)() {
+                div { class: "flex flex-col gap-2 mt-2",
+                    div { class: "w-full bg-gray-200 rounded-full h-4 overflow-hidden",
+                        div {
+                            class: "bg-blue-600 h-full transition-all duration-300",
+                            style: "width: {p * 100.0}%",
+                        }
+                    }
+                    div { class: "text-xs text-center text-gray-500 font-medium",
+                        "{ (p * 100.0) as u32 }%"
+                    }
+                }
+            } else {
+                button {
+                    class: "w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-sm transition-colors mt-2",
+                    onclick: move |_| {
+                        let config = match export_format().as_str() {
+                            "mpc" => ExportConfig::Mpc,
+                            _ => ExportConfig::Pdf(page_size()),
+                        };
+                        props.on_generate.call(config);
+                    },
+                    "Generate"
+                }
             }
         }
     }

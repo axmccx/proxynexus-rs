@@ -6,6 +6,8 @@ use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::generate_pdf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use tracing::{error, info};
 use web_time::Instant;
 
@@ -22,9 +24,31 @@ pub async fn run_export(
     mut db_signal: Signal<DbStorage>,
     active_source: ActiveSource,
     config: ExportConfig,
+    mut progress_signal: Signal<Option<f32>>,
 ) {
     analytics::start_capture();
     let start_time = Instant::now();
+    progress_signal.set(Some(0.0));
+
+    let atomic_progress = Arc::new(AtomicU32::new(0));
+    let atomic_progress_clone = atomic_progress.clone();
+
+    // Background task to update the UI signal from the atomic value
+    let mut update_task = Some(spawn(async move {
+        loop {
+            let val = atomic_progress_clone.load(Ordering::Relaxed);
+            let p = val as f32 / 1000.0;
+            progress_signal.set(Some(p));
+            if val >= 1000 {
+                break;
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            tokio::time::sleep(std::time::Duration::from_millis(16)).await;
+            #[cfg(target_arch = "wasm32")]
+            gloo_timers::future::sleep(std::time::Duration::from_millis(16)).await;
+        }
+    }));
 
     #[cfg(not(target_arch = "wasm32"))]
     let provider = {
@@ -56,6 +80,10 @@ pub async fn run_export(
     };
 
     info!("Starting {} export", meta.format);
+
+    let progress_callback = Some(Box::new(move |p: f32| {
+        atomic_progress.store((p * 1000.0) as u32, Ordering::Relaxed);
+    }) as Box<dyn Fn(f32) + Send + Sync>);
 
     let (source_text, source_type, resolved_printings) = {
         let mut db = db_signal.write();
@@ -101,8 +129,10 @@ pub async fn run_export(
 
     let result = match resolved_printings {
         Ok(printings) => match config {
-            ExportConfig::Pdf(page_size) => generate_pdf(printings, &provider, page_size).await,
-            ExportConfig::Mpc => generate_mpc_zip(printings, &provider).await,
+            ExportConfig::Pdf(page_size) => {
+                generate_pdf(printings, &provider, page_size, progress_callback).await
+            }
+            ExportConfig::Mpc => generate_mpc_zip(printings, &provider, progress_callback).await,
         },
         Err(e) => Err(e),
     };
@@ -134,6 +164,10 @@ pub async fn run_export(
         }
     }
 
+    if let Some(task) = update_task.take() {
+        task.cancel();
+    }
+
     analytics::send_report(analytics::GenerationReport {
         format: meta.format.to_string(),
         page_size: meta.page_size,
@@ -143,6 +177,8 @@ pub async fn run_export(
         source_text,
         error_message,
     });
+
+    progress_signal.set(None);
 }
 
 #[cfg(not(target_arch = "wasm32"))]

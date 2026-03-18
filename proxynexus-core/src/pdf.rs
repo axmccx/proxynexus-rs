@@ -59,6 +59,7 @@ pub async fn generate_pdf(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     page_size: PageSize,
+    progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut image_keys: Vec<String> = Vec::new();
     for p in &printings {
@@ -67,6 +68,9 @@ pub async fn generate_pdf(
             image_keys.push(part.image_key.clone());
         }
     }
+
+    let total_images = image_keys.len();
+    let mut processed_images: usize = 0;
 
     let mut document = Document::new();
     let (page_width, page_height) = page_size.dimensions();
@@ -102,6 +106,20 @@ pub async fn generate_pdf(
             surface.push_transform(&Transform::from_translate(pos_x, pos_y));
             surface.draw_image(image, size);
             surface.pop();
+
+            processed_images += 1;
+            if let Some(ref cb) = progress
+                && total_images > 0
+            {
+                cb(processed_images as f32 / total_images as f32);
+            }
+
+            if processed_images.is_multiple_of(8) || processed_images == total_images {
+                #[cfg(not(target_arch = "wasm32"))]
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                #[cfg(target_arch = "wasm32")]
+                gloo_timers::future::TimeoutFuture::new(0).await;
+            }
 
             info!("Runtime for image {}: {:?}", image_key, start.elapsed());
         }

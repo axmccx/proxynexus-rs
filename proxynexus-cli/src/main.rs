@@ -370,7 +370,7 @@ async fn handle_generate(
                 }
             };
 
-            let pdf_bytes = generate_pdf(printings, image_provider, page_size_enum).await?;
+            let pdf_bytes = generate_pdf(printings, image_provider, page_size_enum, None).await?;
 
             std::fs::write(&output_path, pdf_bytes)?;
             println!("PDF created successfully: {:?}", output_path);
@@ -404,7 +404,7 @@ async fn handle_generate(
                 }
             };
 
-            let mpc_bytes = generate_mpc_zip(printings, image_provider).await?;
+            let mpc_bytes = generate_mpc_zip(printings, image_provider, None).await?;
 
             std::fs::write(&output_path, mpc_bytes)?;
             info!("runtime: {:?}", start.elapsed());
