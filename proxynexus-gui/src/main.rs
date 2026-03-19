@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
 use proxynexus_core::card_store::normalize_title;
 use proxynexus_core::db_storage::DbStorage;
+use proxynexus_core::models::Printing;
 use proxynexus_core::query::{apply_variant_overrides, resolve_query_printings};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -14,7 +15,7 @@ pub mod analytics;
 mod components;
 mod export;
 use components::export_controls::ExportControls;
-use components::preview_grid::PreviewGrid;
+use components::preview_grid::{PreviewGrid, VariantSelector, VariantSelectorState};
 use components::source_selector::{ActiveSource, SourceSelector};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -57,7 +58,6 @@ fn init_tracing() {
     if analytics::is_enabled() {
         let _ = registry.with(analytics::LogCaptureLayer).try_init();
     } else {
-        info!("Analytics disabled: POSTHOG_API_KEY not set");
         let _ = registry.try_init();
     }
 }
@@ -183,13 +183,10 @@ async fn hydrate_wasm_db(db: &mut DbStorage) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to read init.sql text: {}", e))?;
 
-    info!("Executing init.sql (size: {} bytes)...", sql.len());
-
     db.execute(&sql)
         .await
         .map_err(|e| format!("Hydration execution error: {}", e))?;
 
-    info!("WASM Hydration Complete!");
     Ok(())
 }
 
@@ -241,6 +238,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let mut global_overrides = use_signal(HashMap::<String, String>::new);
     let mut index_overrides = use_signal(HashMap::<(String, usize), String>::new);
 
+    let mut open_variant_selector = use_signal(|| None::<VariantSelectorState>);
+
     use_effect(move || {
         let current_source = active_source();
 
@@ -280,7 +279,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
         }
     });
 
-    let final_result = use_memo(move || {
+    let ordered_printings = use_memo(move || {
         let res = raw_data_resource.read();
         let res_val = res.as_ref()?;
 
@@ -298,9 +297,78 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
         }
     });
 
+    let printings_by_title = use_memo(move || {
+        let res = ordered_printings.read();
+        let (printings, available) = res.as_ref()?.as_ref().ok()?;
+
+        let mut grouped = HashMap::<String, Vec<Printing>>::new();
+        for p in printings {
+            grouped
+                .entry(normalize_title(&p.card_title))
+                .or_default()
+                .push(p.clone());
+        }
+        Some((grouped, available.clone()))
+    });
+
+    let variant_selector_overlay = if let Some(state) = open_variant_selector() {
+        let (x, y, w, _h) = state.rect;
+        let left = x + w + 8.0;
+
+        if let Some((grouped, available)) = printings_by_title.read().as_ref() {
+            let title_norm = state.id.0.clone();
+            let occurrence = state.id.1;
+
+            if let Some(group) = grouped.get(&title_norm) {
+                if let Some(printing) = group.get(occurrence) {
+                    if let Some(variants) = available.get(&title_norm) {
+                        let total_copies = group.len();
+
+                        rsx! {
+                            div {
+                                class: "fixed inset-0 z-[1000] pointer-events-none",
+                                div {
+                                    class: "absolute pointer-events-auto",
+                                    style: "top: {y}px; left: {left}px;",
+                                    VariantSelector {
+                                        printing: printing.clone(),
+                                        variants: variants.clone(),
+                                        occurrence,
+                                        total_copies,
+                                        on_close: move |_| open_variant_selector.set(None),
+                                        on_override: move |(apply_to_all, variant_str): (bool, String)| {
+                                            let normalized = title_norm.clone();
+                                            if apply_to_all {
+                                                global_overrides.write().insert(normalized.clone(), variant_str);
+                                                index_overrides.write().retain(|(t, _), _| t != &normalized);
+                                                open_variant_selector.set(None);
+                                            } else {
+                                                index_overrides.write().insert((normalized, occurrence), variant_str);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        rsx! { "" }
+                    }
+                } else {
+                    rsx! { "" }
+                }
+            } else {
+                rsx! { "" }
+            }
+        } else {
+            rsx! { "" }
+        }
+    } else {
+        rsx! { "" }
+    };
+
     rsx! {
         div {
-            class: "absolute inset-0 flex overflow-y-auto overflow-x-hidden select-none bg-gray-50",
+            class: "absolute inset-0 flex overflow-hidden select-none bg-gray-50",
             onmousemove: move |evt| {
                 let current_x = evt.data.client_coordinates().x;
 
@@ -317,25 +385,19 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             },
 
             div {
-                class: "flex-1 flex flex-col min-w-0 p-6",
+                class: "flex-1 flex flex-col min-w-0 p-6 overflow-y-auto",
                 style: "z-index: 20;",
-                if let Some(result) = final_result.read().as_ref() {
+                if let Some(result) = ordered_printings.read().as_ref() {
                     match result {
                         Ok((printings, _)) if printings.is_empty() => rsx! {
                             div { class: "text-gray-500", "Preview of selected cards..." }
                         },
                         Ok((printings, available)) => {
-                            let mut card_counts = HashMap::new();
-                            for p in printings.iter() {
-                                let normalized = normalize_title(&p.card_title);
-                                *card_counts.entry(normalized).or_insert(0) += 1;
-                            }
-
                             rsx! {
                                 PreviewGrid {
                                     printings: printings.clone(),
                                     available_variants: available.clone(),
-                                    card_counts,
+                                    open_variant_selector,
                                     on_override: move |(occurrence, apply_to_all, title, variant_str): (usize, bool, String, String)| {
                                         let normalized = normalize_title(&title);
                                         if apply_to_all {
@@ -358,7 +420,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             }
 
             div {
-                class: "sticky top-0 h-screen w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors flex-shrink-0",
+                class: "h-full w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors flex-shrink-0",
                 style: "z-index: 15;",
                 onmousedown: move |evt| {
                     evt.prevent_default();
@@ -368,7 +430,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
             div {
                 style: "width: {sidebar_width()}px; z-index: 10;",
-                class: "sticky top-0 h-screen bg-white flex-shrink-0 flex flex-col border-l border-gray-200",
+                class: "h-full bg-white flex-shrink-0 flex flex-col border-l border-gray-200",
                 SourceSelector { source_state: active_source, db_signal }
                 ExportControls {
                     progress,
@@ -378,6 +440,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                     }
                 }
             }
+
+            {variant_selector_overlay}
         }
     }
 }

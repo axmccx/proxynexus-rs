@@ -1,6 +1,13 @@
 use dioxus::prelude::*;
 use proxynexus_core::models::Printing;
 use std::collections::HashMap;
+use std::rc::Rc;
+
+#[derive(Clone, PartialEq)]
+pub struct VariantSelectorState {
+    pub id: (String, usize),
+    pub rect: (f64, f64, f64, f64),
+}
 
 fn build_image_url(image_key: &str) -> String {
     #[cfg(feature = "desktop")]
@@ -18,17 +25,17 @@ fn build_image_url(image_key: &str) -> String {
 pub struct PreviewGridProps {
     pub printings: Vec<Printing>,
     pub available_variants: HashMap<String, Vec<Printing>>,
-    pub card_counts: HashMap<String, usize>,
     pub on_override: EventHandler<(usize, bool, String, String)>,
+    pub open_variant_selector: Signal<Option<VariantSelectorState>>,
 }
 
 #[component]
 pub fn PreviewGrid(props: PreviewGridProps) -> Element {
-    let mut open_popover = use_signal(|| None::<(String, usize)>);
+    let mut open_variant_selector = props.open_variant_selector;
+    let mut mounted_elements = use_signal(HashMap::<(String, usize), Rc<MountedData>>::new);
 
     let printings = props.printings.clone();
     let available_variants = props.available_variants.clone();
-    let card_counts = props.card_counts.clone();
 
     let mut occurrence_tracker = HashMap::<String, usize>::new();
 
@@ -42,13 +49,23 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                     *occurrence_tracker.get_mut(&title_normalized).unwrap() += 1;
                     let identity = (title_normalized.clone(), occurrence);
 
-                    let is_open = open_popover() == Some(identity.clone());
+                    let is_open = if let Some(state) = open_variant_selector.read().as_ref() {
+                        state.id == identity
+                    } else {
+                        false
+                    };
                     let z_class = if is_open { "z-50" } else { "" };
 
                     rsx! {
                         div {
                             key: "{title_normalized}-{occurrence}-front",
                             class: "relative group w-[200px] shadow-lg aspect-[2.5/3.5] bg-gray-400 shrink-0 {z_class}",
+                            onmounted: {
+                                let identity = identity.clone();
+                                move |evt| {
+                                    mounted_elements.write().insert(identity.clone(), evt.data());
+                                }
+                            },
 
                             div {
                                 class: "w-full h-full overflow-hidden",
@@ -67,10 +84,19 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                         onclick: {
                                             let identity = identity.clone();
                                             move |_| {
-                                                if open_popover() == Some(identity.clone()) {
-                                                    open_popover.set(None);
-                                                } else {
-                                                    open_popover.set(Some(identity.clone()));
+                                                if is_open {
+                                                    open_variant_selector.set(None);
+                                                } else if let Some(mounted) = mounted_elements.read().get(&identity) {
+                                                    let mounted = mounted.clone();
+                                                    let identity = identity.clone();
+                                                    spawn(async move {
+                                                        if let Ok(rect) = mounted.get_client_rect().await {
+                                                            open_variant_selector.set(Some(VariantSelectorState {
+                                                                id: identity,
+                                                                rect: (rect.origin.x, rect.origin.y, rect.size.width, rect.size.height),
+                                                            }));
+                                                        }
+                                                    });
                                                 }
                                             }
                                         },
@@ -86,26 +112,6 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                                 stroke_linecap: "round",
                                                 stroke_linejoin: "round",
                                                 d: "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                                            }
-                                        }
-                                    }
-
-                                    if open_popover() == Some(identity.clone()) {
-                                        PopoverMenu {
-                                            printing: printing.clone(),
-                                            variants: variants.clone(),
-                                            occurrence,
-                                            total_copies: *card_counts.get(&title_normalized).unwrap_or(&1),
-                                            on_close: move |_| open_popover.set(None),
-                                            on_override: {
-                                                let title = printing.card_title.clone();
-                                                let on_override = props.on_override;
-                                                move |(apply_to_all, variant_str): (bool, String)| {
-                                                    on_override.call((occurrence, apply_to_all, title.clone(), variant_str));
-                                                    if apply_to_all {
-                                                        open_popover.set(None);
-                                                    }
-                                                }
                                             }
                                         }
                                     }
@@ -132,17 +138,17 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
 }
 
 #[derive(Props, Clone, PartialEq)]
-struct PopoverMenuProps {
-    printing: Printing,
-    variants: Vec<Printing>,
-    occurrence: usize,
-    total_copies: usize,
-    on_close: EventHandler<()>,
-    on_override: EventHandler<(bool, String)>,
+pub struct VariantSelectorProps {
+    pub printing: Printing,
+    pub variants: Vec<Printing>,
+    pub occurrence: usize,
+    pub total_copies: usize,
+    pub on_close: EventHandler<()>,
+    pub on_override: EventHandler<(bool, String)>,
 }
 
 #[component]
-fn PopoverMenu(props: PopoverMenuProps) -> Element {
+pub fn VariantSelector(props: VariantSelectorProps) -> Element {
     let mut selected_variant_str = use_signal(|| None::<String>);
     let variants = props.variants.clone();
     let current_variant_str = format!(
@@ -152,7 +158,7 @@ fn PopoverMenu(props: PopoverMenuProps) -> Element {
 
     rsx! {
         div {
-            class: "absolute top-0 left-full ml-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 p-4 flex flex-col gap-3 max-w-[400px]",
+            class: "bg-white rounded-lg shadow-2xl border border-gray-200 p-4 flex flex-col gap-3 max-w-[400px]",
 
             div { class: "flex justify-between items-center",
                 h3 { class: "text-sm font-bold text-gray-800", "Select Variant" }
