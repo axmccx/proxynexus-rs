@@ -42,10 +42,13 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                     *occurrence_tracker.get_mut(&title_normalized).unwrap() += 1;
                     let identity = (title_normalized.clone(), occurrence);
 
+                    let is_open = open_popover() == Some(identity.clone());
+                    let z_class = if is_open { "z-50" } else { "" };
+
                     rsx! {
                         div {
                             key: "{title_normalized}-{occurrence}-front",
-                            class: "relative group w-[200px] shadow-lg aspect-[2.5/3.5] bg-gray-400 shrink-0",
+                            class: "relative group w-[200px] shadow-lg aspect-[2.5/3.5] bg-gray-400 shrink-0 {z_class}",
 
                             div {
                                 class: "w-full h-full overflow-hidden",

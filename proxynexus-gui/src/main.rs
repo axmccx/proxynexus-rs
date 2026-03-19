@@ -300,7 +300,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
     rsx! {
         div {
-            class: "absolute inset-0 flex overflow-hidden select-none",
+            class: "absolute inset-0 flex overflow-y-auto overflow-x-hidden select-none bg-gray-50",
             onmousemove: move |evt| {
                 let current_x = evt.data.client_coordinates().x;
 
@@ -317,7 +317,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             },
 
             div {
-                class: "flex-1 flex flex-col bg-gray-50 min-w-0 p-6 overflow-auto",
+                class: "flex-1 flex flex-col min-w-0 p-6",
+                style: "z-index: 20;",
                 if let Some(result) = final_result.read().as_ref() {
                     match result {
                         Ok((printings, _)) if printings.is_empty() => rsx! {
@@ -357,7 +358,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             }
 
             div {
-                class: "w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors flex-shrink-0 z-10",
+                class: "sticky top-0 h-screen w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors flex-shrink-0",
+                style: "z-index: 15;",
                 onmousedown: move |evt| {
                     evt.prevent_default();
                     drag_state.set(Some((evt.data.client_coordinates().x, sidebar_width())));
@@ -365,8 +367,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             }
 
             div {
-                style: "width: {sidebar_width()}px;",
-                class: "bg-white flex-shrink-0 flex flex-col h-full border-l border-gray-200",
+                style: "width: {sidebar_width()}px; z-index: 10;",
+                class: "sticky top-0 h-screen bg-white flex-shrink-0 flex flex-col border-l border-gray-200",
                 SourceSelector { source_state: active_source, db_signal }
                 ExportControls {
                     progress,
