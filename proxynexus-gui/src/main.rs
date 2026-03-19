@@ -326,10 +326,13 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
                         rsx! {
                             div {
-                                class: "fixed inset-0 z-[1000] pointer-events-none",
+                                class: "fixed inset-0 z-[1000]",
+                                onclick: move |_| open_variant_selector.set(None),
                                 div {
                                     class: "absolute pointer-events-auto",
                                     style: "top: {y}px; left: {left}px;",
+                                    onclick: move |evt| evt.stop_propagation(),
+                                    onwheel: move |evt| evt.stop_propagation(),
                                     VariantSelector {
                                         printing: printing.clone(),
                                         variants: variants.clone(),
