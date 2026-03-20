@@ -15,8 +15,9 @@ pub mod analytics;
 mod components;
 mod export;
 use components::export_controls::ExportControls;
-use components::preview_grid::{PreviewGrid, VariantSelector, VariantSelectorState};
+use components::preview_grid::PreviewGrid;
 use components::source_selector::{ActiveSource, SourceSelector};
+use components::variant_selector::{VariantSelector, VariantSelectorState};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -326,28 +327,22 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
 
                         rsx! {
                             div {
-                                class: "fixed inset-0 z-[1000]",
-                                onclick: move |_| open_variant_selector.set(None),
-                                div {
-                                    class: "absolute pointer-events-auto",
-                                    style: "top: {y}px; left: {left}px;",
-                                    onclick: move |evt| evt.stop_propagation(),
-                                    onwheel: move |evt| evt.stop_propagation(),
-                                    VariantSelector {
-                                        printing: printing.clone(),
-                                        variants: variants.clone(),
-                                        occurrence,
-                                        total_copies,
-                                        on_close: move |_| open_variant_selector.set(None),
-                                        on_override: move |(apply_to_all, variant_str): (bool, String)| {
-                                            let normalized = title_norm.clone();
-                                            if apply_to_all {
-                                                global_overrides.write().insert(normalized.clone(), variant_str);
-                                                index_overrides.write().retain(|(t, _), _| t != &normalized);
-                                                open_variant_selector.set(None);
-                                            } else {
-                                                index_overrides.write().insert((normalized, occurrence), variant_str);
-                                            }
+                                class: "absolute pointer-events-auto z-[1000]",
+                                style: "top: {y}px; left: {left}px;",
+                                onclick: move |evt| evt.stop_propagation(),
+                                VariantSelector {
+                                    printing: printing.clone(),
+                                    variants: variants.clone(),
+                                    total_copies,
+                                    on_close: move |_| open_variant_selector.set(None),
+                                    on_override: move |(apply_to_all, variant_str): (bool, String)| {
+                                        let normalized = title_norm.clone();
+                                        if apply_to_all {
+                                            global_overrides.write().insert(normalized.clone(), variant_str);
+                                            index_overrides.write().retain(|(t, _), _| t != &normalized);
+                                            open_variant_selector.set(None);
+                                        } else {
+                                            index_overrides.write().insert((normalized, occurrence), variant_str);
                                         }
                                     }
                                 }
@@ -372,6 +367,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     rsx! {
         div {
             class: "absolute inset-0 flex overflow-hidden select-none bg-gray-50",
+            onclick: move |_| open_variant_selector.set(None),
             onmousemove: move |evt| {
                 let current_x = evt.data.client_coordinates().x;
 
@@ -402,15 +398,6 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                                     printings: printings.clone(),
                                     available_variants: available.clone(),
                                     open_variant_selector,
-                                    on_override: move |(occurrence, apply_to_all, title, variant_str): (usize, bool, String, String)| {
-                                        let normalized = normalize_title(&title);
-                                        if apply_to_all {
-                                            global_overrides.write().insert(normalized.clone(), variant_str);
-                                            index_overrides.write().retain(|(t, _), _| t != &normalized);
-                                        } else {
-                                            index_overrides.write().insert((normalized, occurrence), variant_str);
-                                        }
-                                    }
                                 }
                             }
                         },
