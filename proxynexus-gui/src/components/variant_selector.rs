@@ -29,9 +29,9 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
 
     rsx! {
         div {
-            class: "bg-white rounded-lg shadow-2xl border border-gray-200 p-4 flex flex-col gap-3 max-w-[400px]",
+            class: "bg-white rounded-lg shadow-2xl border-2 border-gray-300 p-4 flex flex-col gap-3 w-fit",
 
-            div { class: "flex justify-between items-center",
+            div { class: "flex justify-between items-center gap-4",
                 h3 { class: "text-sm font-bold text-gray-800", "Select Variant" }
                 button {
                     class: "text-gray-400 hover:text-gray-600",
@@ -53,7 +53,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
             }
 
             div {
-                class: "flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300",
+                class: "flex flex-wrap gap-2 max-w-[650px]",
                 for v in variants.into_iter() {
                     {
                         let v_str = format!("{}:{}:{}", v.variant, v.collection, v.pack_code);
@@ -61,7 +61,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
 
                         rsx! {
                             button {
-                                class: format!("relative w-[80px] shrink-0 rounded overflow-hidden aspect-[2.5/3.5] border-2 transition-all {}",
+                                class: format!("relative w-[150px] shrink-0 rounded overflow-hidden aspect-[2.5/3.5] border-2 transition-all {}",
                                     if is_selected {
                                         "border-blue-500 shadow-md ring-2 ring-blue-500 ring-offset-1"
                                     } else {
