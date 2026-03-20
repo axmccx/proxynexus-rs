@@ -39,66 +39,55 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                         false
                     };
 
+                    let has_variants = available_variants.get(&title_normalized).is_some_and(|v| v.len() > 1);
+                    let cursor_class = if has_variants { "cursor-pointer" } else { "" };
+
                     rsx! {
                         div {
                             key: "{title_normalized}-{occurrence}-front",
-                            class: "relative group w-[200px] shadow-lg aspect-[2.5/3.5] bg-gray-400 shrink-0",
+                            class: "relative group w-[200px] aspect-[2.5/3.5] shrink-0 {cursor_class}",
                             onmounted: {
                                 let identity = identity.clone();
                                 move |evt| {
                                     mounted_elements.write().insert(identity.clone(), evt.data());
                                 }
                             },
+                            onclick: {
+                                let identity = identity.clone();
+                                move |evt| {
+                                    if has_variants {
+                                        evt.stop_propagation();
+                                        if is_open {
+                                            open_variant_selector.set(None);
+                                        } else if let Some(mounted) = mounted_elements.read().get(&identity) {
+                                            let mounted = mounted.clone();
+                                            let identity = identity.clone();
+                                            spawn(async move {
+                                                if let Ok(rect) = mounted.get_client_rect().await {
+                                                    open_variant_selector.set(Some(VariantSelectorState {
+                                                        id: identity,
+                                                        rect: (rect.origin.x, rect.origin.y, rect.size.width, rect.size.height),
+                                                    }));
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            },
+
+                            if has_variants {
+                                div {
+                                    class: "absolute -inset-0.5 bg-cyan-500 rounded-lg blur opacity-100"
+                                }
+                            }
 
                             div {
-                                class: "w-full h-full overflow-hidden",
+                                class: "relative w-full h-full shadow-lg bg-gray-400 overflow-hidden",
                                 img {
                                     src: "{build_image_url(&printing.image_key)}",
                                     crossorigin: "anonymous",
                                     class: "w-full h-full object-cover",
                                     alt: "{printing.card_title}",
-                                }
-                            }
-
-                            if let Some(variants) = available_variants.get(&title_normalized) {
-                                if variants.len() > 1 {
-                                    button {
-                                        class: "absolute top-2 right-2 p-1.5 bg-gray-900 bg-opacity-70 hover:bg-opacity-90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10",
-                                        onclick: {
-                                            let identity = identity.clone();
-                                            move |evt| {
-                                                evt.stop_propagation();
-                                                if is_open {
-                                                    open_variant_selector.set(None);
-                                                } else if let Some(mounted) = mounted_elements.read().get(&identity) {
-                                                    let mounted = mounted.clone();
-                                                    let identity = identity.clone();
-                                                    spawn(async move {
-                                                        if let Ok(rect) = mounted.get_client_rect().await {
-                                                            open_variant_selector.set(Some(VariantSelectorState {
-                                                                id: identity,
-                                                                rect: (rect.origin.x, rect.origin.y, rect.size.width, rect.size.height),
-                                                            }));
-                                                        }
-                                                    });
-                                                }
-                                            }
-                                        },
-                                        title: "Change Variant",
-                                        svg {
-                                            xmlns: "http://www.w3.org/2000/svg",
-                                            fill: "none",
-                                            view_box: "0 0 24 24",
-                                            stroke_width: "1.5",
-                                            stroke: "currentColor",
-                                            class: "w-5 h-5",
-                                            path {
-                                                stroke_linecap: "round",
-                                                stroke_linejoin: "round",
-                                                d: "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
