@@ -19,6 +19,7 @@ impl Default for ActiveSource {
 pub struct SourceSelectorProps {
     pub source_state: Signal<ActiveSource>,
     pub db_signal: Signal<DbStorage>,
+    pub on_source_changed: EventHandler<()>,
 }
 
 #[component]
@@ -54,6 +55,9 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 button {
                     class: if tab() == "list" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
                     onclick: move |_| {
+                        if tab() != "list" {
+                            props.on_source_changed.call(());
+                        }
                         tab.set("list");
                         source_state.set(ActiveSource::Cardlist(list_text()));
                     },
@@ -62,6 +66,9 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 button {
                     class: if tab() == "set" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
                     onclick: move |_| {
+                        if tab() != "set" {
+                            props.on_source_changed.call(());
+                        }
                         tab.set("set");
                         source_state.set(ActiveSource::SetName(set_name()));
                     },
@@ -70,6 +77,9 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 button {
                     class: if tab() == "nrdb" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
                     onclick: move |_| {
+                        if tab() != "nrdb" {
+                            props.on_source_changed.call(());
+                        }
                         tab.set("nrdb");
                         source_state.set(ActiveSource::NrdbUrl(nrdb_url()));
                     },
@@ -94,6 +104,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                         class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm",
                         value: "{set_name}",
                         onchange: move |evt| {
+                            props.on_source_changed.call(());
                             set_name.set(evt.value());
                             source_state.set(ActiveSource::SetName(evt.value()));
                         },
@@ -112,6 +123,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                         placeholder: "https://netrunnerdb.com/en/decklist/...",
                         value: "{nrdb_url}",
                         oninput: move |evt| {
+                            props.on_source_changed.call(());
                             nrdb_url.set(evt.value());
                             source_state.set(ActiveSource::NrdbUrl(evt.value()));
                         }

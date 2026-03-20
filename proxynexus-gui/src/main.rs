@@ -240,6 +240,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let mut index_overrides = use_signal(HashMap::<(String, usize), String>::new);
 
     let mut open_variant_selector = use_signal(|| None::<VariantSelectorState>);
+    let mut is_overrides_reset_pending = use_signal(|| false);
 
     use_effect(move || {
         let current_source = active_source();
@@ -248,17 +249,24 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             task.cancel();
         }
 
-        debounce_task.set(Some(spawn(async move {
-            sleep(300).await;
-            debounced_source.set(current_source);
-        })));
+        match current_source {
+            ActiveSource::Cardlist(_) => {
+                debounce_task.set(Some(spawn(async move {
+                    sleep(300).await;
+                    debounced_source.set(current_source);
+                })));
+            }
+            _ => {
+                debounced_source.set(current_source);
+            }
+        }
     });
 
     let raw_data_resource = use_resource(move || async move {
         let source = debounced_source();
         let mut db = db_signal.write();
 
-        match source {
+        let res = match source {
             ActiveSource::Cardlist(text) => {
                 if text.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
@@ -277,7 +285,15 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 }
                 resolve_query_printings(&NrdbUrl(url), &mut db).await
             }
+        };
+
+        if *is_overrides_reset_pending.peek() {
+            global_overrides.write().clear();
+            index_overrides.write().clear();
+            is_overrides_reset_pending.set(false);
         }
+
+        res
     });
 
     let ordered_printings = use_memo(move || {
@@ -423,7 +439,13 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             div {
                 style: "width: {sidebar_width()}px; z-index: 10;",
                 class: "h-full bg-white flex-shrink-0 flex flex-col border-l border-gray-200",
-                SourceSelector { source_state: active_source, db_signal }
+                SourceSelector {
+                    source_state: active_source,
+                    db_signal,
+                    on_source_changed: move |_| {
+                        is_overrides_reset_pending.set(true);
+                    }
+                }
                 ExportControls {
                     progress,
                     on_generate: move |config: components::export_controls::ExportConfig| {
