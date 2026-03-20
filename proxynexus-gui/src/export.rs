@@ -6,6 +6,8 @@ use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::mpc::generate_mpc_zip;
 use proxynexus_core::pdf::generate_pdf;
+use proxynexus_core::query::apply_variant_overrides;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tracing::{error, info};
@@ -25,6 +27,8 @@ pub async fn run_export(
     active_source: ActiveSource,
     config: ExportConfig,
     mut progress_signal: Signal<Option<f32>>,
+    global_overrides: HashMap<String, String>,
+    index_overrides: HashMap<(String, usize), String>,
 ) {
     analytics::start_capture();
     let start_time = Instant::now();
@@ -97,7 +101,13 @@ pub async fn run_export(
                 let res = async {
                     let reqs = source.to_card_requests(&mut store).await?;
                     let available = store.get_available_printings(&reqs).await?;
-                    store.resolve_printings(&reqs, &available)
+                    let base = store.resolve_printings(&reqs, &available)?;
+                    Ok(apply_variant_overrides(
+                        &base,
+                        &available,
+                        &global_overrides,
+                        &index_overrides,
+                    ))
                 }
                 .await;
                 (source_text, "Cardlist", res)
@@ -108,7 +118,13 @@ pub async fn run_export(
                 let res = async {
                     let reqs = source.to_card_requests(&mut store).await?;
                     let available = store.get_available_printings(&reqs).await?;
-                    store.resolve_printings(&reqs, &available)
+                    let base = store.resolve_printings(&reqs, &available)?;
+                    Ok(apply_variant_overrides(
+                        &base,
+                        &available,
+                        &global_overrides,
+                        &index_overrides,
+                    ))
                 }
                 .await;
                 (source_text, "SetName", res)
@@ -119,7 +135,13 @@ pub async fn run_export(
                 let res = async {
                     let reqs = source.to_card_requests(&mut store).await?;
                     let available = store.get_available_printings(&reqs).await?;
-                    store.resolve_printings(&reqs, &available)
+                    let base = store.resolve_printings(&reqs, &available)?;
+                    Ok(apply_variant_overrides(
+                        &base,
+                        &available,
+                        &global_overrides,
+                        &index_overrides,
+                    ))
                 }
                 .await;
                 (source_text, "NrdbUrl", res)

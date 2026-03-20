@@ -450,7 +450,14 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                     progress,
                     on_generate: move |config: components::export_controls::ExportConfig| {
                         let source = active_source();
-                        spawn(export::run_export(db_signal, source, config, progress));
+                        spawn(export::run_export(
+                            db_signal,
+                            source,
+                            config,
+                            progress,
+                            global_overrides.read().clone(),
+                            index_overrides.read().clone(),
+                        ));
                     }
                 }
             }
