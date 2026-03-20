@@ -57,7 +57,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                     rsx! {
                         div {
                             key: "{title_normalized}-{occurrence}-front",
-                            class: "relative group w-[200px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-110 hover:z-20 {cursor_class}",
+                            class: "relative group w-[250px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-105 hover:z-20 {cursor_class}",
                             onmounted: {
                                 let identity = identity.clone();
                                 move |evt| {
@@ -99,6 +99,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                     src: "{build_image_url(&printing.image_key)}",
                                     crossorigin: "anonymous",
                                     class: "w-full h-full object-cover",
+                                    style: "image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);",
                                     alt: "{printing.card_title}",
                                 }
                             }
@@ -111,6 +112,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                     src: "{build_image_url(&part.image_key)}",
                                     crossorigin: "anonymous",
                                     class: "w-full h-full object-cover",
+                                    style: "image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);",
                                     alt: "{printing.card_title} ({part.name})",
                                 }
                             }

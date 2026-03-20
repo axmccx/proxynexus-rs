@@ -80,6 +80,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     src: "{build_image_url(&v.image_key)}",
                                     crossorigin: "anonymous",
                                     class: "w-full h-full object-cover",
+                                    style: "image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);",
                                     alt: "{v.variant}",
                                 }
                             }
