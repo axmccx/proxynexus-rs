@@ -45,7 +45,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                     rsx! {
                         div {
                             key: "{title_normalized}-{occurrence}-front",
-                            class: "relative group w-[200px] aspect-[2.5/3.5] shrink-0 {cursor_class}",
+                            class: "relative group w-[200px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-110 hover:z-20 {cursor_class}",
                             onmounted: {
                                 let identity = identity.clone();
                                 move |evt| {
@@ -94,7 +94,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                         for (part_index, part) in printing.parts.iter().enumerate() {
                             div {
                                 key: "{title_normalized}-{occurrence}-{part_index}",
-                                class: "w-[200px] overflow-hidden shadow-lg aspect-[2.5/3.5] bg-gray-400 opacity-90 border-2 border-dashed border-gray-400 shrink-0",
+                                class: "relative w-[200px] overflow-hidden shadow-lg aspect-[2.5/3.5] bg-gray-400 opacity-90 border-2 border-dashed border-gray-400 shrink-0 transition-all duration-150 ease-in-out hover:scale-110 hover:z-20 hover:opacity-100",
                                 img {
                                     src: "{build_image_url(&part.image_key)}",
                                     crossorigin: "anonymous",
