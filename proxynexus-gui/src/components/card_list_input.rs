@@ -111,7 +111,7 @@ pub fn CardListInput(props: CardListInputProps) -> Element {
                 })
                 .collect();
 
-            matches.sort_by(|a, b| b.0.cmp(&a.0));
+            matches.sort_by_key(|b| std::cmp::Reverse(b.0));
             let top_matches: Vec<String> = matches.into_iter().take(5).map(|(_, s)| s).collect();
 
             if top_matches.is_empty() {

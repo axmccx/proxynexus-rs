@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_invalid_type)]
+
 use dioxus::prelude::*;
 use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
 use proxynexus_core::card_store::normalize_title;

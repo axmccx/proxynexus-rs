@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_invalid_type)]
+
 use crate::analytics;
 use crate::components::export_controls::ExportConfig;
 use crate::components::source_selector::ActiveSource;
