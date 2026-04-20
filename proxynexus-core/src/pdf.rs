@@ -419,7 +419,12 @@ mod tests {
     fn effective_gap_ignores_thickness_for_none_and_margins() {
         let base = PrintLayout::EdgeToEdge.gap_points();
         assert_eq!(
-            opts(CutLines::None, PrintLayout::EdgeToEdge, MAX_CUT_LINE_THICKNESS).effective_gap(),
+            opts(
+                CutLines::None,
+                PrintLayout::EdgeToEdge,
+                MAX_CUT_LINE_THICKNESS
+            )
+            .effective_gap(),
             base,
         );
         assert_eq!(
