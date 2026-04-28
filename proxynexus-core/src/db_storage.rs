@@ -14,9 +14,16 @@ struct MetaDbRow {
 }
 
 #[derive(FromGlueRow)]
+struct GameDbRow {
+    id: String,
+    display_name: String,
+}
+
+#[derive(FromGlueRow)]
 struct CollectionDbRow {
     id: i64,
     name: String,
+    game_id: String,
     version: Option<String>,
     language: Option<String>,
     added_date: String,
@@ -25,18 +32,26 @@ struct CollectionDbRow {
 
 #[derive(FromGlueRow)]
 struct PackDbRow {
-    code: String,
+    id: String,
+    game_id: String,
     name: String,
     date_release: Option<String>,
 }
 
 #[derive(FromGlueRow)]
 struct CardDbRow {
-    code: String,
+    id: String,
+    game_id: String,
     title: String,
     title_normalized: String,
-    pack_code: String,
-    side: String,
+    side: Option<String>,
+}
+
+#[derive(FromGlueRow)]
+struct CardVersionDbRow {
+    id: String,
+    card_id: String,
+    pack_id: String,
     quantity: i64,
 }
 
@@ -44,8 +59,10 @@ struct CardDbRow {
 struct PrintingDbRow {
     id: i64,
     collection_id: i64,
-    card_code: String,
-    variant: String,
+    card_id: String,
+    version_id: Option<String>,
+    is_official: bool,
+    variant: Option<String>,
     file_path: String,
     part: String,
 }
@@ -116,9 +133,15 @@ impl DbStorage {
                 value TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS games (
+                id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS collections (
                 id INTEGER PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
+                game_id TEXT NOT NULL,
                 version TEXT,
                 language TEXT,
                 added_date TEXT NOT NULL,
@@ -126,25 +149,34 @@ impl DbStorage {
             );
 
             CREATE TABLE IF NOT EXISTS packs (
-                code TEXT PRIMARY KEY,
+                id TEXT PRIMARY KEY,
+                game_id TEXT NOT NULL,
                 name TEXT NOT NULL,
                 date_release TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cards (
-                code TEXT PRIMARY KEY,
+                id TEXT PRIMARY KEY,
+                game_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 title_normalized TEXT NOT NULL,
-                pack_code TEXT NOT NULL,
-                side TEXT NOT NULL,
+                side TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS card_versions (
+                id TEXT PRIMARY KEY,
+                card_id TEXT NOT NULL,
+                pack_id TEXT NOT NULL,
                 quantity INTEGER NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS printings (
                 id INTEGER PRIMARY KEY,
                 collection_id INTEGER NOT NULL,
-                card_code TEXT NOT NULL,
-                variant TEXT NOT NULL,
+                card_id TEXT NOT NULL,
+                version_id TEXT,
+                is_official BOOLEAN NOT NULL,
+                variant TEXT,
                 file_path TEXT NOT NULL,
                 part TEXT NOT NULL
             );
@@ -180,11 +212,31 @@ impl DbStorage {
             }
         }
 
+        let game_payloads = self.execute("SELECT * FROM games").await?;
+        if let Some(payload) = game_payloads.into_iter().next() {
+            let rows: Vec<GameDbRow> = payload.rows_as()?;
+            for chunk in rows.chunks(500) {
+                sql.push_str("INSERT INTO games (id, display_name, is_active) VALUES ");
+                let values: Vec<String> = chunk
+                    .iter()
+                    .map(|row| {
+                        format!(
+                            "({}, {})",
+                            quote_sql_string(&row.id),
+                            quote_sql_string(&row.display_name)
+                        )
+                    })
+                    .collect();
+                sql.push_str(&values.join(", "));
+                sql.push_str(";\n");
+            }
+        }
+
         let pack_payloads = self.execute("SELECT * FROM packs").await?;
         if let Some(payload) = pack_payloads.into_iter().next() {
             let rows: Vec<PackDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO packs (code, name, date_release) VALUES ");
+                sql.push_str("INSERT INTO packs (id, game_id, name, date_release) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -193,8 +245,9 @@ impl DbStorage {
                             .as_ref()
                             .map_or("NULL".to_string(), |d| quote_sql_string(d));
                         format!(
-                            "({}, {}, {})",
-                            quote_sql_string(&row.code),
+                            "({}, {}, {}, {})",
+                            quote_sql_string(&row.id),
+                            quote_sql_string(&row.game_id),
                             quote_sql_string(&row.name),
                             date
                         )
@@ -209,17 +262,44 @@ impl DbStorage {
         if let Some(payload) = card_payloads.into_iter().next() {
             let rows: Vec<CardDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO cards (code, title, title_normalized, pack_code, side, quantity) VALUES ");
+                sql.push_str(
+                    "INSERT INTO cards (id, game_id, title, title_normalized, side) VALUES ",
+                );
+                let values: Vec<String> = chunk
+                    .iter()
+                    .map(|row| {
+                        let side = row
+                            .side
+                            .as_ref()
+                            .map_or("NULL".to_string(), |s| quote_sql_string(s));
+                        format!(
+                            "({}, {}, {}, {}, {})",
+                            quote_sql_string(&row.id),
+                            quote_sql_string(&row.game_id),
+                            quote_sql_string(&row.title),
+                            quote_sql_string(&row.title_normalized),
+                            side
+                        )
+                    })
+                    .collect();
+                sql.push_str(&values.join(", "));
+                sql.push_str(";\n");
+            }
+        }
+
+        let version_payloads = self.execute("SELECT * FROM card_versions").await?;
+        if let Some(payload) = version_payloads.into_iter().next() {
+            let rows: Vec<CardVersionDbRow> = payload.rows_as()?;
+            for chunk in rows.chunks(500) {
+                sql.push_str("INSERT INTO card_versions (id, card_id, pack_id, quantity) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
                         format!(
-                            "({}, {}, {}, {}, {}, {})",
-                            quote_sql_string(&row.code),
-                            quote_sql_string(&row.title),
-                            quote_sql_string(&row.title_normalized),
-                            quote_sql_string(&row.pack_code),
-                            quote_sql_string(&row.side),
+                            "({}, {}, {}, {})",
+                            quote_sql_string(&row.id),
+                            quote_sql_string(&row.card_id),
+                            quote_sql_string(&row.pack_id),
                             row.quantity
                         )
                     })
@@ -233,7 +313,7 @@ impl DbStorage {
         if let Some(payload) = coll_payloads.into_iter().next() {
             let rows: Vec<CollectionDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO collections (id, name, version, language, added_date, last_updated) VALUES ");
+                sql.push_str("INSERT INTO collections (id, name, game_id, version, language, added_date, last_updated) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -250,9 +330,10 @@ impl DbStorage {
                             .as_ref()
                             .map_or("NULL".to_string(), |d| quote_sql_string(d));
                         format!(
-                            "({}, {}, {}, {}, {}, {})",
+                            "({}, {}, {}, {}, {}, {}, {})",
                             row.id,
                             quote_sql_string(&row.name),
+                            quote_sql_string(&row.game_id),
                             version,
                             lang,
                             quote_sql_string(&row.added_date),
@@ -269,16 +350,26 @@ impl DbStorage {
         if let Some(payload) = print_payloads.into_iter().next() {
             let rows: Vec<PrintingDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO printings (id, collection_id, card_code, variant, file_path, part) VALUES ");
+                sql.push_str("INSERT INTO printings (id, collection_id, card_id, version_id, is_official, variant, file_path, part) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
+                        let variant = row
+                            .variant
+                            .as_ref()
+                            .map_or("NULL".to_string(), |v| quote_sql_string(v));
+                        let version_id = row
+                            .version_id
+                            .as_ref()
+                            .map_or("NULL".to_string(), |v| quote_sql_string(v));
                         format!(
-                            "({}, {}, {}, {}, {}, {})",
+                            "({}, {}, {}, {}, {}, {}, {}, {})",
                             row.id,
                             row.collection_id,
-                            quote_sql_string(&row.card_code),
-                            quote_sql_string(&row.variant),
+                            quote_sql_string(&row.card_id),
+                            version_id,
+                            if row.is_official { "TRUE" } else { "FALSE" },
+                            variant,
                             quote_sql_string(&row.file_path),
                             quote_sql_string(&row.part)
                         )
