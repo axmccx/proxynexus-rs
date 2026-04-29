@@ -1,11 +1,9 @@
 use crate::card_store::normalize_title;
 use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::Result;
-use crate::models::{Card, Pack};
+use crate::models::{NrdbCard, NrdbCardSet, NrdbPrinting, NrdbResponse};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
-use serde::Deserialize;
-use std::path::PathBuf;
 use tracing::{error, info};
 
 #[derive(FromGlueRow)]
@@ -16,17 +14,6 @@ struct MetaRow {
 #[derive(FromGlueRow)]
 struct CountRow {
     count: i64,
-}
-
-#[derive(Debug, Deserialize)]
-struct CardsResponse {
-    data: Vec<Card>,
-    last_updated: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct PacksResponse {
-    data: Vec<Pack>,
 }
 
 pub struct Catalog<'a> {
@@ -47,13 +34,7 @@ impl<'a> Catalog<'a> {
                 Ok(_) => info!("Card catalog seeded successfully!"),
                 Err(e) => {
                     error!("Failed to fetch catalog from NetrunnerDB: {}", e);
-                    error!(
-                        "If you do not have internet access, you can download the data manually:"
-                    );
-                    error!("  curl -o cards.json https://netrunnerdb.com/api/2.0/public/cards");
-                    error!("  curl -o packs.json https://netrunnerdb.com/api/2.0/public/packs");
-                    error!("Then use the CLI to import them:");
-                    error!("  proxynexus-cli catalog import cards.json packs.json");
+                    error!("Check your internet connection.");
                 }
             }
         }
@@ -61,66 +42,96 @@ impl<'a> Catalog<'a> {
         Ok(())
     }
 
+    async fn fetch_v3_endpoint<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        url: &str,
+    ) -> Result<Vec<T>> {
+        let mut all_data = Vec::new();
+        let mut current_url = Some(url.to_string());
+
+        while let Some(u) = current_url {
+            let json_str = reqwest::get(&u).await?.text().await?;
+
+            let response: NrdbResponse<T> = serde_json::from_str(&json_str)?;
+            all_data.extend(response.data);
+
+            current_url = response.links.and_then(|l| l.next);
+        }
+
+        Ok(all_data)
+    }
+
     pub async fn update_from_api(&mut self) -> Result<()> {
-        let cards_json = reqwest::get("https://netrunnerdb.com/api/2.0/public/cards")
-            .await?
-            .text()
+        let base_url = "https://api-preview.netrunnerdb.com/api/v3/public";
+
+        let sets: Vec<NrdbCardSet> = self
+            .fetch_v3_endpoint(&format!("{}/card_sets?page[size]=1000", base_url))
+            .await?;
+        let cards: Vec<NrdbCard> = self
+            .fetch_v3_endpoint(&format!("{}/cards?page[size]=1000", base_url))
+            .await?;
+        let printings: Vec<NrdbPrinting> = self
+            .fetch_v3_endpoint(&format!("{}/printings?page[size]=1000", base_url))
             .await?;
 
-        let packs_json = reqwest::get("https://netrunnerdb.com/api/2.0/public/packs")
-            .await?
-            .text()
-            .await?;
-
-        self.seed_from_json(&cards_json, &packs_json).await?;
+        self.seed_catalog(&sets, &cards, &printings).await?;
 
         Ok(())
     }
 
-    pub async fn update_catalog_from_files(
+    async fn seed_catalog(
         &mut self,
-        cards_path: &PathBuf,
-        packs_path: &PathBuf,
+        sets: &[NrdbCardSet],
+        cards: &[NrdbCard],
+        printings: &[NrdbPrinting],
     ) -> Result<()> {
-        let cards_json = std::fs::read_to_string(cards_path)?;
-        let packs_json = std::fs::read_to_string(packs_path)?;
-
-        self.seed_from_json(&cards_json, &packs_json).await?;
-
-        Ok(())
-    }
-
-    async fn seed_from_json(&mut self, cards_json: &str, packs_json: &str) -> Result<()> {
-        let cards_response: CardsResponse = serde_json::from_str(cards_json)?;
-        let packs_response: PacksResponse = serde_json::from_str(packs_json)?;
-
         self.db.execute("BEGIN").await?;
 
         self.db.execute("DELETE FROM cards").await?;
         self.db.execute("DELETE FROM packs").await?;
+        self.db.execute("DELETE FROM card_versions").await?;
 
-        for pack in packs_response.data {
-            let date = pack
+        let game_id = quote_sql_string("netrunner");
+
+        for set in sets {
+            let date = set
+                .attributes
                 .date_release
-                .map_or("NULL".to_string(), |d| quote_sql_string(&d));
+                .as_ref()
+                .map_or("NULL".to_string(), |d| quote_sql_string(d));
             let q = format!(
-                "INSERT INTO packs (code, name, date_release) VALUES ({}, {}, {})",
-                quote_sql_string(&pack.code),
-                quote_sql_string(&pack.name),
+                "INSERT INTO packs (id, game_id, name, date_release) VALUES ({}, {}, {}, {})",
+                quote_sql_string(&set.id),
+                game_id,
+                quote_sql_string(&set.attributes.name),
                 date
             );
             self.db.execute(&q).await?;
         }
 
-        for card in cards_response.data {
+        for card in cards {
             let q = format!(
-                "INSERT INTO cards (code, title, title_normalized, pack_code, side, quantity) VALUES ({}, {}, {}, {}, {}, {})",
-                quote_sql_string(&card.code),
-                quote_sql_string(&card.title),
-                quote_sql_string(&normalize_title(&card.title)),
-                quote_sql_string(&card.pack_code),
-                quote_sql_string(&card.side_code),
-                card.quantity
+                "INSERT INTO cards (id, game_id, title, title_normalized, side) VALUES ({}, {}, {}, {}, {})",
+                quote_sql_string(&card.id),
+                game_id,
+                quote_sql_string(&card.attributes.title),
+                quote_sql_string(&normalize_title(&card.attributes.title)),
+                quote_sql_string(&card.attributes.side_id)
+            );
+            self.db.execute(&q).await?;
+        }
+
+        for printing in printings {
+            let synthesized_id = format!(
+                "{}_{}",
+                printing.attributes.card_id, printing.attributes.card_set_id
+            );
+            let q = format!(
+                "INSERT INTO card_versions (id, card_id, pack_id, quantity) VALUES ({}, {}, {}, {})",
+                quote_sql_string(&synthesized_id),
+                quote_sql_string(&printing.attributes.card_id),
+                quote_sql_string(&printing.attributes.card_set_id),
+                printing.attributes.quantity
             );
             self.db.execute(&q).await?;
         }
@@ -130,7 +141,7 @@ impl<'a> Catalog<'a> {
             .await?;
         let q = format!(
             "INSERT INTO meta (key, value) VALUES ('catalog_version', {})",
-            quote_sql_string(&cards_response.last_updated)
+            quote_sql_string(&chrono::Utc::now().to_rfc3339())
         );
         self.db.execute(&q).await?;
 
@@ -170,7 +181,7 @@ impl<'a> Catalog<'a> {
     async fn get_card_count(&mut self) -> Result<i64> {
         let payloads = self
             .db
-            .execute("SELECT COUNT(*) AS count FROM cards")
+            .execute("SELECT COUNT(*) AS count FROM cards WHERE game_id = 'netrunner'")
             .await?;
 
         let count = match payloads.into_iter().next() {

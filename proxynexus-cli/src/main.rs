@@ -70,13 +70,6 @@ enum Commands {
 enum CatalogAction {
     Update,
     Info,
-    Import {
-        #[arg(short, long)]
-        cards: PathBuf,
-
-        #[arg(short, long)]
-        packs: PathBuf,
-    },
 }
 
 #[derive(Subcommand)]
@@ -334,16 +327,6 @@ async fn handle_catalog_action(
                     .await
                     .context("Failed to get catalog info")?
             );
-        }
-        CatalogAction::Import { cards, packs } => {
-            println!("Loading card data from local files...");
-            catalog
-                .update_catalog_from_files(&cards, &packs)
-                .await
-                .with_context(|| {
-                    format!("Failed to import catalog from {:?} and {:?}", cards, packs)
-                })?;
-            println!("Card catalog updated successfully!");
         }
     }
     Ok(())

@@ -216,7 +216,7 @@ impl DbStorage {
         if let Some(payload) = game_payloads.into_iter().next() {
             let rows: Vec<GameDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO games (id, display_name, is_active) VALUES ");
+                sql.push_str("INSERT INTO games (id, display_name) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
