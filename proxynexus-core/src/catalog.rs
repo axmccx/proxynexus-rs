@@ -1,39 +1,73 @@
-use crate::card_store::normalize_title;
 use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::Result;
-use crate::models::{NrdbCard, NrdbCardSet, NrdbPrinting, NrdbResponse};
+use crate::games::netrunner::adapter::NetrunnerAdapter;
+use async_trait::async_trait;
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
 use tracing::{error, info};
-
-#[derive(FromGlueRow)]
-struct MetaRow {
-    value: String,
-}
 
 #[derive(FromGlueRow)]
 struct CountRow {
     count: i64,
 }
 
-pub struct Catalog<'a> {
-    db: &'a mut DbStorage,
+pub struct Pack {
+    pub id: String,
+    pub name: String,
+    pub date_release: Option<String>,
 }
 
-impl<'a> Catalog<'a> {
+pub struct Card {
+    pub id: String,
+    pub title: String,
+    pub title_normalized: String,
+    pub side: Option<String>,
+}
+
+pub struct CardVersion {
+    pub card_id: String,
+    pub pack_id: String,
+    pub quantity: i64,
+}
+
+pub struct Catalog {
+    pub game_id: String,
+    pub display_name: String,
+    pub packs: Vec<Pack>,
+    pub cards: Vec<Card>,
+    pub card_versions: Vec<CardVersion>,
+}
+
+#[async_trait]
+pub trait CatalogAdapter: Send + Sync {
+    fn game_id(&self) -> &'static str;
+
+    fn game_name(&self) -> &'static str;
+
+    async fn fetch_catalog(&self) -> Result<Catalog>;
+}
+
+pub struct CatalogManager<'a> {
+    db: &'a mut DbStorage,
+    adapters: Vec<Box<dyn CatalogAdapter>>,
+}
+
+impl<'a> CatalogManager<'a> {
     pub fn new(db: &'a mut DbStorage) -> Self {
-        Self { db }
+        let adapters: Vec<Box<dyn CatalogAdapter>> = vec![Box::new(NetrunnerAdapter::new())];
+
+        Self { db, adapters }
     }
 
     pub async fn seed_if_empty(&mut self) -> Result<()> {
-        let count = self.get_card_count().await?;
+        let count = self.get_card_count(None).await?;
 
         if count == 0 {
-            info!("Seeding card catalog from NetrunnerDB API...");
+            info!("No card data found. Initializing local catalog database...");
             match self.update_from_api().await {
-                Ok(_) => info!("Card catalog seeded successfully!"),
+                Ok(_) => info!("Catalog initialization complete."),
                 Err(e) => {
-                    error!("Failed to fetch catalog from NetrunnerDB: {}", e);
+                    error!("Failed to fetch catalog: {}", e);
                     error!("Check your internet connection.");
                 }
             }
@@ -42,147 +76,130 @@ impl<'a> Catalog<'a> {
         Ok(())
     }
 
-    async fn fetch_v3_endpoint<T: for<'de> serde::Deserialize<'de>>(
-        &self,
-        url: &str,
-    ) -> Result<Vec<T>> {
-        let mut all_data = Vec::new();
-        let mut current_url = Some(url.to_string());
+    pub async fn update_from_api(&mut self) -> Result<()> {
+        let mut catalogs = Vec::new();
 
-        while let Some(u) = current_url {
-            let json_str = reqwest::get(&u).await?.text().await?;
+        for adapter in &self.adapters {
+            info!("Synchronizing {} catalog...", adapter.game_name());
 
-            let response: NrdbResponse<T> = serde_json::from_str(&json_str)?;
-            all_data.extend(response.data);
-
-            current_url = response.links.and_then(|l| l.next);
+            match adapter.fetch_catalog().await {
+                Ok(catalog) => {
+                    catalogs.push(catalog);
+                }
+                Err(e) => {
+                    error!("Failed to fetch {} catalog: {}", adapter.game_name(), e);
+                    return Err(e);
+                }
+            }
         }
 
-        Ok(all_data)
-    }
+        self.db.execute("BEGIN").await?;
 
-    pub async fn update_from_api(&mut self) -> Result<()> {
-        let base_url = "https://api-preview.netrunnerdb.com/api/v3/public";
+        self.db.execute("DELETE FROM card_versions").await?;
+        self.db.execute("DELETE FROM cards").await?;
+        self.db.execute("DELETE FROM packs").await?;
+        self.db.execute("DELETE FROM games").await?;
 
-        let sets: Vec<NrdbCardSet> = self
-            .fetch_v3_endpoint(&format!("{}/card_sets?page[size]=1000", base_url))
-            .await?;
-        let cards: Vec<NrdbCard> = self
-            .fetch_v3_endpoint(&format!("{}/cards?page[size]=1000", base_url))
-            .await?;
-        let printings: Vec<NrdbPrinting> = self
-            .fetch_v3_endpoint(&format!("{}/printings?page[size]=1000", base_url))
-            .await?;
+        for catalog in catalogs {
+            info!(
+                "Applying {} updates ({} cards, {} packs, {} card versions) to local database...",
+                catalog.display_name,
+                catalog.cards.len(),
+                catalog.packs.len(),
+                catalog.card_versions.len()
+            );
+            self.seed_catalog(&catalog).await?;
+        }
 
-        self.seed_catalog(&sets, &cards, &printings).await?;
+        self.db.execute("COMMIT").await?;
+
+        info!("Catalog synchronization complete.");
 
         Ok(())
     }
 
-    async fn seed_catalog(
-        &mut self,
-        sets: &[NrdbCardSet],
-        cards: &[NrdbCard],
-        printings: &[NrdbPrinting],
-    ) -> Result<()> {
-        self.db.execute("BEGIN").await?;
+    async fn seed_catalog(&mut self, catalog: &Catalog) -> Result<()> {
+        let q_ins_game = format!(
+            "INSERT INTO games (id, display_name) VALUES ({}, {})",
+            quote_sql_string(&catalog.game_id),
+            quote_sql_string(&catalog.display_name)
+        );
+        self.db.execute(&q_ins_game).await?;
 
-        self.db.execute("DELETE FROM cards").await?;
-        self.db.execute("DELETE FROM packs").await?;
-        self.db.execute("DELETE FROM card_versions").await?;
-
-        let game_id = quote_sql_string("netrunner");
-
-        for set in sets {
+        for set in &catalog.packs {
             let date = set
-                .attributes
                 .date_release
                 .as_ref()
                 .map_or("NULL".to_string(), |d| quote_sql_string(d));
             let q = format!(
                 "INSERT INTO packs (id, game_id, name, date_release) VALUES ({}, {}, {}, {})",
                 quote_sql_string(&set.id),
-                game_id,
-                quote_sql_string(&set.attributes.name),
+                quote_sql_string(&catalog.game_id),
+                quote_sql_string(&set.name),
                 date
             );
             self.db.execute(&q).await?;
         }
 
-        for card in cards {
+        for card in &catalog.cards {
+            let side = card
+                .side
+                .as_ref()
+                .map_or("NULL".to_string(), |s| quote_sql_string(s));
             let q = format!(
                 "INSERT INTO cards (id, game_id, title, title_normalized, side) VALUES ({}, {}, {}, {}, {})",
                 quote_sql_string(&card.id),
-                game_id,
-                quote_sql_string(&card.attributes.title),
-                quote_sql_string(&normalize_title(&card.attributes.title)),
-                quote_sql_string(&card.attributes.side_id)
+                quote_sql_string(&catalog.game_id),
+                quote_sql_string(&card.title),
+                quote_sql_string(&card.title_normalized),
+                side
             );
             self.db.execute(&q).await?;
         }
 
-        for printing in printings {
-            let synthesized_id = format!(
-                "{}_{}",
-                printing.attributes.card_id, printing.attributes.card_set_id
-            );
+        for card_version in &catalog.card_versions {
+            let synthesized_id = format!("{}_{}", card_version.card_id, card_version.pack_id);
             let q = format!(
                 "INSERT INTO card_versions (id, card_id, pack_id, quantity) VALUES ({}, {}, {}, {})",
                 quote_sql_string(&synthesized_id),
-                quote_sql_string(&printing.attributes.card_id),
-                quote_sql_string(&printing.attributes.card_set_id),
-                printing.attributes.quantity
+                quote_sql_string(&card_version.card_id),
+                quote_sql_string(&card_version.pack_id),
+                card_version.quantity
             );
             self.db.execute(&q).await?;
         }
-
-        self.db
-            .execute("DELETE FROM meta WHERE key = 'catalog_version'")
-            .await?;
-        let q = format!(
-            "INSERT INTO meta (key, value) VALUES ('catalog_version', {})",
-            quote_sql_string(&chrono::Utc::now().to_rfc3339())
-        );
-        self.db.execute(&q).await?;
-
-        self.db.execute("COMMIT").await?;
 
         Ok(())
     }
 
     pub async fn get_info(&mut self) -> Result<String> {
-        let count = self.get_card_count().await?;
+        let mut info = String::from("Card Catalog Info:\n");
 
-        let payloads = self
-            .db
-            .execute("SELECT value FROM meta WHERE key = 'catalog_version'")
-            .await?;
+        let adapter_info: Vec<(String, String)> = self
+            .adapters
+            .iter()
+            .map(|a| (a.game_id().to_string(), a.game_name().to_string()))
+            .collect();
 
-        let last_updated = match payloads.into_iter().next() {
-            Some(p) => p
-                .rows_as::<MetaRow>()?
-                .into_iter()
-                .next()
-                .map(|row| row.value)
-                .unwrap_or_else(|| "Unknown (bundled snapshot)".to_string()),
-            None => "Unknown (bundled snapshot)".to_string(),
-        };
-
-        let info = format!(
-            "Card Catalog Info:\n\
-         - Cards: {}\n\
-         - Last Updated: {}",
-            count, last_updated
-        );
+        for (game_id, game_name) in adapter_info {
+            let count = self.get_card_count(Some(&game_id)).await?;
+            info.push_str(&format!(" - {}: {} logical cards\n", game_name, count));
+        }
 
         Ok(info)
     }
 
-    async fn get_card_count(&mut self) -> Result<i64> {
-        let payloads = self
-            .db
-            .execute("SELECT COUNT(*) AS count FROM cards WHERE game_id = 'netrunner'")
-            .await?;
+    async fn get_card_count(&mut self, game_id: Option<&str>) -> Result<i64> {
+        let query = if let Some(gid) = game_id {
+            format!(
+                "SELECT COUNT(*) AS count FROM cards WHERE game_id = {}",
+                quote_sql_string(gid)
+            )
+        } else {
+            "SELECT COUNT(*) AS count FROM cards".to_string()
+        };
+
+        let payloads = self.db.execute(&query).await?;
 
         let count = match payloads.into_iter().next() {
             Some(p) => p

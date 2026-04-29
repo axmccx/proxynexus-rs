@@ -25,6 +25,7 @@ burn-store = { version = "0.21.0-pre.3", default-features = false, features = ["
 burn-wgpu = { version = "0.21.0-pre.3", default-features = false, optional = true }
 burn-onnx = { version = "0.21.0-pre.3", optional = true }
 async-once-cell = "0.5.4"
+async-trait = "0.1.89"
 
 [features]
 upscaling = ["burn", "burn-store", "burn-onnx", "burn-wgpu"]

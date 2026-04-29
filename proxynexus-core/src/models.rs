@@ -9,63 +9,6 @@ pub struct Manifest {
     pub generated_date: String,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbResponse<T> {
-    pub data: Vec<T>,
-    pub links: Option<NrdbLinks>,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbLinks {
-    pub next: Option<String>,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbCard {
-    pub id: String,
-    pub attributes: NrdbCardAttributes,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbCardAttributes {
-    pub title: String,
-    pub stripped_title: String,
-    pub side_id: String,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbCardSet {
-    pub id: String,
-    pub attributes: NrdbCardSetAttributes,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbCardSetAttributes {
-    pub name: String,
-    pub date_release: Option<String>,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbPrinting {
-    pub id: String,
-    pub attributes: NrdbPrintingAttributes,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct NrdbPrintingAttributes {
-    pub card_id: String,
-    pub card_set_id: String,
-    pub quantity: i64,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintingPart {
     pub name: String,

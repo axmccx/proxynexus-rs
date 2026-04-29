@@ -7161,6 +7161,7 @@ name = "proxynexus-core"
 version = "0.1.0"
 dependencies = [
  "async-once-cell",
+ "async-trait",
  "burn",
  "burn-onnx",
  "burn-store",

@@ -1,7 +1,7 @@
 use anyhow::{Context, anyhow};
 use clap::{Parser, Subcommand};
 use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
-use proxynexus_core::catalog::Catalog;
+use proxynexus_core::catalog::CatalogManager;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::db_storage::DbStorage;
@@ -185,9 +185,9 @@ async fn main() -> anyhow::Result<()> {
 
     let image_provider = LocalImageProvider::new(collections_dir.clone());
 
-    let mut catalog = Catalog::new(&mut db);
+    let mut catalog_manager = CatalogManager::new(&mut db);
 
-    if let Err(e) = catalog.seed_if_empty().await {
+    if let Err(e) = catalog_manager.seed_if_empty().await {
         eprintln!("Warning: Could not seed catalog: {}", e);
     }
 
@@ -204,7 +204,7 @@ async fn main() -> anyhow::Result<()> {
             nrdb_url,
             list_sets,
         } => handle_query(&mut db, cardlist, set_name, nrdb_url, list_sets).await,
-        Commands::Catalog { action } => handle_catalog_action(action, &mut catalog).await,
+        Commands::Catalog { action } => handle_catalog_action(action, &mut catalog_manager).await,
         Commands::Export { output } => {
             println!("Exporting database to {:?}...", output);
             db.export_sql(&output)
@@ -308,21 +308,19 @@ async fn handle_collection_action(
 
 async fn handle_catalog_action(
     action: CatalogAction,
-    catalog: &mut Catalog<'_>,
+    catalog_manager: &mut CatalogManager<'_>,
 ) -> anyhow::Result<()> {
     match action {
         CatalogAction::Update => {
-            println!("Fetching latest card data from NetrunnerDB...");
-            catalog
+            catalog_manager
                 .update_from_api()
                 .await
                 .context("Failed to update catalog from API")?;
-            println!("Card catalog updated successfully!");
         }
         CatalogAction::Info => {
             println!(
                 "{}",
-                catalog
+                catalog_manager
                     .get_info()
                     .await
                     .context("Failed to get catalog info")?

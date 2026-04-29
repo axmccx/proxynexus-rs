@@ -8,12 +8,6 @@ pub struct IdRow {
 }
 
 #[derive(FromGlueRow)]
-struct MetaDbRow {
-    key: String,
-    value: String,
-}
-
-#[derive(FromGlueRow)]
 struct GameDbRow {
     id: String,
     display_name: String,
@@ -128,11 +122,6 @@ impl DbStorage {
     pub async fn initialize_schema(&mut self) -> Result<()> {
         self.execute(
             "
-            CREATE TABLE IF NOT EXISTS meta (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-
             CREATE TABLE IF NOT EXISTS games (
                 id TEXT PRIMARY KEY,
                 display_name TEXT NOT NULL
@@ -191,26 +180,6 @@ impl DbStorage {
 
     pub async fn export_sql(&mut self, path: &std::path::Path) -> Result<()> {
         let mut sql = String::new();
-
-        let meta_payloads = self.execute("SELECT * FROM meta").await?;
-        if let Some(payload) = meta_payloads.into_iter().next() {
-            let rows: Vec<MetaDbRow> = payload.rows_as()?;
-            for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO meta (key, value) VALUES ");
-                let values: Vec<String> = chunk
-                    .iter()
-                    .map(|row| {
-                        format!(
-                            "({}, {})",
-                            quote_sql_string(&row.key),
-                            quote_sql_string(&row.value)
-                        )
-                    })
-                    .collect();
-                sql.push_str(&values.join(", "));
-                sql.push_str(";\n");
-            }
-        }
 
         let game_payloads = self.execute("SELECT * FROM games").await?;
         if let Some(payload) = game_payloads.into_iter().next() {
