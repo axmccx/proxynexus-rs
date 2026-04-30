@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
+    pub game: String,
     pub version: String,
     pub language: String,
     pub generated_date: String,

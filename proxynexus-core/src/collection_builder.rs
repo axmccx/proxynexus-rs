@@ -14,6 +14,7 @@ pub struct BuildReport {
 }
 
 pub fn build_collection(
+    game: String,
     output_path: &Path,
     images_dir: &Path,
     language: String,
@@ -28,6 +29,7 @@ pub fn build_collection(
     }
 
     let manifest = Manifest {
+        game,
         version,
         language,
         generated_date: Utc::now().to_rfc3339(),

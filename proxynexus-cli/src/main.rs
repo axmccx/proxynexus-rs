@@ -76,6 +76,9 @@ enum CatalogAction {
 enum CollectionAction {
     Build {
         #[arg(short, long)]
+        game: String,
+
+        #[arg(short, long)]
         images: PathBuf,
 
         #[arg(short, long)]
@@ -224,13 +227,14 @@ async fn handle_collection_action(
 ) -> anyhow::Result<()> {
     match action {
         CollectionAction::Build {
+            game,
             output,
             images,
             language,
             version,
         } => {
             println!("Writing pnx file...");
-            let report = build_collection(&output, &images, language, version)
+            let report = build_collection(game, &output, &images, language, version)
                 .context("Failed to build collection")?;
             println!("Added {} printings", report.printings_added);
             println!("Collection created: {:?}", output);

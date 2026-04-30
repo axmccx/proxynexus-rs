@@ -3,6 +3,7 @@ use crate::error::{ProxyNexusError, Result};
 use crate::models::Manifest;
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -18,6 +19,13 @@ struct CollectionRow {
 #[derive(FromGlueRow)]
 struct CountRow {
     count: i64,
+}
+
+#[derive(FromGlueRow)]
+struct VersionRow {
+    id: String,
+    card_id: String,
+    pack_id: String,
 }
 
 pub struct CollectionManager<'a> {
@@ -77,9 +85,10 @@ impl<'a> CollectionManager<'a> {
         let added_date = chrono::Utc::now().to_rfc3339();
 
         let insert_coll_q = format!(
-            "INSERT INTO collections (id, name, version, language, added_date) VALUES ({}, {}, {}, {}, '{}')",
+            "INSERT INTO collections (id, name, game_id, version, language, added_date) VALUES ({}, {}, {}, {}, {}, '{}')",
             next_coll_id,
             quote_sql_string(&collection_name),
+            quote_sql_string(&manifest.game),
             quote_sql_string(&manifest.version),
             quote_sql_string(&manifest.language),
             added_date
@@ -87,6 +96,20 @@ impl<'a> CollectionManager<'a> {
         self.db.execute(&insert_coll_q).await?;
 
         let collection_id = next_coll_id;
+
+        let versions_q = format!(
+            "SELECT v.id, v.card_id, v.pack_id FROM card_versions v JOIN packs p ON v.pack_id = p.id WHERE p.game_id = {}",
+            quote_sql_string(&manifest.game)
+        );
+        let version_payloads = self.db.execute(&versions_q).await?;
+
+        let mut version_map: HashMap<(String, String), String> = HashMap::new();
+        if let Some(p) = version_payloads.into_iter().next() {
+            let rows = p.rows_as::<VersionRow>()?;
+            for row in rows {
+                version_map.insert((row.card_id, row.pack_id), row.id);
+            }
+        }
 
         let collection_dir = self.collections_dir.join(collection_name.clone());
         fs::create_dir_all(&collection_dir)?;
@@ -103,7 +126,7 @@ impl<'a> CollectionManager<'a> {
                 let entry = entry?;
                 let path = entry.path();
 
-                let (card_code, variant, part) = match Self::parse_filename(&path) {
+                let (card_id, parsed_printing, part) = match Self::parse_filename(&path) {
                     Some(parsed) => parsed,
                     None => continue,
                 };
@@ -111,12 +134,21 @@ impl<'a> CollectionManager<'a> {
                 let file_name = path.file_name().unwrap().to_string_lossy();
                 let file_path = format!("{}/{}", collection_name, file_name);
 
+                let (version_id_sql, is_official, variant_sql) =
+                    if let Some(v_id) = version_map.get(&(card_id.clone(), parsed_printing.clone())) {
+                        (quote_sql_string(v_id), "TRUE", "NULL".to_string())
+                    } else {
+                        ("NULL".to_string(), "FALSE", quote_sql_string(&parsed_printing))
+                    };
+
                 let insert_print_q = format!(
-                    "INSERT INTO printings (id, collection_id, card_code, variant, file_path, part) VALUES ({}, {}, {}, {}, {}, {})",
+                    "INSERT INTO printings (id, collection_id, card_id, version_id, is_official, variant, file_path, part) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
                     next_print_id,
                     collection_id,
-                    quote_sql_string(&card_code),
-                    quote_sql_string(&variant),
+                    quote_sql_string(&card_id),
+                    version_id_sql,
+                    is_official,
+                    variant_sql,
                     quote_sql_string(&file_path),
                     quote_sql_string(&part)
                 );
@@ -153,23 +185,22 @@ impl<'a> CollectionManager<'a> {
     fn parse_filename(path: &Path) -> Option<(String, String, String)> {
         let stem = path.file_stem()?.to_str()?;
 
-        let (base, part) = if let Some((b, a)) = stem.split_once('-') {
-            (b, a.to_lowercase())
-        } else {
-            (stem, "front".to_string())
-        };
+        let (card_id, rest) = stem.split_once('@')?;
 
-        let (code, variant) = if let Some((c, v)) = base.split_once('_') {
-            (c, v.to_lowercase())
-        } else {
-            (base, "original".to_string())
-        };
-
-        if !code.chars().all(|c| c.is_ascii_digit()) {
+        if rest.contains('@') {
             return None;
         }
 
-        Some((code.to_string(), variant, part))
+        let (printing, part) = if let Some((pr, pt)) = rest.split_once('~') {
+            if pt.contains('~') {
+                return None;
+            }
+            (pr.to_string(), pt.to_string())
+        } else {
+            (rest.to_string(), "front".to_string())
+        };
+
+        Some((card_id.to_string(), printing, part))
     }
 
     pub async fn get_collections(&mut self) -> Result<Vec<(String, String, String)>> {
@@ -287,39 +318,44 @@ mod tests {
     #[test]
     fn test_parse_filename_variants() {
         assert_eq!(
-            CollectionManager::parse_filename(Path::new("01001.jpg")),
+            CollectionManager::parse_filename(Path::new("hedge_fund@system_gateway.jpg")),
             Some((
-                "01001".to_string(),
-                "original".to_string(),
+                "hedge_fund".to_string(),
+                "system_gateway".to_string(),
                 "front".to_string()
             ))
         );
 
         assert_eq!(
-            CollectionManager::parse_filename(Path::new("01001_alt1.jpg")),
-            Some(("01001".to_string(), "alt1".to_string(), "front".to_string()))
+            CollectionManager::parse_filename(Path::new("a-legion-of-one@emerald-core-set.jpg")),
+            Some((
+                "a-legion-of-one".to_string(),
+                "emerald-core-set".to_string(),
+                "front".to_string()
+            ))
         );
 
         assert_eq!(
-            CollectionManager::parse_filename(Path::new("01001-back.png")),
+            CollectionManager::parse_filename(Path::new(
+                "sync_everything_everywhere@data_and_destiny~back.png"
+            )),
             Some((
-                "01001".to_string(),
-                "original".to_string(),
+                "sync_everything_everywhere".to_string(),
+                "data_and_destiny".to_string(),
                 "back".to_string()
             ))
         );
 
         assert_eq!(
-            CollectionManager::parse_filename(Path::new("01001_alt1-back.png")),
-            Some(("01001".to_string(), "alt1".to_string(), "back".to_string()))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("notacode.jpg")),
+            CollectionManager::parse_filename(Path::new("hedge_fund~front.jpg")),
             None
         );
         assert_eq!(
-            CollectionManager::parse_filename(Path::new("abc_alt.jpg")),
+            CollectionManager::parse_filename(Path::new("hedge_fund@multiple@ats.jpg")),
+            None
+        );
+        assert_eq!(
+            CollectionManager::parse_filename(Path::new("hedge_fund@dark-theme~back~extra.png")),
             None
         );
     }
