@@ -136,7 +136,7 @@ async fn process_side<W: Write + Seek>(
     for printing in printings {
         let key = (
             printing.collection.clone(),
-            printing.card_code.clone(),
+            printing.card_id.clone(),
             printing.variant.clone(),
         );
         let copy_num = copy_counters
@@ -183,7 +183,7 @@ async fn process_side<W: Write + Seek>(
                 format!(
                     "{}/{}-{}-{}-{}.{}",
                     folder_name,
-                    printing.card_code,
+                    printing.card_id,
                     printing.variant,
                     printing.collection,
                     copy_num,
@@ -193,7 +193,7 @@ async fn process_side<W: Write + Seek>(
                 format!(
                     "{}/{}-{}-{}-{}-{}.{}",
                     folder_name,
-                    printing.card_code,
+                    printing.card_id,
                     printing.variant,
                     printing.collection,
                     copy_num,

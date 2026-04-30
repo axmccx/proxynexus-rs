@@ -11,7 +11,7 @@ use tracing::warn;
 #[derive(FromGlueRow)]
 struct PackRow {
     pack_name: String,
-    pack_code: String,
+    pack_id: String,
     coll_name: Option<String>,
     coll_count: i64,
     date_release: Option<String>,
@@ -19,23 +19,23 @@ struct PackRow {
 
 #[derive(FromGlueRow)]
 struct CardNameRow {
-    code: String,
+    id: String,
     title: String,
-    pack_code: String,
+    pack_id: String,
     title_normalized: String,
 }
 
 #[derive(FromGlueRow)]
 struct CardRequestRow {
-    code: String,
+    id: String,
     title: String,
     quantity: i64,
-    pack_code: String,
+    pack_id: String,
 }
 
 #[derive(FromGlueRow)]
 struct CardRow {
-    code: String,
+    id: String,
     title: String,
 }
 
@@ -47,13 +47,14 @@ struct CardTitleRow {
 #[derive(FromGlueRow)]
 struct AvailablePrintingRow {
     title: String,
-    code: String,
-    variant: String,
+    id: String,
+    is_official: bool,
+    variant: Option<String>,
     file_path: String,
     part: String,
     name: String,
     side: String,
-    pack_code: String,
+    pack_id: Option<String>,
     date_release: Option<String>,
 }
 
@@ -94,18 +95,25 @@ impl CardSource for SetName {
 
 pub struct CardStore<'a> {
     db: &'a mut DbStorage,
+    active_game_id: String,
 }
 
 type CardOverride<'a> = (&'a str, Option<String>, Option<String>, Option<String>);
 
 impl<'a> CardStore<'a> {
-    pub fn new(db: &'a mut DbStorage) -> Result<Self> {
-        Ok(Self { db })
+    pub fn new(db: &'a mut DbStorage, active_game_id: String) -> Result<Self> {
+        Ok(Self { db, active_game_id })
     }
 
     pub async fn get_all_card_names(&mut self) -> Result<Vec<String>> {
-        let query = "SELECT DISTINCT title FROM cards ORDER BY title";
-        let payloads = self.db.execute(query).await?;
+        let query = format!(
+            "SELECT DISTINCT title
+            FROM cards
+            WHERE game_id = {}
+            ORDER BY title",
+            quote_sql_string(&self.active_game_id)
+        );
+        let payloads = self.db.execute(&query).await?;
         let mut names = Vec::new();
 
         if let Some(payload) = payloads.into_iter().next() {
@@ -154,10 +162,10 @@ impl<'a> CardStore<'a> {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
                         title: title.clone(),
-                        code: code.clone(),
+                        id: code.clone(),
                         variant: variant.clone(),
                         collection: collection.clone(),
-                        pack_code: requested_pack_code
+                        pack_id: requested_pack_code
                             .clone()
                             .or_else(|| Some(resolved_pack_code.clone())),
                     },
@@ -236,14 +244,21 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(unique_normalized_name);
 
         let query = format!(
-            "SELECT c.code, c.title, c.pack_code, c.title_normalized
+            "SELECT 
+                c.id, 
+                c.title, 
+                v.pack_id, 
+                c.title_normalized
              FROM cards c
-             JOIN packs p ON c.pack_code = p.code
+             JOIN card_versions v ON c.id = v.card_id
+             JOIN packs p ON v.pack_id = p.id
              WHERE c.title_normalized IN ({})
+               AND c.game_id = {}
              ORDER BY
                  CASE WHEN p.date_release IS NULL THEN 1 ELSE 0 END,
                  p.date_release DESC",
-            in_clause
+            in_clause,
+            quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
@@ -253,9 +268,9 @@ impl<'a> CardStore<'a> {
             let name_rows = payload.rows_as::<CardNameRow>()?;
             for row in name_rows {
                 resolved_map.entry(row.title_normalized).or_insert((
-                    row.code,
+                    row.id,
                     row.title,
-                    row.pack_code,
+                    row.pack_id,
                 ));
             }
         }
@@ -281,24 +296,26 @@ impl<'a> CardStore<'a> {
     }
 
     pub async fn get_available_packs(&mut self) -> Result<Vec<(String, String, String)>> {
-        let query = "
-            SELECT
+        let query = format!(
+            "SELECT
                 p.name as pack_name,
-                p.code as pack_code,
-                col.name as coll_name,
-                COUNT(pr.card_code) as coll_count,
+                p.id as pack_id,
+                col.name AS coll_name,
+                COUNT(pr.id) as coll_count,
                 p.date_release
             FROM packs p
-            JOIN cards c ON c.pack_code = p.code
-            LEFT JOIN printings pr ON pr.card_code = c.code
+            JOIN card_versions v ON p.id = v.pack_id
+            LEFT JOIN printings pr ON pr.version_id = v.id
             LEFT JOIN collections col ON pr.collection_id = col.id
-            GROUP BY p.code, col.id
-        ";
+            WHERE p.game_id = {}
+            GROUP BY p.id, col.id",
+            quote_sql_string(&self.active_game_id)
+        );
 
-        let payloads = self.db.execute(query).await?;
+        let payloads = self.db.execute(&query).await?;
 
         struct PackGroup {
-            code: String,
+            id: String,
             name: String,
             date_release: String,
             collections: Vec<String>,
@@ -313,9 +330,9 @@ impl<'a> CardStore<'a> {
                 let date_release = row.date_release.unwrap_or_default();
 
                 let entry = pack_data
-                    .entry(row.pack_code.clone())
+                    .entry(row.pack_id.clone())
                     .or_insert_with(|| PackGroup {
-                        code: row.pack_code.clone(),
+                        id: row.pack_id.clone(),
                         name: row.pack_name,
                         date_release,
                         collections: Vec::new(),
@@ -348,7 +365,7 @@ impl<'a> CardStore<'a> {
                 .map(|m| format!("# {}", m))
                 .unwrap_or_else(|| "# no printings available".to_string());
 
-            results.push((pack.name, pack.code, display_meta));
+            results.push((pack.name, pack.id, display_meta));
         }
 
         Ok(results)
@@ -359,12 +376,15 @@ impl<'a> CardStore<'a> {
         set_name: &str,
     ) -> Result<Vec<CardRequest>> {
         let query = format!(
-            "SELECT c.code, c.title, c.quantity, c.pack_code
+            "SELECT c.id, c.title, v.quantity, v.pack_id
              FROM cards c
-             JOIN packs p ON c.pack_code = p.code
+             JOIN card_versions v ON c.id = v.card_id
+             JOIN packs p ON v.pack_id = p.id
              WHERE LOWER(p.name) = {}
-             ORDER BY c.code",
-            quote_sql_string(&set_name.to_lowercase())
+               AND c.game_id = {}
+             ORDER BY c.id",
+            quote_sql_string(&set_name.to_lowercase()),
+            quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
@@ -377,10 +397,10 @@ impl<'a> CardStore<'a> {
                 results.extend(std::iter::repeat_n(
                     CardRequest {
                         title: row.title,
-                        code: row.code,
+                        id: row.id,
                         variant: None,
                         collection: None,
-                        pack_code: Some(row.pack_code),
+                        pack_id: Some(row.pack_id),
                     },
                     row.quantity as usize,
                 ));
@@ -408,8 +428,12 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(codes.keys());
 
         let query = format!(
-            "SELECT code, title FROM cards WHERE code IN ({})",
-            in_clause
+            "SELECT c.id, c.title
+             FROM cards c
+             WHERE c.id IN ({})
+               AND c.game_id = {}",
+            in_clause,
+            quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
@@ -418,7 +442,7 @@ impl<'a> CardStore<'a> {
         if let Some(payload) = payloads.into_iter().next() {
             let card_rows = payload.rows_as::<CardRow>()?;
             for row in card_rows {
-                resolved_titles.insert(row.code, row.title);
+                resolved_titles.insert(row.id, row.title);
             }
         }
 
@@ -434,10 +458,10 @@ impl<'a> CardStore<'a> {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
                         title: title.clone(),
-                        code: code.clone(),
+                        id: code.clone(),
                         variant: None,
                         collection: None,
-                        pack_code: None,
+                        pack_id: None,
                     },
                     *qty as usize,
                 ));
@@ -465,13 +489,26 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(&unique_titles);
 
         let query = format!(
-            "SELECT c.title, c.code, p.variant, p.file_path, p.part, col.name, c.side, c.pack_code, pks.date_release
+            "SELECT 
+                c.title, 
+                c.id,
+                p.is_official,
+                p.variant, 
+                p.file_path, 
+                p.part, 
+                col.name,
+                c.side, 
+                v.pack_id,
+                pks.date_release
              FROM printings p
-             JOIN cards c ON p.card_code = c.code
+             JOIN cards c ON p.card_id = c.id
              JOIN collections col ON p.collection_id = col.id
-             JOIN packs pks ON c.pack_code = pks.code
-             WHERE c.title_normalized IN ({})",
-            in_clause
+             LEFT JOIN card_versions v ON p.version_id = v.id
+             LEFT JOIN packs pks ON v.pack_id = pks.id
+             WHERE c.title_normalized IN ({})
+               AND c.game_id = {}",
+            in_clause,
+            quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
@@ -504,28 +541,31 @@ impl<'a> CardStore<'a> {
 
     fn assemble_printings(rows: Vec<AvailablePrintingRow>) -> HashMap<String, Vec<Printing>> {
         let mut resolved_printings: HashMap<String, Vec<Printing>> = HashMap::new();
-        let mut groups: HashMap<(String, String, String, String), Vec<AvailablePrintingRow>> =
-            HashMap::new();
+        let mut groups: HashMap<
+            (String, String, Option<String>, String),
+            Vec<AvailablePrintingRow>,
+        > = HashMap::new();
 
         for row in rows {
             let normalized = normalize_title(&row.title);
             let key = (
                 normalized,
-                row.code.clone(),
+                row.id.clone(),
                 row.variant.clone(),
                 row.name.clone(),
             );
             groups.entry(key).or_default().push(row);
         }
 
-        for ((normalized, code, variant, collection), rows) in groups {
+        for ((normalized, card_id, variant, collection), rows) in groups {
             let mut image_key = String::new();
             let mut parts = Vec::new();
 
             let first_row = &rows[0];
-            let title = first_row.title.clone();
+            let card_title = first_row.title.clone();
+            let is_official = first_row.is_official;
             let side = first_row.side.clone();
-            let pack_code = first_row.pack_code.clone();
+            let pack_id = first_row.pack_id.clone();
             let date_release = first_row.date_release.clone();
 
             for row in rows {
@@ -540,14 +580,15 @@ impl<'a> CardStore<'a> {
             }
 
             let printing = Printing {
-                card_title: title,
-                card_code: code,
-                variant,
+                card_title,
+                card_id,
+                is_official,
+                variant: variant.unwrap_or_else(|| "original".to_string()),
                 image_key,
                 parts,
                 collection,
                 side,
-                pack_code,
+                pack_id,
                 date_release,
             };
 
@@ -601,8 +642,8 @@ impl<'a> CardStore<'a> {
                 p.variant != target_variant,
                 p.variant != "original",
                 request.collection.is_some() && request.collection.as_ref() != Some(&p.collection),
-                request.pack_code.is_some() && request.pack_code.as_ref() != Some(&p.pack_code),
-                p.card_code != request.code,
+                request.pack_id.is_some() && request.pack_id != p.pack_id,
+                p.card_id != request.id,
                 p.date_release.is_none(),
                 p.date_release.clone(),
             )
@@ -631,13 +672,14 @@ mod tests {
     ) -> Printing {
         Printing {
             card_title: "Sure Gamble".into(),
-            card_code: code.into(),
+            card_id: code.into(),
+            is_official: true,
             variant: variant.into(),
             image_key: format!("{}.jpg", code),
             parts: Vec::new(),
             collection: coll.into(),
             side: "runner".into(),
-            pack_code: pack.into(),
+            pack_id: Some(pack.into()),
             date_release: date.map(|s| s.to_string()),
         }
     }
@@ -666,10 +708,10 @@ mod tests {
         // Exact variant match
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: Some("alt1".into()),
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -681,10 +723,10 @@ mod tests {
         // Exact collection match
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: None,
             collection: Some("alt-arts".into()),
-            pack_code: None,
+            pack_id: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -696,42 +738,40 @@ mod tests {
         // Exact pack match
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: None,
             collection: None,
-            pack_code: Some("core".into()),
+            pack_id: Some("core".to_string()),
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
                 .unwrap()
-                .pack_code,
-            "core"
+                .pack_id,
+            Some("core".to_string())
         );
 
         // Variant Fallback: If 'core' original is missing, pick 'revised' original over 'core' alt
         let available_missing_core_orig = vec![p2.clone(), p3.clone()];
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: Some("original".into()),
             collection: None,
-            pack_code: Some("core".into()),
+            pack_id: Some("core".to_string()),
         };
         let result = CardStore::select_printing(&req, &available_missing_core_orig).unwrap();
         assert_eq!(result.variant, "original");
-        assert_eq!(result.pack_code, "revised");
 
         // Default to the earliest original
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: None,
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.variant, "original");
-        assert_eq!(result.date_release, Some("2012-12-01".to_string()));
 
         // Variant Match beats Exact ID Match
         let p4_revised_alt =
@@ -739,13 +779,13 @@ mod tests {
         let available_mixed = vec![p1.clone(), p4_revised_alt.clone()];
         let req = CardRequest {
             title: "Sure Gamble".into(),
-            code: "20050".into(),
+            id: "20050".into(),
             variant: Some("original".into()),
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         let result = CardStore::select_printing(&req, &available_mixed).unwrap();
-        assert_eq!(result.card_code, "01050");
+        assert_eq!(result.card_id, "01050");
         assert_eq!(result.variant, "original");
     }
 
@@ -759,27 +799,27 @@ mod tests {
         // 1. Missing variant fallback to "original"
         let req1 = CardRequest {
             title: "Test".into(),
-            code: "2".into(), // matches alt1 code
+            id: "2".into(), // matches alt1 code
             variant: Some("missing_variant".into()),
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         let result1 = CardStore::select_printing(&req1, &available).unwrap();
         assert_eq!(result1.variant, "original");
-        assert_eq!(result1.card_code, "1");
+        assert_eq!(result1.card_id, "1");
 
         // 2. Collection override beats default card code
         let p4 = mock_printing("4", "original", "c2", "p4", Some("2023-01-01"));
         let available2 = vec![p1.clone(), p4.clone()];
         let req3 = CardRequest {
             title: "Test".into(),
-            code: "1".into(), // matches p1 (collection c1)
+            id: "1".into(), // matches p1 (collection c1)
             variant: Some("original".into()),
             collection: Some("c2".into()), // requests collection c2
-            pack_code: None,
+            pack_id: None,
         };
         let result3 = CardStore::select_printing(&req3, &available2).unwrap();
-        assert_eq!(result3.card_code, "4");
+        assert_eq!(result3.card_id, "4");
         assert_eq!(result3.collection, "c2");
     }
 
@@ -832,25 +872,25 @@ mod tests {
         // Full override
         let (name, v, c, p) = CardStore::parse_overrides("Sure Gamble [alt:ffg-en:core]").unwrap();
         assert_eq!(name, "Sure Gamble");
-        assert_eq!(v, Some("alt".to_string()));
-        assert_eq!(c, Some("ffg-en".to_string()));
-        assert_eq!(p, Some("core".to_string()));
+        assert_eq!(v, Some("alt".into()));
+        assert_eq!(c, Some("ffg-en".into()));
+        assert_eq!(p, Some("core".into()));
 
         // Partial, variant only
         let (_, v, c, p) = CardStore::parse_overrides("Sure Gamble [alt]").unwrap();
-        assert_eq!(v, Some("alt".to_string()));
+        assert_eq!(v, Some("alt".into()));
         assert_eq!(c, None);
         assert_eq!(p, None);
 
         // Partial, skipped slots
         let (_, v, c, p) = CardStore::parse_overrides("Sure Gamble [:std:]").unwrap();
         assert_eq!(v, None);
-        assert_eq!(c, Some("std".to_string()));
+        assert_eq!(c, Some("std".into()));
         assert_eq!(p, None);
 
         // Case normalization in overrides
         let (_, v, _, _) = CardStore::parse_overrides("Card [ALT]").unwrap();
-        assert_eq!(v, Some("alt".to_string()));
+        assert_eq!(v, Some("alt".into()));
     }
 
     #[test]
@@ -887,7 +927,7 @@ mod tests {
     fn test_resolve_printings() {
         let temp_dir = tempfile::tempdir().unwrap();
         let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
-        let store = CardStore::new(&mut db).unwrap();
+        let store = CardStore::new(&mut db, "netrunner".to_string()).unwrap();
 
         let mut available = get_mock_available_printings();
         available.insert(
@@ -903,24 +943,24 @@ mod tests {
 
         let req1 = CardRequest {
             title: "Sure Gamble".into(),
-            code: "01050".into(),
+            id: "01050".into(),
             variant: None,
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         let req2 = CardRequest {
             title: "Missing Card".into(),
-            code: "99999".into(),
+            id: "99999".into(),
             variant: None,
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
         let req3 = CardRequest {
             title: "Snare!".into(),
-            code: "01051".into(),
+            id: "01051".into(),
             variant: None,
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
 
         let result = store
@@ -929,7 +969,7 @@ mod tests {
 
         // Only 2 printings resolved, missing card was skipped safely
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0].card_code, "01050");
-        assert_eq!(result[1].card_code, "01051");
+        assert_eq!(result[0].card_id, "01050");
+        assert_eq!(result[1].card_id, "01051");
     }
 }

@@ -5,8 +5,8 @@ use crate::error::Result;
 use crate::models::{CardRequest, Printing};
 use std::collections::HashMap;
 
-pub async fn list_available_sets(db: &mut DbStorage) -> Result<String> {
-    let mut store = CardStore::new(db)?;
+pub async fn list_available_sets(db: &mut DbStorage, game: &str) -> Result<String> {
+    let mut store = CardStore::new(db, game.to_string())?;
     let sets = store.get_available_packs().await?;
 
     let max_name_len = sets
@@ -41,8 +41,9 @@ pub async fn list_available_sets(db: &mut DbStorage) -> Result<String> {
 pub async fn generate_query_output(
     card_source: &impl CardSource,
     db: &mut DbStorage,
+    game: &str,
 ) -> Result<String> {
-    let mut store = CardStore::new(db)?;
+    let mut store = CardStore::new(db, game.to_string())?;
     let card_requests = card_source.to_card_requests(&mut store).await?;
 
     let available = store.get_available_printings(&card_requests).await?;
@@ -53,8 +54,9 @@ pub async fn generate_query_output(
 pub async fn resolve_query_printings(
     card_source: &impl CardSource,
     db: &mut DbStorage,
+    game: &str,
 ) -> Result<(Vec<Printing>, HashMap<String, Vec<Printing>>)> {
-    let mut store = CardStore::new(db)?;
+    let mut store = CardStore::new(db, game.to_string())?;
     let card_requests = card_source.to_card_requests(&mut store).await?;
 
     let available = store.get_available_printings(&card_requests).await?;
@@ -82,9 +84,15 @@ pub fn apply_variant_overrides(
         let mut resolved = p.clone();
         if let Some(over_str) = override_str
             && let Some(variants) = available.get(&title_norm)
-            && let Some(variant_p) = variants
-                .iter()
-                .find(|v| format!("{}:{}:{}", v.variant, v.collection, v.pack_code) == *over_str)
+            && let Some(variant_p) = variants.iter().find(|v| {
+                let v_str = format!(
+                    "{}:{}:{}",
+                    v.variant,
+                    v.collection,
+                    v.pack_id.as_deref().unwrap_or("none")
+                );
+                v_str == *over_str
+            })
         {
             resolved = variant_p.clone();
         }
@@ -120,22 +128,18 @@ fn format_query_output(
         let first = &printings[0];
         let default_request = CardRequest {
             title: first.card_title.clone(),
-            code: first.card_code.clone(),
+            id: first.card_id.clone(),
             variant: None,
             collection: None,
-            pack_code: None,
+            pack_id: None,
         };
 
         let default_p = CardStore::select_printing(&default_request, printings)?;
         let count = counts.get(normalized_title).unwrap_or(&1);
 
         let base = format!(
-            "{}x {} [{}:{}:{}]",
-            count,
-            default_p.card_title,
-            default_p.variant,
-            default_p.collection,
-            default_p.pack_code,
+            "{}x {} [{}:{}:{:?}]",
+            count, default_p.card_title, default_p.variant, default_p.collection, default_p.pack_id,
         );
 
         max_base_len = max_base_len.max(base.len());
@@ -143,7 +147,7 @@ fn format_query_output(
         let alternatives = printings
             .iter()
             .filter(|p| p.variant != default_p.variant || p.collection != default_p.collection)
-            .map(|p| format!("[{}:{}:{}]", p.variant, p.collection, p.pack_code))
+            .map(|p| format!("[{}:{}:{:?}]", p.variant, p.collection, p.pack_id))
             .collect();
 
         lines_data.push((base, alternatives));
@@ -175,13 +179,14 @@ mod tests {
     fn mock_printing(code: &str, variant: &str, coll: &str, pack: &str) -> Printing {
         Printing {
             card_title: "Sure Gamble".into(),
-            card_code: code.into(),
+            card_id: code.into(),
+            is_official: true,
             variant: variant.into(),
             image_key: format!("{}.jpg", code),
             parts: Vec::new(),
             collection: coll.into(),
             side: "runner".into(),
-            pack_code: pack.into(),
+            pack_id: Some(pack.into()),
             date_release: None,
         }
     }
@@ -204,10 +209,10 @@ mod tests {
 
         // Both occurrences should be overridden globally
         for r in &result {
-            assert_eq!(r.card_code, "20050");
+            assert_eq!(r.card_id, "20050");
             assert_eq!(r.variant, "alt1");
             assert_eq!(r.collection, "standard");
-            assert_eq!(r.pack_code, "revised");
+            assert_eq!(r.pack_id, Some("revised".to_string()));
         }
     }
 
@@ -229,16 +234,16 @@ mod tests {
         assert_eq!(result.len(), 2);
 
         // index 0: should remain original
-        assert_eq!(result[0].card_code, "01050");
+        assert_eq!(result[0].card_id, "01050");
         assert_eq!(result[0].variant, "original");
         assert_eq!(result[0].collection, "ffg-en");
-        assert_eq!(result[0].pack_code, "core");
+        assert_eq!(result[0].pack_id, Some("core".to_string()));
 
         // index 1: should be overridden
-        assert_eq!(result[1].card_code, "20050");
+        assert_eq!(result[1].card_id, "20050");
         assert_eq!(result[1].variant, "alt1");
         assert_eq!(result[1].collection, "standard");
-        assert_eq!(result[1].pack_code, "revised");
+        assert_eq!(result[1].pack_id, Some("revised".to_string()));
     }
 
     #[test]
@@ -266,15 +271,15 @@ mod tests {
         assert_eq!(result.len(), 2);
 
         // index 0 uses global override
-        assert_eq!(result[0].card_code, "20050");
+        assert_eq!(result[0].card_id, "20050");
         assert_eq!(result[0].variant, "alt1");
         assert_eq!(result[0].collection, "standard");
-        assert_eq!(result[0].pack_code, "revised");
+        assert_eq!(result[0].pack_id, Some("revised".to_string()));
 
         // index 1 uses index-specific override, which takes precedence
-        assert_eq!(result[1].card_code, "30050");
+        assert_eq!(result[1].card_id, "30050");
         assert_eq!(result[1].variant, "promo");
         assert_eq!(result[1].collection, "special");
-        assert_eq!(result[1].pack_code, "promo-pack");
+        assert_eq!(result[1].pack_id, Some("promo-pack".to_string()));
     }
 }

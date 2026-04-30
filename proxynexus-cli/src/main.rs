@@ -24,6 +24,9 @@ struct Cli {
     #[arg(short = 'd', long = "verbose", global = true)]
     verbose: bool,
 
+    #[arg(short, long, global = true, default_value = "netrunner")]
+    game: String,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -75,9 +78,6 @@ enum CatalogAction {
 #[derive(Subcommand)]
 enum CollectionAction {
     Build {
-        #[arg(short, long)]
-        game: String,
-
         #[arg(short, long)]
         images: PathBuf,
 
@@ -196,17 +196,17 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Collection { action } => {
-            handle_collection_action(action, &mut db, collections_dir, cli.verbose).await
+            handle_collection_action(&mut db, &cli.game, action, collections_dir, cli.verbose).await
         }
         Commands::Generate { output_type } => {
-            handle_generate(&mut db, &image_provider, output_type).await
+            handle_generate(&mut db, &cli.game, &image_provider, output_type).await
         }
         Commands::Query {
             cardlist,
             set_name,
             nrdb_url,
             list_sets,
-        } => handle_query(&mut db, cardlist, set_name, nrdb_url, list_sets).await,
+        } => handle_query(&mut db, &cli.game, cardlist, set_name, nrdb_url, list_sets).await,
         Commands::Catalog { action } => handle_catalog_action(action, &mut catalog_manager).await,
         Commands::Export { output } => {
             println!("Exporting database to {:?}...", output);
@@ -220,21 +220,21 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handle_collection_action(
-    action: CollectionAction,
     db: &mut DbStorage,
+    game: &str,
+    action: CollectionAction,
     collections_dir: PathBuf,
     verbose: bool,
 ) -> anyhow::Result<()> {
     match action {
         CollectionAction::Build {
-            game,
             output,
             images,
             language,
             version,
         } => {
             println!("Writing pnx file...");
-            let report = build_collection(game, &output, &images, language, version)
+            let report = build_collection(game.to_string(), &output, &images, language, version)
                 .context("Failed to build collection")?;
             println!("Added {} printings", report.printings_added);
             println!("Collection created: {:?}", output);
@@ -358,9 +358,10 @@ fn determine_input_source(
 
 async fn get_printings_from_source(
     db: &mut DbStorage,
+    game: &str,
     source: InputSource,
 ) -> anyhow::Result<Vec<Printing>> {
-    let mut store = proxynexus_core::card_store::CardStore::new(db)
+    let mut store = proxynexus_core::card_store::CardStore::new(db, game.to_string())
         .context("Failed to initialize card store")?;
 
     let card_requests = match source {
@@ -390,6 +391,7 @@ async fn get_printings_from_source(
 
 async fn handle_generate(
     db: &mut DbStorage,
+    game: &str,
     image_provider: &LocalImageProvider,
     output_type: GenerateType,
 ) -> anyhow::Result<()> {
@@ -420,7 +422,7 @@ async fn handle_generate(
             }
             let source = determine_input_source(cardlist, set_name, nrdb_url);
 
-            let printings = get_printings_from_source(db, source).await?;
+            let printings = get_printings_from_source(db, game, source).await?;
 
             let pdf_bytes = generate_pdf(
                 printings,
@@ -453,7 +455,7 @@ async fn handle_generate(
             let source = determine_input_source(cardlist, set_name, nrdb_url);
             let start = Instant::now();
 
-            let printings = get_printings_from_source(db, source).await?;
+            let printings = get_printings_from_source(db, game, source).await?;
 
             let mpc_bytes = generate_mpc_zip(
                 printings,
@@ -514,6 +516,7 @@ async fn handle_generate(
 
 async fn handle_query(
     db: &mut DbStorage,
+    game: &str,
     cardlist: Option<String>,
     set_name: Option<String>,
     nrdb_url: Option<String>,
@@ -523,7 +526,7 @@ async fn handle_query(
         println!("\nAvailable Sets:\n");
         println!(
             "{}",
-            list_available_sets(db)
+            list_available_sets(db, game)
                 .await
                 .context("Failed to list available sets")?
         );
@@ -533,9 +536,9 @@ async fn handle_query(
     let source = determine_input_source(cardlist, set_name, nrdb_url);
 
     let output = match source {
-        InputSource::Cardlist(list) => generate_query_output(&Cardlist(list), db).await,
-        InputSource::SetName(name) => generate_query_output(&SetName(name), db).await,
-        InputSource::NrdbUrl(url) => generate_query_output(&NrdbUrl(url), db).await,
+        InputSource::Cardlist(list) => generate_query_output(&Cardlist(list), db, game).await,
+        InputSource::SetName(name) => generate_query_output(&SetName(name), db, game).await,
+        InputSource::NrdbUrl(url) => generate_query_output(&NrdbUrl(url), db, game).await,
     };
 
     println!("\nQuery Results:\n");

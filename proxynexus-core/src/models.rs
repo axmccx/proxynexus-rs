@@ -18,22 +18,23 @@ pub struct PrintingPart {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Printing {
-    pub card_code: String,
+    pub card_id: String,
     pub card_title: String,
+    pub is_official: bool,
     pub variant: String,
     pub image_key: String,
     pub parts: Vec<PrintingPart>,
     pub collection: String,
     pub side: String,
-    pub pack_code: String,
+    pub pack_id: Option<String>,
     pub date_release: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CardRequest {
     pub title: String,
-    pub code: String,
+    pub id: String,
     pub variant: Option<String>,
     pub collection: Option<String>,
-    pub pack_code: Option<String>,
+    pub pack_id: Option<String>,
 }
