@@ -40,6 +40,13 @@ pub struct CardRequest {
 }
 
 #[derive(Debug, Clone)]
+pub struct DecklistEntry {
+    pub card_id: String,
+    pub pack_id: Option<String>,
+    pub quantity: u32,
+}
+
+#[derive(Debug, Clone)]
 pub struct Decklist {
-    pub cards: std::collections::HashMap<String, u32>,
+    pub cards: Vec<DecklistEntry>,
 }

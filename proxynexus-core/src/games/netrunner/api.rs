@@ -3,7 +3,6 @@ use crate::games::netrunner::models::{
     NrdbCard, NrdbCardSet, NrdbPrinting, NrdbResponse, NrdbV2DeckResponse,
 };
 use crate::models::Decklist;
-use std::collections::HashMap;
 
 const BASE_URL: &str = "https://api.netrunnerdb.com/api/v3/public";
 
@@ -94,10 +93,14 @@ pub async fn fetch_decklist_from_nrdb(url: &str) -> Result<Decklist> {
 
     let v3_printings: Vec<NrdbPrinting> = fetch_v3_endpoint(&printings_url).await?;
 
-    let mut cards = HashMap::new();
+    let mut cards = Vec::new();
     for printing in v3_printings {
         if let Some(&quantity) = cards_res.get(&printing.id) {
-            cards.insert(printing.attributes.card_id, quantity);
+            cards.push(crate::models::DecklistEntry {
+                card_id: printing.attributes.card_id,
+                pack_id: Some(printing.attributes.card_set_id),
+                quantity,
+            });
         }
     }
 

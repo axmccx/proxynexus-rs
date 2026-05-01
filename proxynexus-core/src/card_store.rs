@@ -425,7 +425,8 @@ impl<'a> CardStore<'a> {
             return Ok(Vec::new());
         }
 
-        let in_clause = build_in_clause(decklist.cards.keys());
+        let card_ids: HashSet<&String> = decklist.cards.iter().map(|e| &e.card_id).collect();
+        let in_clause = build_in_clause(card_ids);
 
         let query = format!(
             "SELECT c.id, c.title
@@ -453,20 +454,23 @@ impl<'a> CardStore<'a> {
         }
 
         let mut requests = Vec::new();
-        for (id, qty) in &decklist.cards {
-            if let Some(title) = resolved_titles.get(id) {
+        for entry in &decklist.cards {
+            if let Some(title) = resolved_titles.get(&entry.card_id) {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
                         title: title.clone(),
-                        id: id.clone(),
+                        id: entry.card_id.clone(),
                         variant: None,
                         collection: None,
-                        pack_id: None,
+                        pack_id: entry.pack_id.clone(),
                     },
-                    *qty as usize,
+                    entry.quantity as usize,
                 ));
             } else {
-                warn!("Card ID '{}' from decklist not found in local catalog", id);
+                warn!(
+                    "Card ID '{}' from decklist not found in local catalog",
+                    entry.card_id
+                );
             }
         }
 
