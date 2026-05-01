@@ -21,7 +21,7 @@ pub struct Printing {
     pub card_id: String,
     pub card_title: String,
     pub is_official: bool,
-    pub variant: String,
+    pub variant: Option<String>,
     pub image_key: String,
     pub parts: Vec<PrintingPart>,
     pub collection: String,

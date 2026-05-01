@@ -130,7 +130,7 @@ async fn process_side<W: Write + Seek>(
     processed_images: &mut usize,
     total_images: usize,
 ) -> Result<()> {
-    let mut copy_counters: HashMap<(String, String, String), u32> = HashMap::new();
+    let mut copy_counters: HashMap<(String, String, Option<String>), u32> = HashMap::new();
     let mut uniqueness_counter: u32 = 0;
 
     for printing in printings {
@@ -179,12 +179,14 @@ async fn process_side<W: Write + Seek>(
                 "jpg"
             };
 
+            let variant_label = printing.variant.as_deref().unwrap_or("official");
+
             let filename = if part_name == "front" {
                 format!(
                     "{}/{}-{}-{}-{}.{}",
                     folder_name,
                     printing.card_id,
-                    printing.variant,
+                    variant_label,
                     printing.collection,
                     copy_num,
                     ext
@@ -194,7 +196,7 @@ async fn process_side<W: Write + Seek>(
                     "{}/{}-{}-{}-{}-{}.{}",
                     folder_name,
                     printing.card_id,
-                    printing.variant,
+                    variant_label,
                     printing.collection,
                     copy_num,
                     part_name,
