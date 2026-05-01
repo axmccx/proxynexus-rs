@@ -137,9 +137,14 @@ fn format_query_output(
         let default_p = CardStore::select_printing(&default_request, printings)?;
         let count = counts.get(normalized_title).unwrap_or(&1);
 
+        let pack_display = default_p
+            .pack_id
+            .as_deref()
+            .map(|id| format!(":{}", id))
+            .unwrap_or_default();
         let base = format!(
-            "{}x {} [{}:{}:{:?}]",
-            count, default_p.card_title, default_p.variant, default_p.collection, default_p.pack_id,
+            "{}x {} [{}:{}{}]",
+            count, default_p.card_title, default_p.variant, default_p.collection, pack_display,
         );
 
         max_base_len = max_base_len.max(base.len());
@@ -147,7 +152,14 @@ fn format_query_output(
         let alternatives = printings
             .iter()
             .filter(|p| p.variant != default_p.variant || p.collection != default_p.collection)
-            .map(|p| format!("[{}:{}:{:?}]", p.variant, p.collection, p.pack_id))
+            .map(|p| {
+                let pack = p
+                    .pack_id
+                    .as_deref()
+                    .map(|id| format!(":{}", id))
+                    .unwrap_or_default();
+                format!("[{}:{}{}]", p.variant, p.collection, pack)
+            })
             .collect();
 
         lines_data.push((base, alternatives));
