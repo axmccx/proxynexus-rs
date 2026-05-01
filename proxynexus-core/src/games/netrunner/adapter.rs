@@ -1,7 +1,12 @@
+use crate::card_source::DecklistProvider;
 use crate::card_store::normalize_title;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::catalog::{Card, CardVersion, Catalog, CatalogAdapter, Pack};
 use crate::error::Result;
-use crate::games::netrunner::models::{NrdbCard, NrdbCardSet, NrdbPrinting, NrdbResponse};
+use crate::games::netrunner::api::{
+    fetch_card_sets, fetch_cards, fetch_decklist_from_nrdb, fetch_printings,
+};
+use crate::models::Decklist;
 use async_trait::async_trait;
 
 pub struct NetrunnerAdapter {}
@@ -16,27 +21,9 @@ impl NetrunnerAdapter {
     pub fn new() -> Self {
         Self {}
     }
-
-    async fn fetch_v3_endpoint<T: for<'de> serde::Deserialize<'de>>(
-        &self,
-        url: &str,
-    ) -> Result<Vec<T>> {
-        let mut all_data = Vec::new();
-        let mut current_url = Some(url.to_string());
-
-        while let Some(u) = current_url {
-            let json_str = reqwest::get(&u).await?.text().await?;
-
-            let response: NrdbResponse<T> = serde_json::from_str(&json_str)?;
-            all_data.extend(response.data);
-
-            current_url = response.links.and_then(|l| l.next);
-        }
-
-        Ok(all_data)
-    }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl CatalogAdapter for NetrunnerAdapter {
     fn game_id(&self) -> &'static str {
@@ -48,17 +35,9 @@ impl CatalogAdapter for NetrunnerAdapter {
     }
 
     async fn fetch_catalog(&self) -> Result<Catalog> {
-        let base_url = "https://api-preview.netrunnerdb.com/api/v3/public";
-
-        let nrdb_sets: Vec<NrdbCardSet> = self
-            .fetch_v3_endpoint(&format!("{}/card_sets?page[size]=1000", base_url))
-            .await?;
-        let nrdb_cards: Vec<NrdbCard> = self
-            .fetch_v3_endpoint(&format!("{}/cards?page[size]=1000", base_url))
-            .await?;
-        let nrdb_printings: Vec<NrdbPrinting> = self
-            .fetch_v3_endpoint(&format!("{}/printings?page[size]=1000", base_url))
-            .await?;
+        let nrdb_sets = fetch_card_sets().await?;
+        let nrdb_cards = fetch_cards().await?;
+        let nrdb_printings = fetch_printings().await?;
 
         let packs: Vec<Pack> = nrdb_sets
             .into_iter()
@@ -95,5 +74,13 @@ impl CatalogAdapter for NetrunnerAdapter {
             cards,
             card_versions: versions,
         })
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl DecklistProvider for NetrunnerAdapter {
+    async fn fetch(&self, url: &str) -> Result<Decklist> {
+        fetch_decklist_from_nrdb(url).await
     }
 }

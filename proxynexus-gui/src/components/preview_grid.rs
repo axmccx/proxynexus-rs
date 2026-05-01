@@ -46,7 +46,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
 
                     let is_overridden = printing.variant != base_printing.variant
                         || printing.collection != base_printing.collection
-                        || printing.pack_code != base_printing.pack_code;
+                        || printing.pack_id != base_printing.pack_id;
 
                     let border_bg_class = if is_overridden {
                         "[background:conic-gradient(from_var(--border-angle),var(--color-fuchsia-200)_80%,_var(--color-fuchsia-500)_86%,_var(--color-fuchsia-300)_90%,_var(--color-fuchsia-500)_94%,_var(--color-fuchsia-200))]"

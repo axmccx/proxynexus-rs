@@ -1,7 +1,7 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
 use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
-use crate::models::{CardRequest, Printing, PrintingPart};
+use crate::models::{CardRequest, Decklist, Printing, PrintingPart};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
 use std::collections::{HashMap, HashSet};
@@ -95,7 +95,7 @@ impl CardSource for SetName {
 
 pub struct CardStore<'a> {
     db: &'a mut DbStorage,
-    active_game_id: String,
+    pub active_game_id: String,
 }
 
 type CardOverride<'a> = (&'a str, Option<String>, Option<String>, Option<String>);
@@ -417,15 +417,15 @@ impl<'a> CardStore<'a> {
         Ok(results)
     }
 
-    pub async fn resolve_codes_to_card_requests(
+    pub async fn resolve_decklist_to_requests(
         &mut self,
-        codes: &HashMap<String, u32>,
+        decklist: &Decklist,
     ) -> Result<Vec<CardRequest>> {
-        if codes.is_empty() {
+        if decklist.cards.is_empty() {
             return Ok(Vec::new());
         }
 
-        let in_clause = build_in_clause(codes.keys());
+        let in_clause = build_in_clause(decklist.cards.keys());
 
         let query = format!(
             "SELECT c.id, c.title
@@ -446,19 +446,19 @@ impl<'a> CardStore<'a> {
             }
         }
 
-        if resolved_titles.is_empty() && !codes.is_empty() {
+        if resolved_titles.is_empty() && !decklist.cards.is_empty() {
             return Err(ProxyNexusError::Internal(
-                "No card codes found in the local catalog. Is your catalog seeded?".into(),
+                "No card IDs found in the local catalog.".into(),
             ));
         }
 
         let mut requests = Vec::new();
-        for (code, qty) in codes {
-            if let Some(title) = resolved_titles.get(code) {
+        for (id, qty) in &decklist.cards {
+            if let Some(title) = resolved_titles.get(id) {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
                         title: title.clone(),
-                        id: code.clone(),
+                        id: id.clone(),
                         variant: None,
                         collection: None,
                         pack_id: None,
@@ -466,11 +466,7 @@ impl<'a> CardStore<'a> {
                     *qty as usize,
                 ));
             } else {
-                warn!(
-                    "Card code '{}' from NetrunnerDB not found in local catalog",
-                    code
-                );
-                warn!("Consider running 'proxynexus catalog update'");
+                warn!("Card ID '{}' from decklist not found in local catalog", id);
             }
         }
 

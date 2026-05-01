@@ -3,7 +3,7 @@ use crate::analytics;
 use crate::components::source_selector::ActiveSource;
 use anyhow::Context;
 use dioxus::prelude::*;
-use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
+use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::mpc::{MpcOptions, generate_mpc_zip};
 use proxynexus_core::pdf::{PdfOptions, generate_pdf};
@@ -91,13 +91,14 @@ pub async fn run_export(
     let (source_text, source_type) = match &active_source {
         ActiveSource::Cardlist(text) => (text.clone(), "Cardlist"),
         ActiveSource::SetName(name) => (name.clone(), "SetName"),
-        ActiveSource::NrdbUrl(url) => (url.clone(), "NrdbUrl"),
+        ActiveSource::DecklistUrl(url) => (url.clone(), "NrdbUrl"),
     };
 
     let resolved_printings = async {
         let mut db = db_signal.write();
-        let mut store = proxynexus_core::card_store::CardStore::new(&mut db)
-            .context("Failed to create store")?;
+        let mut store =
+            proxynexus_core::card_store::CardStore::new(&mut db, "netrunner".to_string())
+                .context("Failed to create store")?;
 
         let reqs = match active_source {
             ActiveSource::Cardlist(text) => Cardlist(text)
@@ -108,7 +109,7 @@ pub async fn run_export(
                 .to_card_requests(&mut store)
                 .await
                 .context("Failed to get set cards")?,
-            ActiveSource::NrdbUrl(url) => NrdbUrl(url)
+            ActiveSource::DecklistUrl(url) => DecklistUrl(url)
                 .to_card_requests(&mut store)
                 .await
                 .context("Failed to fetch deck from NetrunnerDB")?,
@@ -136,8 +137,8 @@ pub async fn run_export(
             .iter()
             .map(|p| {
                 format!(
-                    "{} [{}:{}:{}]",
-                    p.card_title, p.variant, p.collection, p.pack_code
+                    "{} [{}:{}:{:?}]",
+                    p.card_title, p.variant, p.collection, p.pack_id
                 )
             })
             .collect()

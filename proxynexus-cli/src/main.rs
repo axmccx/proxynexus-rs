@@ -1,6 +1,6 @@
 use anyhow::{Context, anyhow};
 use clap::{Parser, Subcommand};
-use proxynexus_core::card_source::{CardSource, Cardlist, NrdbUrl, SetName};
+use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::catalog::CatalogManager;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
@@ -335,9 +335,9 @@ async fn handle_catalog_action(
 }
 
 enum InputSource {
-    NrdbUrl(String),
     Cardlist(String),
     SetName(String),
+    DecklistUrl(String),
 }
 
 fn determine_input_source(
@@ -350,7 +350,7 @@ fn determine_input_source(
     } else if let Some(name) = set_name {
         InputSource::SetName(name)
     } else if let Some(url) = nrdb_url {
-        InputSource::NrdbUrl(url)
+        InputSource::DecklistUrl(url)
     } else {
         unreachable!("clap ensures at least one input is provided")
     }
@@ -373,7 +373,7 @@ async fn get_printings_from_source(
             .to_card_requests(&mut store)
             .await
             .with_context(|| format!("Failed to get cards for set '{}'", name))?,
-        InputSource::NrdbUrl(url) => NrdbUrl(url.clone())
+        InputSource::DecklistUrl(url) => DecklistUrl(url.clone())
             .to_card_requests(&mut store)
             .await
             .with_context(|| format!("Failed to fetch deck from NetrunnerDB URL: {}", url))?,
@@ -538,7 +538,7 @@ async fn handle_query(
     let output = match source {
         InputSource::Cardlist(list) => generate_query_output(&Cardlist(list), db, game).await,
         InputSource::SetName(name) => generate_query_output(&SetName(name), db, game).await,
-        InputSource::NrdbUrl(url) => generate_query_output(&NrdbUrl(url), db, game).await,
+        InputSource::DecklistUrl(url) => generate_query_output(&DecklistUrl(url), db, game).await,
     };
 
     println!("\nQuery Results:\n");

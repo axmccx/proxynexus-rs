@@ -23,8 +23,8 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
     let mut selected_variant_str = use_signal(|| None::<String>);
     let variants = props.variants.clone();
     let current_variant_str = format!(
-        "{}:{}:{}",
-        props.printing.variant, props.printing.collection, props.printing.pack_code
+        "{}:{}:{:?}",
+        props.printing.variant, props.printing.collection, props.printing.pack_id
     );
 
     rsx! {
@@ -56,7 +56,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                 class: "flex flex-wrap gap-2 max-w-[280px] md:max-w-[650px]",
                 for v in variants.into_iter() {
                     {
-                        let v_str = format!("{}:{}:{}", v.variant, v.collection, v.pack_code);
+                        let v_str = format!("{}:{}:{:?}", v.variant, v.collection, v.pack_id);
                         let is_selected = current_variant_str == v_str;
 
                         rsx! {

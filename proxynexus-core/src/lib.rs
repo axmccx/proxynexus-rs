@@ -12,7 +12,6 @@ pub mod games;
 pub mod image_provider;
 pub mod models;
 pub mod mpc;
-pub mod netrunnerdb;
 pub mod pdf;
 pub mod print_prep;
 pub mod query;

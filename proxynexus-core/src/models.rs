@@ -38,3 +38,8 @@ pub struct CardRequest {
     pub collection: Option<String>,
     pub pack_id: Option<String>,
 }
+
+#[derive(Debug, Clone)]
+pub struct Decklist {
+    pub cards: std::collections::HashMap<String, u32>,
+}

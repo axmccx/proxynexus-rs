@@ -1,7 +1,7 @@
 #![allow(clippy::await_holding_invalid_type)]
 
 use dioxus::prelude::*;
-use proxynexus_core::card_source::{Cardlist, NrdbUrl, SetName};
+use proxynexus_core::card_source::{Cardlist, DecklistUrl, SetName};
 use proxynexus_core::card_store::normalize_title;
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::models::Printing;
@@ -292,7 +292,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 if text.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&Cardlist(text), &mut db)
+                resolve_query_printings(&Cardlist(text), &mut db, "netrunner")
                     .await
                     .map_err(anyhow::Error::from)
             }
@@ -300,15 +300,15 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 if name.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&SetName(name), &mut db)
+                resolve_query_printings(&SetName(name), &mut db, "netrunner")
                     .await
                     .map_err(anyhow::Error::from)
             }
-            ActiveSource::NrdbUrl(url) => {
+            ActiveSource::DecklistUrl(url) => {
                 if url.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&NrdbUrl(url), &mut db)
+                resolve_query_printings(&DecklistUrl(url), &mut db, "netrunner")
                     .await
                     .map_err(anyhow::Error::from)
             }

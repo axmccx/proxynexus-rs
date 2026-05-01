@@ -7,7 +7,7 @@ use proxynexus_core::db_storage::DbStorage;
 pub enum ActiveSource {
     Cardlist(String),
     SetName(String),
-    NrdbUrl(String),
+    DecklistUrl(String),
 }
 
 impl Default for ActiveSource {
@@ -35,7 +35,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
 
     let available_sets = use_resource(move || async move {
         let mut db = db_signal.write();
-        match CardStore::new(&mut db) {
+        match CardStore::new(&mut db, "netrunner".to_string()) {
             Ok(mut store) => {
                 let packs = store.get_available_packs().await.unwrap_or_default();
                 packs
@@ -49,7 +49,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
 
     let all_cards = use_resource(move || async move {
         let mut db = db_signal.write();
-        match CardStore::new(&mut db) {
+        match CardStore::new(&mut db, "netrunner".to_string()) {
             Ok(mut store) => store.get_all_card_names().await.ok(),
             Err(_) => None,
         }
@@ -89,7 +89,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                             props.on_source_changed.call(());
                         }
                         tab.set("nrdb");
-                        source_state.set(ActiveSource::NrdbUrl(nrdb_url()));
+                        source_state.set(ActiveSource::DecklistUrl(nrdb_url()));
                     },
                     "NetrunnerDB"
                 }
@@ -132,7 +132,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                         oninput: move |evt| {
                             props.on_source_changed.call(());
                             nrdb_url.set(evt.value());
-                            source_state.set(ActiveSource::NrdbUrl(evt.value()));
+                            source_state.set(ActiveSource::DecklistUrl(evt.value()));
                         }
                     }
                 },

@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct NrdbResponse<T> {
@@ -47,4 +48,14 @@ pub struct NrdbPrintingAttributes {
     pub card_id: String,
     pub card_set_id: String,
     pub quantity: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NrdbV2DeckResponse {
+    pub data: Vec<NrdbV2Deck>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NrdbV2Deck {
+    pub cards: HashMap<String, u32>,
 }
