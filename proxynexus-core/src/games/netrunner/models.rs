@@ -48,6 +48,7 @@ pub struct NrdbPrintingAttributes {
     pub card_id: String,
     pub card_set_id: String,
     pub quantity: i64,
+    pub position: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]

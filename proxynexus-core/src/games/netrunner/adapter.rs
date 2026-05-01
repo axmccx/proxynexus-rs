@@ -64,6 +64,7 @@ impl CatalogAdapter for NetrunnerAdapter {
                 card_id: printing.attributes.card_id,
                 pack_id: printing.attributes.card_set_id,
                 quantity: printing.attributes.quantity,
+                position: printing.attributes.position,
             })
             .collect();
 

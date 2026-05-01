@@ -28,6 +28,7 @@ pub struct CardVersion {
     pub card_id: String,
     pub pack_id: String,
     pub quantity: i64,
+    pub position: Option<i64>,
 }
 
 pub struct Catalog {
@@ -159,12 +160,16 @@ impl<'a> CatalogManager<'a> {
 
         for card_version in &catalog.card_versions {
             let synthesized_id = format!("{}_{}", card_version.card_id, card_version.pack_id);
+            let position_val = card_version
+                .position
+                .map_or("NULL".to_string(), |p| p.to_string());
             let q = format!(
-                "INSERT INTO card_versions (id, card_id, pack_id, quantity) VALUES ({}, {}, {}, {})",
+                "INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ({}, {}, {}, {}, {})",
                 quote_sql_string(&synthesized_id),
                 quote_sql_string(&card_version.card_id),
                 quote_sql_string(&card_version.pack_id),
-                card_version.quantity
+                card_version.quantity,
+                position_val
             );
             self.db.execute(&q).await?;
         }

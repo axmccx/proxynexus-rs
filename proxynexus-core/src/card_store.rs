@@ -382,7 +382,7 @@ impl<'a> CardStore<'a> {
              JOIN packs p ON v.pack_id = p.id
              WHERE LOWER(p.name) = {}
                AND c.game_id = {}
-             ORDER BY c.id",
+             ORDER BY v.position, c.id",
             quote_sql_string(&set_name.to_lowercase()),
             quote_sql_string(&self.active_game_id)
         );

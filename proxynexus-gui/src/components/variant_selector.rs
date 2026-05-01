@@ -23,8 +23,10 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
     let mut selected_variant_str = use_signal(|| None::<String>);
     let variants = props.variants.clone();
     let current_variant_str = format!(
-        "{}:{}:{:?}",
-        props.printing.variant, props.printing.collection, props.printing.pack_id
+        "{}:{}:{}",
+        props.printing.variant.as_deref().unwrap_or(""),
+        props.printing.collection,
+        props.printing.pack_id.as_deref().unwrap_or("")
     );
 
     rsx! {
@@ -56,8 +58,14 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                 class: "flex flex-wrap gap-2 max-w-[280px] md:max-w-[650px]",
                 for v in variants.into_iter() {
                     {
-                        let v_str = format!("{}:{}:{:?}", v.variant, v.collection, v.pack_id);
+                        let v_str = format!(
+                            "{}:{}:{}",
+                            v.variant.as_deref().unwrap_or(""),
+                            v.collection,
+                            v.pack_id.as_deref().unwrap_or("")
+                        );
                         let is_selected = current_variant_str == v_str;
+                        let variant_label = v.variant.clone().unwrap_or_else(|| "Official".to_string());
 
                         rsx! {
                             button {
@@ -68,7 +76,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                         "border-transparent hover:border-gray-400"
                                     }
                                 ),
-                                title: "{v.variant} ({v.collection})",
+                                title: "{variant_label} ({v.collection})",
                                 onclick: {
                                     let v_str = v_str.clone();
                                     move |_| {
@@ -81,7 +89,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     crossorigin: "anonymous",
                                     class: "w-full h-full object-cover",
                                     style: "image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);",
-                                    alt: "{v.variant}",
+                                    alt: "{variant_label}",
                                 }
                             }
                         }

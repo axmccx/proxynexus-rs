@@ -47,6 +47,7 @@ struct CardVersionDbRow {
     card_id: String,
     pack_id: String,
     quantity: i64,
+    position: Option<i64>,
 }
 
 #[derive(FromGlueRow)]
@@ -156,7 +157,8 @@ impl DbStorage {
                 id TEXT PRIMARY KEY,
                 card_id TEXT NOT NULL,
                 pack_id TEXT NOT NULL,
-                quantity INTEGER NOT NULL
+                quantity INTEGER NOT NULL,
+                position INTEGER
             );
 
             CREATE TABLE IF NOT EXISTS printings (
@@ -260,16 +262,21 @@ impl DbStorage {
         if let Some(payload) = version_payloads.into_iter().next() {
             let rows: Vec<CardVersionDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO card_versions (id, card_id, pack_id, quantity) VALUES ");
+                sql.push_str(
+                    "INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ",
+                );
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
+                        let position_val =
+                            row.position.map_or("NULL".to_string(), |p| p.to_string());
                         format!(
-                            "({}, {}, {}, {})",
+                            "({}, {}, {}, {}, {})",
                             quote_sql_string(&row.id),
                             quote_sql_string(&row.card_id),
                             quote_sql_string(&row.pack_id),
-                            row.quantity
+                            row.quantity,
+                            position_val
                         )
                     })
                     .collect();
