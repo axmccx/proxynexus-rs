@@ -21,7 +21,7 @@ use web_time::Instant;
 #[command(name = "proxynexus-cli")]
 #[command(version, about, long_about = None)]
 struct Cli {
-    #[arg(short = 'd', long = "verbose", global = true)]
+    #[arg(short, long = "verbose", global = true)]
     verbose: bool,
 
     #[arg(short, long, global = true, default_value = "netrunner")]
@@ -48,7 +48,7 @@ enum Commands {
     #[command(group(
     clap::ArgGroup::new("input")
         .required(true)
-        .args(["cardlist", "set_name", "nrdb_url", "list_sets"]),
+        .args(["cardlist", "set_name", "decklist_url", "list_sets"]),
     ))]
     Query {
         #[arg(short, long)]
@@ -57,8 +57,8 @@ enum Commands {
         #[arg(short, long)]
         set_name: Option<String>,
 
-        #[arg(long)]
-        nrdb_url: Option<String>,
+        #[arg(short, long)]
+        decklist_url: Option<String>,
 
         #[arg(long)]
         list_sets: bool,
@@ -104,7 +104,7 @@ enum GenerateType {
     #[command(group(
         clap::ArgGroup::new("input")
             .required(true)
-            .args(["cardlist", "set_name", "nrdb_url"]),
+            .args(["cardlist", "set_name", "decklist_url"]),
     ))]
     Pdf {
         #[arg(short, long)]
@@ -113,8 +113,8 @@ enum GenerateType {
         #[arg(short, long)]
         set_name: Option<String>,
 
-        #[arg(long)]
-        nrdb_url: Option<String>,
+        #[arg(short, long)]
+        decklist_url: Option<String>,
 
         #[arg(short, long, default_value = "output.pdf")]
         output_path: PathBuf,
@@ -137,7 +137,7 @@ enum GenerateType {
     #[command(group(
         clap::ArgGroup::new("input")
             .required(true)
-            .args(["cardlist", "set_name", "nrdb_url"]),
+            .args(["cardlist", "set_name", "decklist_url"]),
     ))]
     Mpc {
         #[arg(short, long)]
@@ -146,8 +146,8 @@ enum GenerateType {
         #[arg(short, long)]
         set_name: Option<String>,
 
-        #[arg(long)]
-        nrdb_url: Option<String>,
+        #[arg(short, long)]
+        decklist_url: Option<String>,
 
         #[arg(short, long, default_value = "output.zip")]
         output_path: PathBuf,
@@ -204,9 +204,19 @@ async fn main() -> anyhow::Result<()> {
         Commands::Query {
             cardlist,
             set_name,
-            nrdb_url,
+            decklist_url,
             list_sets,
-        } => handle_query(&mut db, &cli.game, cardlist, set_name, nrdb_url, list_sets).await,
+        } => {
+            handle_query(
+                &mut db,
+                &cli.game,
+                cardlist,
+                set_name,
+                decklist_url,
+                list_sets,
+            )
+            .await
+        }
         Commands::Catalog { action } => handle_catalog_action(action, &mut catalog_manager).await,
         Commands::Export { output } => {
             println!("Exporting database to {:?}...", output);
@@ -343,13 +353,13 @@ enum InputSource {
 fn determine_input_source(
     cardlist: Option<String>,
     set_name: Option<String>,
-    nrdb_url: Option<String>,
+    decklist_url: Option<String>,
 ) -> InputSource {
     if let Some(list) = cardlist {
         InputSource::Cardlist(list)
     } else if let Some(name) = set_name {
         InputSource::SetName(name)
-    } else if let Some(url) = nrdb_url {
+    } else if let Some(url) = decklist_url {
         InputSource::DecklistUrl(url)
     } else {
         unreachable!("clap ensures at least one input is provided")
@@ -399,7 +409,7 @@ async fn handle_generate(
         GenerateType::Pdf {
             cardlist,
             set_name,
-            nrdb_url,
+            decklist_url,
             output_path,
             page_size,
             cut_lines,
@@ -420,7 +430,7 @@ async fn handle_generate(
                     cut_line_thickness
                 ));
             }
-            let source = determine_input_source(cardlist, set_name, nrdb_url);
+            let source = determine_input_source(cardlist, set_name, decklist_url);
 
             let printings = get_printings_from_source(db, game, source).await?;
 
@@ -448,11 +458,11 @@ async fn handle_generate(
         GenerateType::Mpc {
             cardlist,
             set_name,
-            nrdb_url,
+            decklist_url,
             output_path,
             upscale,
         } => {
-            let source = determine_input_source(cardlist, set_name, nrdb_url);
+            let source = determine_input_source(cardlist, set_name, decklist_url);
             let start = Instant::now();
 
             let printings = get_printings_from_source(db, game, source).await?;
@@ -519,7 +529,7 @@ async fn handle_query(
     game: &str,
     cardlist: Option<String>,
     set_name: Option<String>,
-    nrdb_url: Option<String>,
+    decklist_url: Option<String>,
     list_sets: bool,
 ) -> anyhow::Result<()> {
     if list_sets {
@@ -533,7 +543,7 @@ async fn handle_query(
         return Ok(());
     }
 
-    let source = determine_input_source(cardlist, set_name, nrdb_url);
+    let source = determine_input_source(cardlist, set_name, decklist_url);
 
     let output = match source {
         InputSource::Cardlist(list) => generate_query_output(&Cardlist(list), db, game).await,
