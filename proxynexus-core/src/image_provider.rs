@@ -38,7 +38,7 @@ pub struct RemoteImageProvider;
 
 impl ImageProvider for RemoteImageProvider {
     async fn get_image_bytes(&self, key: &str) -> Result<Vec<u8>> {
-        let url = format!("https://collections.proxynexus.net/{}", key);
+        let url = format!("https://test-collections.proxynexus.net/{}", key);
 
         #[cfg(not(target_arch = "wasm32"))]
         {

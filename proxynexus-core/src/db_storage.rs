@@ -103,6 +103,19 @@ impl DbStorage {
         res.map_err(ProxyNexusError::from)
     }
 
+    pub async fn get_games(&mut self) -> Result<Vec<(String, String)>> {
+        let query = "SELECT id, display_name FROM games";
+        let payloads = self.execute(query).await?;
+        let mut games = Vec::new();
+        if let Some(payload) = payloads.into_iter().next() {
+            let rows: Vec<GameDbRow> = payload.rows_as()?;
+            for row in rows {
+                games.push((row.id, row.display_name));
+            }
+        }
+        Ok(games)
+    }
+
     pub async fn get_next_id(&mut self, table_name: &str) -> Result<i64> {
         let query = format!("SELECT id FROM {} ORDER BY id DESC LIMIT 1", table_name);
         let payloads = self.execute(&query).await?;

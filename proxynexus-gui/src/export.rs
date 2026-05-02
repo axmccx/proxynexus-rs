@@ -33,6 +33,7 @@ struct ExportMeta {
 
 pub async fn run_export(
     mut db_signal: Signal<DbStorage>,
+    active_game_id: String,
     active_source: ActiveSource,
     options: ExportOptions,
     mut progress_signal: Signal<Option<f32>>,
@@ -91,14 +92,13 @@ pub async fn run_export(
     let (source_text, source_type) = match &active_source {
         ActiveSource::Cardlist(text) => (text.clone(), "Cardlist"),
         ActiveSource::SetName(name) => (name.clone(), "SetName"),
-        ActiveSource::DecklistUrl(url) => (url.clone(), "NrdbUrl"),
+        ActiveSource::DecklistUrl(url) => (url.clone(), "DecklistUrl"),
     };
 
     let resolved_printings = async {
         let mut db = db_signal.write();
-        let mut store =
-            proxynexus_core::card_store::CardStore::new(&mut db, "netrunner".to_string())
-                .context("Failed to create store")?;
+        let mut store = proxynexus_core::card_store::CardStore::new(&mut db, active_game_id)
+            .context("Failed to create store")?;
 
         let reqs = match active_source {
             ActiveSource::Cardlist(text) => Cardlist(text)
@@ -112,7 +112,7 @@ pub async fn run_export(
             ActiveSource::DecklistUrl(url) => DecklistUrl(url)
                 .to_card_requests(&mut store)
                 .await
-                .context("Failed to fetch deck from NetrunnerDB")?,
+                .context("Failed to fetch deck from Decklist API")?,
         };
 
         let available = store

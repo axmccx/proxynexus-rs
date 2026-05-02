@@ -18,6 +18,7 @@ impl Default for ActiveSource {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SourceSelectorProps {
+    pub active_game_id: Signal<Option<String>>,
     pub source_state: Signal<ActiveSource>,
     pub db_signal: Signal<DbStorage>,
     pub on_source_changed: EventHandler<()>,
@@ -28,14 +29,19 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     let mut tab = use_signal(|| "list");
     let mut db_signal = props.db_signal;
     let mut source_state = props.source_state;
+    let active_game_id = props.active_game_id;
 
     let mut list_text = use_signal(String::new);
     let mut set_name = use_signal(String::new);
     let mut nrdb_url = use_signal(String::new);
 
     let available_sets = use_resource(move || async move {
+        let game_id = match active_game_id() {
+            Some(id) => id,
+            None => return Vec::new(),
+        };
         let mut db = db_signal.write();
-        match CardStore::new(&mut db, "netrunner".to_string()) {
+        match CardStore::new(&mut db, game_id) {
             Ok(mut store) => {
                 let packs = store.get_available_packs().await.unwrap_or_default();
                 packs
@@ -48,8 +54,12 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     });
 
     let all_cards = use_resource(move || async move {
+        let game_id = match active_game_id() {
+            Some(id) => id,
+            None => return None,
+        };
         let mut db = db_signal.write();
-        match CardStore::new(&mut db, "netrunner".to_string()) {
+        match CardStore::new(&mut db, game_id) {
             Ok(mut store) => store.get_all_card_names().await.ok(),
             Err(_) => None,
         }

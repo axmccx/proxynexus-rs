@@ -250,6 +250,42 @@ fn App() -> Element {
 fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     let progress = use_signal(|| None::<f32>);
 
+    let mut active_game_id = use_signal(|| {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(window) = web_sys::window() {
+                if let Ok(Some(local_storage)) = window.local_storage() {
+                    if let Ok(Some(saved)) = local_storage.get_item("active_game_id") {
+                        if !saved.trim().is_empty() {
+                            return Some(saved);
+                        }
+                    }
+                }
+            }
+        }
+        None::<String>
+    });
+
+    use_effect(move || {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(window) = web_sys::window() {
+                if let Ok(Some(local_storage)) = window.local_storage() {
+                    if let Some(id) = active_game_id() {
+                        let _ = local_storage.set_item("active_game_id", &id);
+                    } else {
+                        let _ = local_storage.remove_item("active_game_id");
+                    }
+                }
+            }
+        }
+    });
+
+    let available_games = use_resource(move || async move {
+        let mut db = db_signal.write();
+        db.get_games().await.unwrap_or_default()
+    });
+
     let active_source = use_signal(ActiveSource::default);
     let mut debounced_source = use_signal(ActiveSource::default);
     let mut debounce_task = use_signal(|| None::<dioxus_core::Task>);
@@ -284,6 +320,11 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     });
 
     let raw_data_resource = use_resource(move || async move {
+        let game_id = match active_game_id() {
+            Some(id) => id,
+            None => return Ok((Vec::new(), HashMap::new())),
+        };
+
         let source = debounced_source();
         let mut db = db_signal.write();
 
@@ -292,7 +333,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 if text.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&Cardlist(text), &mut db, "netrunner")
+                resolve_query_printings(&Cardlist(text), &mut db, &game_id)
                     .await
                     .map_err(anyhow::Error::from)
             }
@@ -300,7 +341,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 if name.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&SetName(name), &mut db, "netrunner")
+                resolve_query_printings(&SetName(name), &mut db, &game_id)
                     .await
                     .map_err(anyhow::Error::from)
             }
@@ -308,7 +349,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                 if url.trim().is_empty() {
                     return Ok((Vec::new(), HashMap::new()));
                 }
-                resolve_query_printings(&DecklistUrl(url), &mut db, "netrunner")
+                resolve_query_printings(&DecklistUrl(url), &mut db, &game_id)
                     .await
                     .map_err(anyhow::Error::from)
             }
@@ -451,24 +492,45 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
             div {
                 style: "z-index: 10;",
                 class: "relative md:w-[440px] bg-white flex-shrink-0 flex flex-col border-t md:border-t-0 md:border-l border-gray-200",
-                button {
-                    class: "absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10",
-                    onclick: move |_| is_about_open.set(true),
-                    title: "About Proxy Nexus",
-                    svg {
-                        class: "w-6 h-6",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        stroke_width: "2",
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        circle { cx: "12", cy: "12", r: "10" }
-                        path { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }
-                        path { d: "M12 17h.01" }
+                div {
+                    class: "p-2 border-b border-gray-200 shrink-0 flex items-center justify-between gap-3",
+                    select {
+                        class: "w-auto max-w-full p-1.5 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm",
+                        value: active_game_id().unwrap_or_default(),
+                        onchange: move |evt| {
+                            active_game_id.set(Some(evt.value()));
+                            is_overrides_reset_pending.set(true);
+                        },
+                        if active_game_id().is_none() {
+                            option { value: "", disabled: true, selected: true, "Select a game..." }
+                        }
+                        if let Some(games) = available_games.read().as_ref() {
+                            for (id, display_name) in games {
+                                option { value: id.clone(), "{display_name}" }
+                            }
+                        }
+                    }
+                    button {
+                        class: "text-gray-400 hover:text-gray-600 focus:outline-none flex-shrink-0",
+                        onclick: move |_| is_about_open.set(true),
+                        title: "About Proxy Nexus",
+                        svg {
+                            class: "w-6 h-6",
+                            fill: "none",
+                            stroke: "currentColor",
+                            view_box: "0 0 24 24",
+                            stroke_width: "2",
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                            circle { cx: "12", cy: "12", r: "10" }
+                            path { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }
+                            path { d: "M12 17h.01" }
+                        }
                     }
                 }
+
                 SourceSelector {
+                    active_game_id,
                     source_state: active_source,
                     db_signal,
                     on_source_changed: move |_| {
@@ -482,14 +544,17 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                     on_open_upscale_info: move |pos| upscale_info_pos.set(Some(pos)),
                     on_generate: move |options: export::ExportOptions| {
                         let source = active_source();
-                        spawn(export::run_export(
-                            db_signal,
-                            source,
-                            options,
-                            progress,
-                            global_overrides.read().clone(),
-                            index_overrides.read().clone(),
-                        ));
+                        if let Some(game_id) = active_game_id() {
+                            spawn(export::run_export(
+                                db_signal,
+                                game_id,
+                                source,
+                                options,
+                                progress,
+                                global_overrides.read().clone(),
+                                index_overrides.read().clone(),
+                            ));
+                        }
                     }
                 }
             }
