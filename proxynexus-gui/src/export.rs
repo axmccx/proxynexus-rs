@@ -136,9 +136,12 @@ pub async fn run_export(
         printings
             .iter()
             .map(|p| {
-                let v = p.variant.as_deref().unwrap_or("official");
-                let pk = p.pack_id.as_deref().unwrap_or("none");
-                format!("{} [{}:{}:{}]", p.card_title, v, p.collection, pk)
+                let p_display = p
+                    .pack_id
+                    .as_deref()
+                    .or(p.variant.as_deref())
+                    .unwrap_or("official");
+                format!("{} [{}:{}]", p.card_title, p_display, p.collection)
             })
             .collect()
     } else {

@@ -22,12 +22,13 @@ pub struct VariantSelectorProps {
 pub fn VariantSelector(props: VariantSelectorProps) -> Element {
     let mut selected_variant_str = use_signal(|| None::<String>);
     let variants = props.variants.clone();
-    let current_variant_str = format!(
-        "{}:{}:{}",
-        props.printing.variant.as_deref().unwrap_or(""),
-        props.printing.collection,
-        props.printing.pack_id.as_deref().unwrap_or("")
-    );
+    let current_p_display = props
+        .printing
+        .pack_id
+        .as_deref()
+        .or(props.printing.variant.as_deref())
+        .unwrap_or("");
+    let current_variant_str = format!("{}:{}", current_p_display, props.printing.collection);
 
     rsx! {
         div {
@@ -58,12 +59,8 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                 class: "flex flex-wrap gap-2 max-w-[280px] md:max-w-[650px]",
                 for v in variants.into_iter() {
                     {
-                        let v_str = format!(
-                            "{}:{}:{}",
-                            v.variant.as_deref().unwrap_or(""),
-                            v.collection,
-                            v.pack_id.as_deref().unwrap_or("")
-                        );
+                        let p_display = v.pack_id.as_deref().or(v.variant.as_deref()).unwrap_or("");
+                        let v_str = format!("{}:{}", p_display, v.collection);
                         let is_selected = current_variant_str == v_str;
                         let variant_label = v.variant.clone().unwrap_or_else(|| "Official".to_string());
 
