@@ -85,12 +85,8 @@ pub fn apply_variant_overrides(
         if let Some(over_str) = override_str
             && let Some(variants) = available.get(&title_norm)
             && let Some(variant_p) = variants.iter().find(|v| {
-                let v_str = format!(
-                    "{}:{}:{}",
-                    v.variant.as_deref().unwrap_or(""),
-                    v.collection,
-                    v.pack_id.as_deref().unwrap_or("")
-                );
+                let p_display = v.pack_id.as_deref().or(v.variant.as_deref()).unwrap_or("");
+                let v_str = format!("{}:{}", p_display, v.collection);
                 v_str == *over_str
             })
         {
@@ -106,19 +102,14 @@ fn format_query_output(
     requests: &[CardRequest],
     available: &HashMap<String, Vec<Printing>>,
 ) -> Result<String> {
-    type GroupKey = (String, Option<String>, Option<String>, Option<String>);
+    type GroupKey = (String, Option<String>, Option<String>);
     let mut order: Vec<GroupKey> = Vec::new();
     let mut counts: HashMap<GroupKey, u32> = HashMap::new();
     let mut key_to_request: HashMap<GroupKey, CardRequest> = HashMap::new();
 
     for req in requests {
         let normalized = normalize_title(&req.title);
-        let key = (
-            normalized,
-            req.variant.clone(),
-            req.collection.clone(),
-            req.pack_id.clone(),
-        );
+        let key = (normalized, req.printing.clone(), req.collection.clone());
         if !counts.contains_key(&key) {
             order.push(key.clone());
             key_to_request.insert(key.clone(), req.clone());
@@ -141,15 +132,15 @@ fn format_query_output(
         let resolved_p = CardStore::select_printing(req, printings)?;
         let count = counts.get(key).unwrap_or(&1);
 
-        let pack_display = resolved_p
+        let printing_display = resolved_p
             .pack_id
             .as_deref()
-            .map(|id| format!(":{}", id))
-            .unwrap_or_default();
-        let variant_display = resolved_p.variant.as_deref().unwrap_or("official");
+            .or(resolved_p.variant.as_deref())
+            .unwrap_or("official");
+
         let base = format!(
-            "{}x {} [{}:{}{}]",
-            count, resolved_p.card_title, variant_display, resolved_p.collection, pack_display,
+            "{}x {} [{}:{}]",
+            count, resolved_p.card_title, printing_display, resolved_p.collection,
         );
 
         max_base_len = max_base_len.max(base.len());
@@ -162,13 +153,12 @@ fn format_query_output(
                     || p.pack_id != resolved_p.pack_id
             })
             .map(|p| {
-                let pack = p
+                let p_display = p
                     .pack_id
                     .as_deref()
-                    .map(|id| format!(":{}", id))
-                    .unwrap_or_default();
-                let v_label = p.variant.as_deref().unwrap_or("official");
-                format!("[{}:{}{}]", v_label, p.collection, pack)
+                    .or(p.variant.as_deref())
+                    .unwrap_or("official");
+                format!("[{}:{}]", p_display, p.collection)
             })
             .collect();
 
@@ -230,7 +220,7 @@ mod tests {
         available.insert("sure_gamble".into(), vec![base_p.clone(), alt_p.clone()]);
 
         let mut global_overrides = HashMap::new();
-        global_overrides.insert("sure_gamble".into(), "alt1:standard:".into());
+        global_overrides.insert("sure_gamble".into(), "alt1:standard".into());
 
         let result = apply_variant_overrides(&base, &available, &global_overrides, &HashMap::new());
         assert_eq!(result.len(), 2);
@@ -254,7 +244,7 @@ mod tests {
 
         let mut index_overrides = HashMap::new();
         // Override only the second occurrence (index 1)
-        index_overrides.insert(("sure_gamble".into(), 1), "alt1:standard:".into());
+        index_overrides.insert(("sure_gamble".into(), 1), "alt1:standard".into());
 
         let result = apply_variant_overrides(&base, &available, &HashMap::new(), &index_overrides);
         assert_eq!(result.len(), 2);
@@ -283,10 +273,10 @@ mod tests {
         );
 
         let mut global_overrides = HashMap::new();
-        global_overrides.insert("sure_gamble".into(), "alt1:standard:".into());
+        global_overrides.insert("sure_gamble".into(), "alt1:standard".into());
 
         let mut index_overrides = HashMap::new();
-        index_overrides.insert(("sure_gamble".into(), 1), "promo:special:".into());
+        index_overrides.insert(("sure_gamble".into(), 1), "promo:special".into());
 
         let result =
             apply_variant_overrides(&base, &available, &global_overrides, &index_overrides);

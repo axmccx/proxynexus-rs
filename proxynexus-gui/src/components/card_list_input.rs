@@ -81,7 +81,7 @@ pub fn CardListInput(props: CardListInputProps) -> Element {
 
             let (_qty, rest) = CardStore::parse_quantity(current_line);
             let name = match CardStore::parse_overrides(rest) {
-                Ok((n, _, _, _)) => clean_card_name(n),
+                Ok((n, _, _)) => clean_card_name(n),
                 Err(_) => clean_card_name(rest),
             }
             .trim();

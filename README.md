@@ -116,7 +116,7 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 *   **Part:** Some printings have more than one image. Most cards just have a "front" part, but double-sided cards have a "back" part as well.
 *   **Collection:** A set of card image files and metadata. Can be packaged into a `.pnx` file by the CLI, and added to a local Proxy Nexus instance.
 *   **Pack and Set:** Both mean the same thing and are used interchangeably. A retail expansion of cards. netrunnerdb's API uses the term pack but their UI uses set.
-*   **Card Request:** The user's intent when asking to generate a proxy. It specifies the card title and code and optional variant, collection, or pack overrides.
+*   **Card Request:** The user's intent when asking to generate a proxy. It specifies the card title and code and optional printing or collection overrides.
 
 --- 
 
@@ -124,39 +124,37 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 
 Each image file represents a single printing and part. The collection builder relies solely on the file name to identify it.
 The general syntax is:
-`{card_code}_{variant}-{part}.{extension}`
+`{card_id}@{printing}[~{part}].{extension}`
 
-Both the variant and part sections are optional, and default to "original" and "front" respectively if omitted.
+The printing section is required. The part section is optional and defaults to "front" if omitted.
 Only PNG and JPEG files are supported.
 
 #### File name scenarios:
-*   **Standard Cards (No Variant, No Part):** The majority of card image files. (e.g., `01001.jpg` -> Code: 01001, Variant: original, Part: front).
-*   **Variants (Alternate Art):** Contains an underscore `_` followed by a variant name. (e.g., `01001_alt1.jpg` -> Code: 01001, Variant: alt1, Part: front).
-*   **Parts (Multiple Sides):** Contains a dash `-` followed by the part name. (e.g., `26066-back.jpg` -> Code: 26066, Variant: original, Part: back).
-*   **Combined (Variants and Parts):** The variant must come before the part. (e.g., `09037_alt1-back.jpg` -> Code: 09037, Variant: alt1, Part: back).
+*   **Standard Cards (No Part):** The majority of card image files. (e.g., `hedge_fund@core.jpg` -> ID: hedge_fund, Printing: core, Part: front).
+*   **Alternate Art:** The printing must be an official pack or a custom label for alt-arts. (e.g., `hedge_fund@alt1.jpg` -> ID: hedge_fund, Printing: alt1, Part: front).
+*   **Parts (Multiple Sides):** Contains a tilde `~` followed by the part name. (e.g., `26066@core~back.jpg` -> ID: 26066, Printing: core, Part: back).
 
 **Strict Rules:**
-*   **Numeric Card Codes Only:** The parser checks if the `{card_code}` section is numeric. If it doesn't start with numbers (e.g., `agenda_1.jpg`), it is ignored.
 *   **Orphans:** If a part file doesn't have an associated front file, it is ignored.
 
 ---
 
-## Card Requests and Variant Notation
+## Card Requests and Printing Notation
 
-#### Variant Notation in Card Lists
+#### Printing Notation in Card Lists
 
-When generating from a card list, you can request a specific variant name, collection, or pack using the following notation.
-`Quantity Card Name [variant:collection:pack_code]`
+When generating from a card list, you can request a specific printing (an official pack or custom variant label), or collection using the following notation.
+`Quantity Card Name [printing:collection]`
 
 Examples:
-*   **Requesting a specific variant:** `3x Sure Gamble [alt1]`
+*   **Requesting a specific printing:** `3x Sure Gamble [alt1]`
 *   **Requesting a specific collection:** `3x Sure Gamble [:my_custom_scans]`
-*   **Requesting a specific variant from a specific collection:** `3x Sure Gamble [promo:my_custom_scans]`
-*   **Requesting a specific pack version:** `3x Sure Gamble [::core]`
+*   **Requesting a specific printing from a specific collection:** `3x Sure Gamble [promo:my_custom_scans]`
+*   **Requesting a specific official pack:** `3x Sure Gamble [core]`
 
-The variant notation is optional.
+The printing notation is optional.
 
-**Discovering Available Variants:**
+**Discovering Available Printings:**
 
 You can use the CLI's `query` command to see what's available.
 
@@ -173,35 +171,30 @@ Available Sets:
 ...
 ```
 
-The following lists the variants and the collection they're in for each card in the set:
+The following lists the printings and the collection they're in for each card in the set:
 ```bash
 ./proxynexus-cli query --set-name "Core Set"
 
 Query Results:
 
-1x Noise: Hacker Extraordinaire [original:ffg-en:core]  # also: [alt1:ffg-en:core], [alt1:extras:core]
-2x Déjà Vu [original:ffg-en:core]                       # also: [alt1:ffg-en:core]
-3x Demolition Run [original:ffg-en:core]
-3x Stimhack [original:ffg-en:core]                      # also: [alt1:ffg-en:core]
+1x Noise: Hacker Extraordinaire [core:ffg-en]  # also: [alt1:ffg-en], [alt1:extras]
+2x Déjà Vu [core:ffg-en]                       # also: [alt1:ffg-en]
+3x Demolition Run [core:ffg-en]
+3x Stimhack [core:ffg-en]                      # also: [alt1:ffg-en]
 ...
 ```
 The quantity comes from the pack's metadata from netrunnerdb. The output of this query is a valid card list.
 
 #### Card Request Resolution
 
-Whether you're using the notation above in a card list, or selecting a set name, or a netrunnerdb URL, 
-the app converts this input into a list of **Card Requests**.
+Whether you're using the notation above in a card list, or selecting a set name, or a decklist URL, 
+the app converts this input into a list of **Card Requests**. 
 
-How card codes are determined:
-*   **Cards Lists:** For each card name, get the **newest card code**.
-*   **Sets and URLs:** Use the exact card code from the pack metadata or decklist URL.
-
-Each Card Request in the list is then used to find the best available Printing, across all available collections, 
+Each Card Request in the list is then used to find the best available Printing, across all available collections,
 using the following priority hierarchy:
-1.  Match the requested variant. If no variant is specified, default to the `"original"` variant.
-2.  Match the exact collection or pack, if provided.
-3.  Match the exact card code.
-4.  Use the oldest chronological printing available.
+1.  Match the requested printing. If no printing is specified, prefer official printings over custom variants.
+2.  Match the exact collection, if provided.
+3.  Use the oldest chronological printing available.
 
 ---
 

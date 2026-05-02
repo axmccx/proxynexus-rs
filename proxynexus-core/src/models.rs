@@ -34,9 +34,8 @@ pub struct Printing {
 pub struct CardRequest {
     pub title: String,
     pub id: String,
-    pub variant: Option<String>,
+    pub printing: Option<String>,
     pub collection: Option<String>,
-    pub pack_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]

@@ -98,7 +98,7 @@ pub struct CardStore<'a> {
     pub active_game_id: String,
 }
 
-type CardOverride<'a> = (&'a str, Option<String>, Option<String>, Option<String>);
+type CardOverride<'a> = (&'a str, Option<String>, Option<String>);
 
 impl<'a> CardStore<'a> {
     pub fn new(db: &'a mut DbStorage, active_game_id: String) -> Result<Self> {
@@ -131,7 +131,7 @@ impl<'a> CardStore<'a> {
         &mut self,
         text: &str,
     ) -> Result<(Vec<CardRequest>, Vec<String>)> {
-        type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<String>, Option<String>);
+        type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<String>);
         let mut entries: Vec<CardlistEntry> = Vec::new();
 
         for line in text.lines() {
@@ -141,11 +141,10 @@ impl<'a> CardStore<'a> {
             }
 
             let (qty, rest) = Self::parse_quantity(line);
-            let (name, variant_pref, collection_pref, pack_code_pref) =
-                Self::parse_overrides(rest)?;
+            let (name, printing_pref, collection_pref) = Self::parse_overrides(rest)?;
 
             let name = clean_card_name(name);
-            entries.push((name, qty, variant_pref, collection_pref, pack_code_pref));
+            entries.push((name, qty, printing_pref, collection_pref));
         }
 
         if entries.is_empty() {
@@ -157,17 +156,16 @@ impl<'a> CardStore<'a> {
 
         let mut requests = Vec::new();
 
-        for (name, qty, variant, collection, requested_pack_code) in entries {
+        for (name, qty, printing, collection) in entries {
             if let Some((code, title, resolved_pack_code)) = resolved_cards.get(name) {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
                         title: title.clone(),
                         id: code.clone(),
-                        variant: variant.clone(),
-                        collection: collection.clone(),
-                        pack_id: requested_pack_code
+                        printing: printing
                             .clone()
                             .or_else(|| Some(resolved_pack_code.clone())),
+                        collection: collection.clone(),
                     },
                     qty as usize,
                 ));
@@ -220,13 +218,12 @@ impl<'a> CardStore<'a> {
                 })
                 .collect();
 
-            let variant = parts.first().cloned().flatten();
+            let printing = parts.first().cloned().flatten();
             let collection = parts.get(1).cloned().flatten();
-            let pack_code = parts.get(2).cloned().flatten();
 
-            Ok((name, variant, collection, pack_code))
+            Ok((name, printing, collection))
         } else {
-            Ok((text.trim(), None, None, None))
+            Ok((text.trim(), None, None))
         }
     }
 
@@ -398,9 +395,8 @@ impl<'a> CardStore<'a> {
                     CardRequest {
                         title: row.title,
                         id: row.id,
-                        variant: None,
+                        printing: Some(row.pack_id),
                         collection: None,
-                        pack_id: Some(row.pack_id),
                     },
                     row.quantity as usize,
                 ));
@@ -460,9 +456,8 @@ impl<'a> CardStore<'a> {
                     CardRequest {
                         title: title.clone(),
                         id: entry.card_id.clone(),
-                        variant: None,
+                        printing: entry.pack_id.clone(),
                         collection: None,
-                        pack_id: entry.pack_id.clone(),
                     },
                     entry.quantity as usize,
                 ));
@@ -639,11 +634,15 @@ impl<'a> CardStore<'a> {
     pub fn select_printing(request: &CardRequest, printings: &[Printing]) -> Result<Printing> {
         let mut candidates: Vec<&Printing> = printings.iter().collect();
 
+        // Ensure the best match (fewest misses) is at index 0
         candidates.sort_by_key(|p| {
+            let printing_miss = request.printing.is_some()
+                && request.printing != p.pack_id
+                && request.printing != p.variant;
+
             (
-                p.variant.as_ref() != request.variant.as_ref(),
+                printing_miss,
                 request.collection.is_some() && request.collection.as_ref() != Some(&p.collection),
-                request.pack_id.is_some() && request.pack_id != p.pack_id,
                 !p.is_official,
                 p.date_release.is_none(),
                 p.date_release.clone(),
@@ -727,9 +726,8 @@ mod tests {
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: Some("alt1".into()),
+            printing: Some("alt1".into()),
             collection: None,
-            pack_id: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -742,9 +740,8 @@ mod tests {
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: None,
+            printing: None,
             collection: Some("nsg-en".into()),
-            pack_id: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -757,9 +754,8 @@ mod tests {
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: None,
+            printing: Some("system_gateway".to_string()),
             collection: None,
-            pack_id: Some("system_gateway".to_string()),
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -772,37 +768,34 @@ mod tests {
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: Some("missing_variant".into()),
+            printing: Some("missing_variant".into()),
             collection: None,
-            pack_id: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.variant, None);
-        assert_eq!(result.pack_id, Some("core".to_string())); // Oldest first (2012)
+        assert_eq!(result.pack_id, Some("core".to_string())); // Oldest first
 
         // Default to the earliest original
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: None,
+            printing: None,
             collection: None,
-            pack_id: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.variant, None);
         assert_eq!(result.pack_id, Some("core".to_string()));
 
-        // Collection match beats pack match (Priority 2 vs 3)
+        // Printing match beats collection match
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: None,
+            printing: Some("core".into()),
             collection: Some("nsg-en".into()),
-            pack_id: Some("core".into()),
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
-        assert_eq!(result.collection, "nsg-en");
-        assert_eq!(result.pack_id, Some("system_gateway".to_string()));
+        assert_eq!(result.collection, "ffg-en");
+        assert_eq!(result.pack_id, Some("core".to_string()));
     }
 
     #[test]
@@ -812,13 +805,12 @@ mod tests {
         let p3 = mock_printing("1", false, Some("promo"), "c2", None, Some("2022-01-01"));
         let available = vec![p1.clone(), p2.clone(), p3.clone()];
 
-        // 1. Missing variant fallback to official art
+        // 1. Missing variant fallback to official version
         let req1 = CardRequest {
             title: "Test".into(),
             id: "1".into(),
-            variant: Some("missing_variant".into()),
+            printing: Some("missing_variant".into()),
             collection: None,
-            pack_id: None,
         };
         let result1 = CardStore::select_printing(&req1, &available).unwrap();
         assert!(result1.is_official);
@@ -830,9 +822,8 @@ mod tests {
         let req3 = CardRequest {
             title: "Test".into(),
             id: "1".into(),
-            variant: None,
+            printing: None,
             collection: Some("c2".into()),
-            pack_id: None,
         };
         let result3 = CardStore::select_printing(&req3, &available2).unwrap();
         assert_eq!(result3.collection, "c2");
@@ -885,27 +876,24 @@ mod tests {
     #[test]
     fn test_parse_overrides() {
         // Full override
-        let (name, v, c, p) = CardStore::parse_overrides("Sure Gamble [alt:ffg-en:core]").unwrap();
+        let (name, p, c) = CardStore::parse_overrides("Sure Gamble [alt:ffg-en]").unwrap();
         assert_eq!(name, "Sure Gamble");
-        assert_eq!(v, Some("alt".into()));
+        assert_eq!(p, Some("alt".into()));
         assert_eq!(c, Some("ffg-en".into()));
-        assert_eq!(p, Some("core".into()));
 
-        // Partial, variant only
-        let (_, v, c, p) = CardStore::parse_overrides("Sure Gamble [alt]").unwrap();
-        assert_eq!(v, Some("alt".into()));
+        // Partial, printing only
+        let (_, p, c) = CardStore::parse_overrides("Sure Gamble [alt]").unwrap();
+        assert_eq!(p, Some("alt".into()));
         assert_eq!(c, None);
-        assert_eq!(p, None);
 
         // Partial, skipped slots
-        let (_, v, c, p) = CardStore::parse_overrides("Sure Gamble [:std:]").unwrap();
-        assert_eq!(v, None);
-        assert_eq!(c, Some("std".into()));
+        let (_, p, c) = CardStore::parse_overrides("Sure Gamble [:std]").unwrap();
         assert_eq!(p, None);
+        assert_eq!(c, Some("std".into()));
 
         // Case normalization in overrides
-        let (_, v, _, _) = CardStore::parse_overrides("Card [ALT]").unwrap();
-        assert_eq!(v, Some("alt".into()));
+        let (_, p, _) = CardStore::parse_overrides("Card [ALT]").unwrap();
+        assert_eq!(p, Some("alt".into()));
     }
 
     #[test]
@@ -976,23 +964,20 @@ mod tests {
         let req1 = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
-            variant: None,
+            printing: None,
             collection: None,
-            pack_id: None,
         };
         let req2 = CardRequest {
             title: "Missing Card".into(),
             id: "missing_card".into(),
-            variant: None,
+            printing: None,
             collection: None,
-            pack_id: None,
         };
         let req3 = CardRequest {
             title: "Snare!".into(),
             id: "snare_".into(),
-            variant: None,
+            printing: None,
             collection: None,
-            pack_id: None,
         };
 
         let result = store
@@ -1039,13 +1024,13 @@ mod tests {
         // Check Sure Gamble requests
         let sure_gamble_reqs: Vec<_> = requests.iter().filter(|r| r.id == "sure_gamble").collect();
         assert_eq!(sure_gamble_reqs.len(), 3);
-        assert_eq!(sure_gamble_reqs[0].pack_id, Some("core".to_string()));
+        assert_eq!(sure_gamble_reqs[0].printing, Some("core".to_string()));
         assert_eq!(sure_gamble_reqs[0].title, "Sure Gamble");
 
         // Check Snare! request
         let snare_reqs: Vec<_> = requests.iter().filter(|r| r.id == "snare_").collect();
         assert_eq!(snare_reqs.len(), 1);
-        assert_eq!(snare_reqs[0].pack_id, None);
+        assert_eq!(snare_reqs[0].printing, None);
         assert_eq!(snare_reqs[0].title, "Snare!");
     }
 }
