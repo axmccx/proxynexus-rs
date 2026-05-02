@@ -487,7 +487,7 @@ impl<'a> CardStore<'a> {
             "SELECT 
                 c.title, 
                 c.id,
-                p.is_official,
+                (p.version_id IS NOT NULL) AS is_official,
                 p.variant, 
                 p.file_path, 
                 p.part, 

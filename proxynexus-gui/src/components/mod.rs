@@ -15,6 +15,6 @@ pub(crate) fn build_image_url(image_key: &str) -> String {
 
     #[cfg(feature = "web")]
     {
-        format!("https://collections.proxynexus.net/{}", image_key)
+        format!("https://test-collections.proxynexus.net/{}", image_key)
     }
 }

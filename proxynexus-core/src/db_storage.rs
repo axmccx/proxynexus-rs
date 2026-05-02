@@ -56,7 +56,6 @@ struct PrintingDbRow {
     collection_id: i64,
     card_id: String,
     version_id: Option<String>,
-    is_official: bool,
     variant: Option<String>,
     file_path: String,
     part: String,
@@ -166,7 +165,6 @@ impl DbStorage {
                 collection_id INTEGER NOT NULL,
                 card_id TEXT NOT NULL,
                 version_id TEXT,
-                is_official BOOLEAN NOT NULL,
                 variant TEXT,
                 file_path TEXT NOT NULL,
                 part TEXT NOT NULL
@@ -326,7 +324,7 @@ impl DbStorage {
         if let Some(payload) = print_payloads.into_iter().next() {
             let rows: Vec<PrintingDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO printings (id, collection_id, card_id, version_id, is_official, variant, file_path, part) VALUES ");
+                sql.push_str("INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, part) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -339,12 +337,11 @@ impl DbStorage {
                             .as_ref()
                             .map_or("NULL".to_string(), |v| quote_sql_string(v));
                         format!(
-                            "({}, {}, {}, {}, {}, {}, {}, {})",
+                            "({}, {}, {}, {}, {}, {}, {})",
                             row.id,
                             row.collection_id,
                             quote_sql_string(&row.card_id),
                             version_id,
-                            if row.is_official { "TRUE" } else { "FALSE" },
                             variant,
                             quote_sql_string(&row.file_path),
                             quote_sql_string(&row.part)

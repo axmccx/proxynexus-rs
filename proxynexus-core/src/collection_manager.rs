@@ -134,20 +134,19 @@ impl<'a> CollectionManager<'a> {
                 let file_name = path.file_name().unwrap().to_string_lossy();
                 let file_path = format!("{}/{}", collection_name, file_name);
 
-                let (version_id_sql, is_official, variant_sql) =
+                let (version_id_sql, variant_sql) =
                     if let Some(v_id) = version_map.get(&(card_id.clone(), parsed_printing.clone())) {
-                        (quote_sql_string(v_id), "TRUE", "NULL".to_string())
+                        (quote_sql_string(v_id), "NULL".to_string())
                     } else {
-                        ("NULL".to_string(), "FALSE", quote_sql_string(&parsed_printing))
+                        ("NULL".to_string(), quote_sql_string(&parsed_printing))
                     };
 
                 let insert_print_q = format!(
-                    "INSERT INTO printings (id, collection_id, card_id, version_id, is_official, variant, file_path, part) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
+                    "INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, part) VALUES ({}, {}, {}, {}, {}, {}, {})",
                     next_print_id,
                     collection_id,
                     quote_sql_string(&card_id),
                     version_id_sql,
-                    is_official,
                     variant_sql,
                     quote_sql_string(&file_path),
                     quote_sql_string(&part)
