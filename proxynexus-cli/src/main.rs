@@ -21,7 +21,7 @@ use web_time::Instant;
 #[command(name = "proxynexus-cli")]
 #[command(version, about, long_about = None)]
 struct Cli {
-    #[arg(short, long = "verbose", global = true)]
+    #[arg(long, global = true)]
     verbose: bool,
 
     #[arg(short, long, global = true, default_value = "netrunner")]
@@ -386,7 +386,7 @@ async fn get_printings_from_source(
         InputSource::DecklistUrl(url) => DecklistUrl(url.clone())
             .to_card_requests(&mut store)
             .await
-            .with_context(|| format!("Failed to fetch deck from NetrunnerDB URL: {}", url))?,
+            .with_context(|| format!("Failed to fetch deck from URL: {}", url))?,
     };
 
     let available = store

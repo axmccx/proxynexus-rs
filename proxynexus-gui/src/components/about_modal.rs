@@ -13,12 +13,6 @@ pub fn AboutModal(props: AboutModalProps) -> Element {
         "https://proxynexus.net/instructions.html".to_string()
     };
 
-    let blog_href = if cfg!(target_arch = "wasm32") {
-        "/blog.html".to_string()
-    } else {
-        "https://proxynexus.net/blog.html".to_string()
-    };
-
     rsx! {
         div {
             class: "fixed inset-0 flex items-center justify-center z-[2000]",
@@ -48,7 +42,6 @@ pub fn AboutModal(props: AboutModalProps) -> Element {
                     a { href: instructions_href, target: "_blank", class: "hover:underline", "Instructions"}
                     a { href: "https://github.com/axmccx/proxynexus-rs", target: "_blank", class: "hover:underline", "GitHub" }
                     a { href: "https://us.posthog.com/shared/Mo4ZScqPqTkiJ01AEJtx8pzc4YqBag", target: "_blank", class: "hover:underline", "Statistics" }
-                    a { href: blog_href, target: "_blank", class: "hover:underline", "Blog" }
                     a { href: "https://ko-fi.com/axmccx", target: "_blank", class: "hover:underline", "Donate" }
                 }
             }

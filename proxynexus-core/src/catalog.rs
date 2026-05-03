@@ -40,7 +40,7 @@ pub struct Catalog {
 }
 
 #[async_trait]
-pub trait CatalogAdapter: Send + Sync {
+pub trait CatalogProvider: Send + Sync {
     fn game_id(&self) -> &'static str;
 
     fn game_name(&self) -> &'static str;
@@ -50,12 +50,12 @@ pub trait CatalogAdapter: Send + Sync {
 
 pub struct CatalogManager<'a> {
     db: &'a mut DbStorage,
-    adapters: Vec<Box<dyn CatalogAdapter>>,
+    adapters: Vec<Box<dyn CatalogProvider>>,
 }
 
 impl<'a> CatalogManager<'a> {
     pub fn new(db: &'a mut DbStorage) -> Self {
-        let adapters: Vec<Box<dyn CatalogAdapter>> = vec![Box::new(NetrunnerAdapter::new())];
+        let adapters: Vec<Box<dyn CatalogProvider>> = vec![Box::new(NetrunnerAdapter::new())];
 
         Self { db, adapters }
     }

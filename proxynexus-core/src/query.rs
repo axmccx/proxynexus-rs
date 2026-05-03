@@ -16,14 +16,14 @@ pub async fn list_available_sets(db: &mut DbStorage, game: &str) -> Result<Strin
         .unwrap_or(0);
     let max_override_len = sets
         .iter()
-        .map(|(_, code, _)| code.len() + 4)
+        .map(|(_, code, _)| code.len() + 2)
         .max()
         .unwrap_or(0);
 
     let lines: Vec<String> = sets
         .iter()
         .map(|(name, code, meta)| {
-            let pack_override = format!("[::{}]", code);
+            let pack_override = format!("[{}]", code);
             format!(
                 "  - {:name_width$} {:override_width$}    {}",
                 name,

@@ -1,17 +1,15 @@
 # Proxy Nexus
 
-Make high quality Netrunner proxies. 
+Make high quality card game proxies.
 
-Generate print-and-play PDFs or pre-formatted image files for ordering physical cards from MakePlayingCards.com.
-Use a list of card names, a set name, or a netrunnerdb decklist URL.
+Generate print-and-play PDFs or pre-formatted image files for MakePlayingCards.com by providing a list of card names, 
+a set name, or a decklist URL.
 
-The web app is hosted at https://proxynexus.net/. It has access to a complete collection of card images, 
-both scans of real FFG cards and images extracted from [NSG](https://nullsignal.games/) print-and-play PDFs, not images from netrunnerdb.
+The web app is hosted at https://proxynexus.net/, uses its own collection of high-quality card scans 
+and official print-and-play images.
 
-It can also run locally as a desktop app or CLI for offline use. The CLI can also be used to create, 
-manage and share your own card image collections. However, it seems local use is primarily for myself,
-to simplify ongoing updates of the hosted image collection for the web app and for development purposes.
-
+Proxy Nexus can also run locally as an offline desktop app or CLI. 
+The CLI provides features to build and manage card image collections.
 ---
 
 ## Building & Running
@@ -50,22 +48,24 @@ The built binary will be located at `./target/release/proxynexus-cli` (or `.\tar
 
 ## Local Setup (CLI & Desktop)
 
-When the CLI or desktop app runs for the first time, it synchronizes all card and set metadata from `netrunnerdb.com` and saves it locally.
-The app then needs image files of cards, which are added from collection `.pnx` files. 
+When the CLI or desktop app runs for the first time, it synchronizes all card and set metadata for all supported games 
+and saves it locally. The app then needs image files of cards, which are added from collection `.pnx` files. 
 The CLI is able to create these collections from a folder of card scan image files, and manage them in the app.
 
 ### 1. Acquiring Images
-You need a folder of correctly named card images. [Google Drive - Proxy Nexus Collections](https://drive.google.com/drive/folders/1d84k6Od5bSBK31-lQkJzRc71xGx6-zVS?usp=sharing). Here you'll find 3
-folders of images that were used to create the collections for the web app.
+To build a collection, you need a folder of correctly named card images. 
+The file names in the folder **must** follow the [image file naming conventions](#image-file-naming-convention). 
 
-If you want to make your own collection, the file names in the folder **must** follow the 
-[image file naming conventions](#image-file-naming-convention).
+#### Netrunner
+You can find the images used to create the Netrunner collections here: 
+[Google Drive - Proxy Nexus Collections](https://drive.google.com/drive/folders/1d84k6Od5bSBK31-lQkJzRc71xGx6-zVS?usp=sharing). 
+This includes scans of FFG cards and images extracted from Null Signal Games (NSG) PDFs.
 
 ### 2. Building a Collection `.pnx` File
 ```bash
-proxynexus-cli collection build --images ./core_set_scans --output core_set.pnx
+proxynexus-cli collection build --game netrunner --images ./core_set_scans --output core_set.pnx
 ```
-Creates a collection file `core_set.pnx` from all the images in the `core_set_scans` folder.
+Creates a collection file `core_set.pnx` for the game netrunner from all the images in the `core_set_scans` folder.
 
 
 ### 3. Adding the Collection
@@ -88,7 +88,7 @@ proxynexus-cli collection list
 The `proxynexus-cli` supports the following subcommands. You can use `--help` on any command for more specific options.
 
 **Generation:**
-*   `generate pdf`: Generate a print-and-play PDF from a specific set, cardlist, or netrunnerdb URL.
+*   `generate pdf`: Generate a print-and-play PDF from a specific set, cardlist, or decklist URL.
 *   `generate mpc`: Generate a MakePlayingCards (MPC) formatted ZIP file.
 
 **Collection Management:**
@@ -98,7 +98,7 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 *   `collection remove`: Delete a collection from your local app.
 
 **Catalog Management:**
-*   `catalog update`: Fetch the latest card and pack data from netrunnerdb.
+*   `catalog update`: Fetch the latest catalog from each game's database API.
 *   `catalog info`: View metadata about the local catalog.
 *   `catalog import`: Import catalog data from local JSON files.
 
@@ -111,11 +111,12 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 ## Terminology
 
 *   **Card:** Abstract representation of a card, uniquely identified by its title.
-*   **Printing:** A specific physical representation of a card. A card can have multiple Printings, like a newer release of a card, or a version with alternate artwork.
-*   **Variant:** A property of a Printing used to distinguish between multiple Printings of the same card.
+*   **Version:** An official retail release of a card.
+*   **Printing:** A specific print of a card, directly associated to an image file. Can be an official or unofficial Version.
+*   **Variant:** A label assigned to unofficial Printing. Can be an alt-art prize card or a custom card design. 
 *   **Part:** Some printings have more than one image. Most cards just have a "front" part, but double-sided cards have a "back" part as well.
 *   **Collection:** A set of card image files and metadata. Can be packaged into a `.pnx` file by the CLI, and added to a local Proxy Nexus instance.
-*   **Pack and Set:** Both mean the same thing and are used interchangeably. A retail expansion of cards. netrunnerdb's API uses the term pack but their UI uses set.
+*   **Pack and Set:** A retail expansion of cards. Both mean the same thing and are used interchangeably. 
 *   **Card Request:** The user's intent when asking to generate a proxy. It specifies the card title and code and optional printing or collection overrides.
 
 --- 
@@ -126,16 +127,20 @@ Each image file represents a single printing and part. The collection builder re
 The general syntax is:
 `{card_id}@{printing}[~{part}].{extension}`
 
-The printing section is required. The part section is optional and defaults to "front" if omitted.
+The Card ID and Printing sections are required. The part section is optional and defaults to "front" if omitted.
+`printing` must be `pack_id` for official cards and can be any free-form label for unofficial art-art/custom 
 Only PNG and JPEG files are supported.
 
 #### File name scenarios:
-*   **Standard Cards (No Part):** The majority of card image files. (e.g., `hedge_fund@core.jpg` -> ID: hedge_fund, Printing: core, Part: front).
+*   **Standard Cards:** The majority of card image files. (e.g., `hedge_fund@core_set.jpg` -> ID: hedge_fund, Printing: core_set, Part: front).
 *   **Alternate Art:** The printing must be an official pack or a custom label for alt-arts. (e.g., `hedge_fund@alt1.jpg` -> ID: hedge_fund, Printing: alt1, Part: front).
-*   **Parts (Multiple Sides):** Contains a tilde `~` followed by the part name. (e.g., `26066@core~back.jpg` -> ID: 26066, Printing: core, Part: back).
+*   **Parts (Multiple Sides):** Contains a tilde `~` followed by the part name. 
+(e.g., `sync_everything_everywhere@data_and_destiny~back` -> ID: sync_everything_everywhere, Printing: data_and_destiny, Part: back).
 
 **Strict Rules:**
 *   **Orphans:** If a part file doesn't have an associated front file, it is ignored.
+*   **Exact API IDs:** For official printings, the `{card_id}` and `{printing}` (pack ID) **must** exactly match the 
+string IDs used by the game's respective database API.
 
 ---
 
@@ -144,13 +149,13 @@ Only PNG and JPEG files are supported.
 #### Printing Notation in Card Lists
 
 When generating from a card list, you can request a specific printing (an official pack or custom variant label), or collection using the following notation.
-`Quantity Card Name [printing:collection]`
+`Quantity CardName [printing:collection]`
 
 Examples:
 *   **Requesting a specific printing:** `3x Sure Gamble [alt1]`
-*   **Requesting a specific collection:** `3x Sure Gamble [:my_custom_scans]`
-*   **Requesting a specific printing from a specific collection:** `3x Sure Gamble [promo:my_custom_scans]`
-*   **Requesting a specific official pack:** `3x Sure Gamble [core]`
+*   **Requesting a specific collection:** `3x Sure Gamble [:ffg-en]`
+*   **Requesting a specific printing from a specific collection:** `3x Snare! [alt1:extras]`
+*   **Requesting a specific official pack:** `3x Hedge Fund [revised_core_set]`
 
 The printing notation is optional.
 
@@ -164,10 +169,10 @@ The following lists the number of Printings per set, per collection:
 
 Available Sets:
 
-  - Draft                       [::draft]    # 9 in ffg-en
-  - Core Set                    [::core]     # 104 in ffg-en, 41 in extras
-  - What Lies Ahead             [::wla]      # 21 in ffg-en, 4 in extras
-  - Trace Amount                [::ta]       # 21 in ffg-en
+  - Core Set                    [core_set]                       # 75 in ffg-en
+  - Draft                       [draft]                          # 9 in ffg-en
+  - What Lies Ahead             [what_lies_ahead]                # 18 in ffg-en
+  - Trace Amount                [trace_amount]                   # 20 in ffg-en
 ...
 ```
 
@@ -183,7 +188,7 @@ Query Results:
 3x Stimhack [core:ffg-en]                      # also: [alt1:ffg-en]
 ...
 ```
-The quantity comes from the pack's metadata from netrunnerdb. The output of this query is a valid card list.
+The quantity comes from the pack's metadata from the game's API. The output of this query is a valid card list.
 
 #### Card Request Resolution
 
@@ -304,11 +309,11 @@ sets up an in-memory DB and hydrates it using the remote `init.sql` file. This D
 which handles querying the DB, entirely unaware of its underlying storage.
 
 2.  **Determine the CardSource.** Based on the user's source selection, their input is wrapped in a specific struct 
-(`Cardlist`, `SetName`, or `NrdbUrl`), all of which implement the `CardSource` trait.
+(`Cardlist`, `SetName`, or `DecklistUrl`), all of which implement the `CardSource` trait.
 
 3.  **Generate CardRequests.** The `CardStore` instance is passed to `to_card_requests()`, a method defined 
 by the `CardSource` trait, to produce a list of CardRequests. Whether it's querying the DB for a card list, 
-all cards in a set, or making an async request to the netrunnerdb API, the caller is unaware of both the 
+all cards in a set, or making an async request to a decklist API, the caller is unaware of both the 
 underlying DB storage and querying logic used by each source.
 
 4.  **Resolve Printings.** The `CardStore`'s `resolve_printings` method queries the database to find all 

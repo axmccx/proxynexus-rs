@@ -2,6 +2,7 @@ use crate::components::card_list_input::CardListInput;
 use dioxus::prelude::*;
 use proxynexus_core::card_store::CardStore;
 use proxynexus_core::db_storage::DbStorage;
+use proxynexus_core::games::get_decklist_adapter;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ActiveSource {
@@ -33,7 +34,17 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
 
     let mut list_text = use_signal(String::new);
     let mut set_name = use_signal(String::new);
-    let mut nrdb_url = use_signal(String::new);
+    let mut decklist_url = use_signal(String::new);
+
+    let supports_decklists =
+        use_memo(move || active_game_id().is_some_and(|id| get_decklist_adapter(&id).is_some()));
+
+    use_effect(move || {
+        if !supports_decklists() && tab() == "decklist" {
+            tab.set("list");
+            source_state.set(ActiveSource::Cardlist(list_text()));
+        }
+    });
 
     let available_sets = use_resource(move || async move {
         let game_id = match active_game_id() {
@@ -92,16 +103,18 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                     },
                     "Set"
                 }
-                button {
-                    class: if tab() == "nrdb" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
-                    onclick: move |_| {
-                        if tab() != "nrdb" {
-                            props.on_source_changed.call(());
-                        }
-                        tab.set("nrdb");
-                        source_state.set(ActiveSource::DecklistUrl(nrdb_url()));
-                    },
-                    "NetrunnerDB"
+                if supports_decklists() {
+                    button {
+                        class: if tab() == "decklist" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
+                        onclick: move |_| {
+                            if tab() != "decklist" {
+                                props.on_source_changed.call(());
+                            }
+                            tab.set("decklist");
+                            source_state.set(ActiveSource::DecklistUrl(decklist_url()));
+                        },
+                        "Decklist URL"
+                    }
                 }
             }
 
@@ -133,15 +146,15 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                         }
                     }
                 },
-                "nrdb" => rsx! {
+                "decklist" => rsx! {
                     input {
                         type: "text",
                         class: "w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm",
-                        placeholder: "https://netrunnerdb.com/en/decklist/...",
-                        initial_value: "{nrdb_url}",
+                        placeholder: "Enter decklist URL...",
+                        initial_value: "{decklist_url}",
                         oninput: move |evt| {
                             props.on_source_changed.call(());
-                            nrdb_url.set(evt.value());
+                            decklist_url.set(evt.value());
                             source_state.set(ActiveSource::DecklistUrl(evt.value()));
                         }
                     }

@@ -15,7 +15,12 @@ pub struct DecklistUrl(pub String);
 
 impl CardSource for DecklistUrl {
     async fn to_card_requests(&self, store: &mut CardStore<'_>) -> Result<Vec<CardRequest>> {
-        let adapter = get_decklist_adapter(&store.active_game_id);
+        let adapter = get_decklist_adapter(&store.active_game_id).ok_or_else(|| {
+            crate::error::ProxyNexusError::Internal(format!(
+                "The active game '{}' does not support decklist fetching.",
+                store.active_game_id
+            ))
+        })?;
         let decklist = adapter.fetch(&self.0).await?;
         store.resolve_decklist_to_requests(&decklist).await
     }
