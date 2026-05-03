@@ -112,7 +112,6 @@ impl<'a> CatalogManager<'a> {
 Export your module and add it to `get_decklist_adapter` inside `proxynexus-core/src/games/mod.rs`.
 Remember to return `None` if your game does not implement `DecklistProvider`.
 ```rust
-pub mod l5r;
 pub mod netrunner;
 pub mod new_game; // 1. Export your module, i.e. new_game folder
 

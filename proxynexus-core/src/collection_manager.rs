@@ -1,4 +1,4 @@
-use crate::db_storage::{DbStorage, IdRow, quote_sql_string};
+use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
 use crate::models::Manifest;
 use gluesql::FromGlueRow;
@@ -8,6 +8,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
 use zip::ZipArchive;
+
+#[derive(FromGlueRow)]
+struct CollectionIdRow {
+    id: i64,
+    game_id: String,
+}
 
 #[derive(FromGlueRow)]
 struct CollectionRow {
@@ -111,7 +117,10 @@ impl<'a> CollectionManager<'a> {
             }
         }
 
-        let collection_dir = self.collections_dir.join(collection_name.clone());
+        let collection_dir = self
+            .collections_dir
+            .join(&manifest.game)
+            .join(collection_name.clone());
         fs::create_dir_all(&collection_dir)?;
 
         let src_images = temp_path.join("images");
@@ -132,7 +141,7 @@ impl<'a> CollectionManager<'a> {
                 };
 
                 let file_name = path.file_name().unwrap().to_string_lossy();
-                let file_path = format!("{}/{}", collection_name, file_name);
+                let file_path = format!("{}/{}/{}", manifest.game, collection_name, file_name);
 
                 let (version_id_sql, variant_sql) =
                     if let Some(v_id) = version_map.get(&(card_id.clone(), parsed_printing.clone())) {
@@ -252,17 +261,17 @@ impl<'a> CollectionManager<'a> {
         let payloads = self
             .db
             .execute(&format!(
-                "SELECT id FROM collections WHERE name = {}",
+                "SELECT id, game_id FROM collections WHERE name = {}",
                 quote_sql_string(collection_name)
             ))
             .await?;
 
-        let collection_id = match payloads.into_iter().next() {
+        let (collection_id, game_id) = match payloads.into_iter().next() {
             Some(p) => p
-                .rows_as::<IdRow>()?
+                .rows_as::<CollectionIdRow>()?
                 .into_iter()
                 .next()
-                .map(|row| row.id)
+                .map(|row| (row.id, row.game_id))
                 .ok_or_else(|| {
                     ProxyNexusError::Internal(format!("Collection '{}' not found", collection_name))
                 })?,
@@ -300,7 +309,7 @@ impl<'a> CollectionManager<'a> {
             }
         }
 
-        let collection_dir = self.collections_dir.join(collection_name);
+        let collection_dir = self.collections_dir.join(&game_id).join(collection_name);
         if collection_dir.exists() {
             fs::remove_dir_all(&collection_dir)?;
         }

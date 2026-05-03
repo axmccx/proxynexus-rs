@@ -775,7 +775,7 @@ mod tests {
         assert_eq!(result.variant, None);
         assert_eq!(result.pack_id, Some("core".to_string())); // Oldest first
 
-        // Default to the earliest original
+        // Default to the earliest official
         let req = CardRequest {
             title: "Sure Gamble".into(),
             id: "sure_gamble".into(),
