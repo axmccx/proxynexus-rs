@@ -5,8 +5,8 @@ Make high quality card game proxies.
 Generate print-and-play PDFs or pre-formatted image files for MakePlayingCards.com by providing a list of card names, 
 a set name, or a decklist URL.
 
-The web app is hosted at https://proxynexus.net/, uses its own collection of high-quality card scans 
-and official print-and-play images.
+The web app is hosted at https://proxynexus.net/. It uses its own collection of high-quality card images, not images
+from deckbuilding or DB-like websites. 
 
 Proxy Nexus can also run locally as an offline desktop app or CLI. 
 The CLI provides features to build and manage card image collections.
@@ -18,8 +18,12 @@ The CLI provides features to build and manage card image collections.
 - [Rust](https://rust-lang.org/learn/get-started/), 
 - [dioxus-cli](https://dioxuslabs.com/learn/0.7/getting_started/) 
   provides the `dx` command for running the GUI
-- `clang` (Linux only) — required to cross-compile C-based dependencies (e.g. `zstd-sys`)
-  for the `wasm32-unknown-unknown` target. Install via `sudo apt install clang` on Debian/Ubuntu.
+- **Linux:**
+  - `clang` is required to cross-compile C-based dependencies (e.g. `zstd-sys`) for the `wasm32-unknown-unknown` target.
+- **macOS:**
+  - Install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac).
+  - Set the `VULKAN_SDK` environment variable to the installation directory (e.g., `export VULKAN_SDK=/path/to/vulkan/sdk`).
+  - Install OpenSSL: `brew install openssl`
 
 
 ### Running the Web App Locally
@@ -203,6 +207,15 @@ using the following priority hierarchy:
 
 ---
 
+## Supporting Multiple Games
+
+Proxy Nexus was originally built for Netrunner, but it is designed to support any card game that uses the same poker-sized cards. 
+Adding a new game involves implementing a Rust adapter that provides catalog data (sets, cards, printings) and optionally fetches decklists.
+
+For a complete guide on how to add a new game adapter, see [ADDING_GAMES.md](proxynexus-core/src/games/ADDING_GAMES.md).
+
+---
+
 ## Updating the Web App's Collections
 
 These steps aren't useful without access to the Cloudflare R2 bucket, but I'm including them here for posterity.
@@ -288,6 +301,14 @@ It imperceptibly alters the RGB values of the top-left 2x2 pixels using a pseudo
 of copies being made. These altered pixels get cut off anyways, because they're well in the bleed border.
 This guarantees every file inside the generated `.zip` is technically unique as far as MPC is
 concerned, and every file gets uploaded.
+
+
+### Image Upscaling
+Striving to provide the highest quality prints, Proxy Nexus includes an option to upscale images using 
+the [burn](https://burn.dev/) framework and the [realesr-general-x4v3](https://github.com/xinntao/Real-ESRGAN/tree/master) model.
+To keep the app responsive and to take advantage of hardware acceleration, the web app runs the upscaler inside 
+a Web Worker and leverages WebGPU with `burn_wgpu`. Due to memory constraints, images are processed in 
+smaller 128x128 tiles before being stitched back together.
 
 ### Image Caching
 
@@ -398,9 +419,8 @@ In addition to supporting all the existing features, I had the following goals:
 
 * Be able to run everything locally. All image processing and the database should be able to run entirely in the browser.
 * Be free to host. Though the web version still needs a hosting service, luckily Cloudflare R2's free tier is good enough.
-* Enable anyone to manage card images. This was a foundational change, but it would push me to set up the project 
-in such a way that adding new cards would be as easy as possible. While I plan to keep the hosted web app updated, 
-I would feel incredibly accomplished to see someone else create and share their own collection `.pnx` file!
+* Make it as easy as possible to add new cards. This was a foundational change, which would have been extremely difficult
+without rebuilding the project. 
 
 This rebuilt succeeds at making the website faster, more stable, free to host, a pleasure for me to work on,
 and hopefully easier for anyone to dive into the codebase.
