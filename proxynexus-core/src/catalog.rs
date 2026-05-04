@@ -64,7 +64,6 @@ impl<'a> CatalogManager<'a> {
         let count = self.get_card_count(None).await?;
 
         if count == 0 {
-            info!("No card data found. Initializing local catalog database...");
             match self.update_from_api().await {
                 Ok(_) => info!("Catalog initialization complete."),
                 Err(e) => {
@@ -103,7 +102,7 @@ impl<'a> CatalogManager<'a> {
 
         for catalog in catalogs {
             info!(
-                "Applying {} updates ({} cards, {} packs, {} card versions) to local database...",
+                "{} Catalog updated with {} cards, {} packs, and {} card versions...",
                 catalog.display_name,
                 catalog.cards.len(),
                 catalog.packs.len(),
@@ -113,8 +112,6 @@ impl<'a> CatalogManager<'a> {
         }
 
         self.db.execute("COMMIT").await?;
-
-        info!("Catalog synchronization complete.");
 
         Ok(())
     }
@@ -188,7 +185,7 @@ impl<'a> CatalogManager<'a> {
 
         for (game_id, game_name) in adapter_info {
             let count = self.get_card_count(Some(&game_id)).await?;
-            info.push_str(&format!(" - {}: {} logical cards\n", game_name, count));
+            info.push_str(&format!(" - {}: {} cards\n", game_name, count));
         }
 
         Ok(info)

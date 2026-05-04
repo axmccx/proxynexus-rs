@@ -104,9 +104,7 @@ pub fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
 pub fn encode_image(bordered: RgbImage, format: ImageFormat) -> Result<Vec<u8>> {
     if format == ImageFormat::Png {
         let mut png_bytes = std::io::Cursor::new(Vec::new());
-        DynamicImage::ImageRgb8(bordered)
-            .write_to(&mut png_bytes, ImageFormat::Png)
-            .map_err(|e| ProxyNexusError::Internal(e.to_string()))?;
+        DynamicImage::ImageRgb8(bordered).write_to(&mut png_bytes, ImageFormat::Png)?;
         return Ok(png_bytes.into_inner());
     }
 

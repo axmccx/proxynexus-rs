@@ -1,4 +1,4 @@
-use crate::error::{ProxyNexusError, Result};
+use crate::error::Result;
 use crate::image_provider::ImageProvider;
 use crate::models::Printing;
 use crate::print_prep;
@@ -94,7 +94,7 @@ pub async fn generate_mpc_zip(
             let response = Request::get(&url).send().await?;
 
             if !response.ok() {
-                return Err(ProxyNexusError::Internal(format!(
+                return Err(crate::error::ProxyNexusError::Internal(format!(
                     "Failed to fetch {}: HTTP {}",
                     url,
                     response.status()
@@ -160,8 +160,7 @@ async fn process_side<W: Write + Seek>(
                 }
 
                 let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-                let img = image::load_from_memory(&image_data)
-                    .map_err(|e| ProxyNexusError::Internal(e.to_string()))?;
+                let img = image::load_from_memory(&image_data)?;
                 let bleed_image = print_prep::add_bleed_border(&img);
                 image_cache.insert(current_image_key.clone(), (bleed_image, image_format));
             } else {

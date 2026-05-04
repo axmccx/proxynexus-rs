@@ -289,8 +289,7 @@ async fn get_or_init_worker() -> Result<(web_sys::Worker, PendingRequestsMap)> {
 }
 
 async fn upscale_image_inner(bytes: &[u8]) -> Result<Vec<u8>> {
-    let img =
-        image::load_from_memory(bytes).map_err(|e| ProxyNexusError::Internal(e.to_string()))?;
+    let img = image::load_from_memory(bytes)?;
     let img_rgb = img.to_rgb8();
 
     let state = STATE

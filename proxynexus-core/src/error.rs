@@ -22,6 +22,9 @@ pub enum ProxyNexusError {
     #[error("Internal error: {0}")]
     Internal(String),
 
+    #[error("Image error: {0}")]
+    Image(#[from] image::ImageError),
+
     #[error("Zip error: {0}")]
     Zip(#[from] zip::result::ZipError),
 
