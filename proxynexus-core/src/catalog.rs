@@ -1,5 +1,6 @@
 use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::Result;
+use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use async_trait::async_trait;
 use gluesql::FromGlueRow;
@@ -55,7 +56,10 @@ pub struct CatalogManager<'a> {
 
 impl<'a> CatalogManager<'a> {
     pub fn new(db: &'a mut DbStorage) -> Self {
-        let adapters: Vec<Box<dyn CatalogProvider>> = vec![Box::new(NetrunnerAdapter::new())];
+        let adapters: Vec<Box<dyn CatalogProvider>> = vec![
+            Box::new(NetrunnerAdapter::new()),
+            Box::new(L5rAdapter::new()),
+        ];
 
         Self { db, adapters }
     }
