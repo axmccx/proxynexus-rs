@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Card {
@@ -26,6 +27,12 @@ pub struct Pack {
     pub name: String,
     pub released_at: Option<String>,
     pub cycle_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EmeraldDbDecklist {
+    pub id: String,
+    pub cards: HashMap<String, u32>,
 }
 
 #[cfg(test)]
