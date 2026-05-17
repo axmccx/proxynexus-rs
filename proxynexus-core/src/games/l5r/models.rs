@@ -16,7 +16,8 @@ pub struct CardVersion {
     pub card_id: String,
     pub pack_id: String,
     pub image_url: Option<String>,
-    pub quantity: u32,
+    pub position: Option<String>,
+    pub quantity: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -102,9 +103,11 @@ mod tests {
             Some("https://emerald-legacy.github.io/emeralddb-images/shadows-of-doubt/sod004.jpg")
         );
         assert_eq!(cards[0].versions[0].quantity, 3);
+        assert_eq!(cards[0].versions[0].position.as_deref(), Some("4"));
 
         assert_eq!(cards[1].name_extra, Some("2".into()));
         assert_eq!(cards[1].versions[0].image_url, None);
+        assert_eq!(cards[1].versions[0].position.as_deref(), Some("168"));
     }
 
     #[test]
