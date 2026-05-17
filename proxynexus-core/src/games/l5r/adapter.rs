@@ -1,11 +1,12 @@
+use crate::card_source::DecklistProvider;
 use crate::card_store::normalize_title;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
-#[cfg(not(target_arch = "wasm32"))]
 use crate::error::Result;
+use crate::games::l5r::api::fetch_decklist_from_emeralddb;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::l5r::api::{fetch_cards, fetch_packs};
-#[cfg(not(target_arch = "wasm32"))]
+use crate::models::Decklist;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
 use futures::join;
@@ -88,6 +89,14 @@ fn build_title(name: &str, name_extra: Option<&str>) -> String {
 
 fn parse_position(s: Option<&str>) -> Option<i64> {
     s.and_then(|v| v.parse::<i64>().ok())
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl DecklistProvider for L5rAdapter {
+    async fn fetch(&self, url: &str) -> Result<Decklist> {
+        fetch_decklist_from_emeralddb(url).await
+    }
 }
 
 #[cfg(test)]
