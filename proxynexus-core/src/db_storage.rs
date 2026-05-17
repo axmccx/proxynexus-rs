@@ -186,8 +186,6 @@ impl DbStorage {
         )
         .await?;
 
-        self.execute(crate::games::l5r::schema::DDL).await?;
-
         Ok(())
     }
 
