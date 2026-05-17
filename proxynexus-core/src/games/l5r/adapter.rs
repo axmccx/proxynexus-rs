@@ -1,3 +1,15 @@
+use crate::card_store::normalize_title;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::error::Result;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::games::l5r::api::{fetch_cards, fetch_packs};
+#[cfg(not(target_arch = "wasm32"))]
+use async_trait::async_trait;
+#[cfg(not(target_arch = "wasm32"))]
+use futures::join;
+
 pub struct L5rAdapter {}
 
 impl Default for L5rAdapter {
@@ -9,6 +21,61 @@ impl Default for L5rAdapter {
 impl L5rAdapter {
     pub fn new() -> Self {
         Self {}
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+impl CatalogProvider for L5rAdapter {
+    fn game_id(&self) -> &'static str {
+        "l5r"
+    }
+
+    fn game_name(&self) -> &'static str {
+        "L5R"
+    }
+
+    async fn fetch_catalog(&self) -> Result<Catalog> {
+        let (cards_result, packs_result) = join!(fetch_cards(), fetch_packs());
+        let l5r_cards = cards_result?;
+        let l5r_packs = packs_result?;
+
+        let packs: Vec<Pack> = l5r_packs
+            .into_iter()
+            .map(|p| Pack {
+                id: p.id,
+                name: p.name,
+                date_release: p.released_at,
+            })
+            .collect();
+
+        let mut cards: Vec<Card> = Vec::new();
+        let mut versions: Vec<CardVersion> = Vec::new();
+        for c in l5r_cards {
+            let title = build_title(&c.name, c.name_extra.as_deref());
+            cards.push(Card {
+                id: c.id.clone(),
+                title: title.clone(),
+                title_normalized: normalize_title(&title),
+                side: Some(c.side),
+            });
+            for v in c.versions {
+                versions.push(CardVersion {
+                    card_id: v.card_id,
+                    pack_id: v.pack_id,
+                    quantity: v.quantity,
+                    position: parse_position(v.position.as_deref()),
+                });
+            }
+        }
+
+        Ok(Catalog {
+            game_id: self.game_id().to_string(),
+            display_name: self.game_name().to_string(),
+            packs,
+            cards,
+            card_versions: versions,
+        })
     }
 }
 
