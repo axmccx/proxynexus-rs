@@ -373,7 +373,7 @@ impl<'a> CardStore<'a> {
         set_name: &str,
     ) -> Result<Vec<CardRequest>> {
         let query = format!(
-            "SELECT c.id, c.title, v.quantity, v.pack_id
+            "SELECT c.api_id as id, c.title, v.quantity, p.api_id as pack_id
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
@@ -425,9 +425,9 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(card_ids);
 
         let query = format!(
-            "SELECT c.id, c.title
+            "SELECT c.api_id as id, c.title
              FROM cards c
-             WHERE c.id IN ({})
+             WHERE c.api_id IN ({})
                AND c.game_id = {}",
             in_clause,
             quote_sql_string(&self.active_game_id)
@@ -486,14 +486,14 @@ impl<'a> CardStore<'a> {
         let query = format!(
             "SELECT 
                 c.title, 
-                c.id,
+                c.api_id as id,
                 (p.version_id IS NOT NULL) AS is_official,
                 p.variant, 
                 p.file_path, 
                 p.part, 
                 col.name,
                 c.side, 
-                v.pack_id,
+                pks.api_id as pack_id,
                 pks.date_release
              FROM printings p
              JOIN cards c ON p.card_id = c.id

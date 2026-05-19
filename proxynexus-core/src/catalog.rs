@@ -129,8 +129,10 @@ impl<'a> CatalogManager<'a> {
                 .date_release
                 .as_ref()
                 .map_or("NULL".to_string(), |d| quote_sql_string(d));
+            let db_pack_id = format!("{}_{}", catalog.game_id, set.id);
             let q = format!(
-                "INSERT INTO packs (id, game_id, name, date_release) VALUES ({}, {}, {}, {})",
+                "INSERT INTO packs (id, api_id, game_id, name, date_release) VALUES ({}, {}, {}, {}, {})",
+                quote_sql_string(&db_pack_id),
                 quote_sql_string(&set.id),
                 quote_sql_string(&catalog.game_id),
                 quote_sql_string(&set.name),
@@ -144,8 +146,10 @@ impl<'a> CatalogManager<'a> {
                 .side
                 .as_ref()
                 .map_or("NULL".to_string(), |s| quote_sql_string(s));
+            let db_card_id = format!("{}_{}", catalog.game_id, card.id);
             let q = format!(
-                "INSERT INTO cards (id, game_id, title, title_normalized, side) VALUES ({}, {}, {}, {}, {})",
+                "INSERT INTO cards (id, api_id, game_id, title, title_normalized, side) VALUES ({}, {}, {}, {}, {}, {})",
+                quote_sql_string(&db_card_id),
                 quote_sql_string(&card.id),
                 quote_sql_string(&catalog.game_id),
                 quote_sql_string(&card.title),
@@ -156,15 +160,17 @@ impl<'a> CatalogManager<'a> {
         }
 
         for card_version in &catalog.card_versions {
-            let synthesized_id = format!("{}_{}", card_version.card_id, card_version.pack_id);
+            let db_card_id = format!("{}_{}", catalog.game_id, card_version.card_id);
+            let db_pack_id = format!("{}_{}", catalog.game_id, card_version.pack_id);
+            let db_id = format!("{}_{}", db_card_id, db_pack_id);
             let position_val = card_version
                 .position
                 .map_or("NULL".to_string(), |p| p.to_string());
             let q = format!(
                 "INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ({}, {}, {}, {}, {})",
-                quote_sql_string(&synthesized_id),
-                quote_sql_string(&card_version.card_id),
-                quote_sql_string(&card_version.pack_id),
+                quote_sql_string(&db_id),
+                quote_sql_string(&db_card_id),
+                quote_sql_string(&db_pack_id),
                 card_version.quantity,
                 position_val
             );

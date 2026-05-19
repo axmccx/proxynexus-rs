@@ -27,6 +27,7 @@ struct CollectionDbRow {
 #[derive(FromGlueRow)]
 struct PackDbRow {
     id: String,
+    api_id: String,
     game_id: String,
     name: String,
     date_release: Option<String>,
@@ -35,6 +36,7 @@ struct PackDbRow {
 #[derive(FromGlueRow)]
 struct CardDbRow {
     id: String,
+    api_id: String,
     game_id: String,
     title: String,
     title_normalized: String,
@@ -152,6 +154,7 @@ impl DbStorage {
 
             CREATE TABLE IF NOT EXISTS packs (
                 id TEXT PRIMARY KEY,
+                api_id TEXT NOT NULL,
                 game_id TEXT NOT NULL,
                 name TEXT NOT NULL,
                 date_release TEXT
@@ -159,6 +162,7 @@ impl DbStorage {
 
             CREATE TABLE IF NOT EXISTS cards (
                 id TEXT PRIMARY KEY,
+                api_id TEXT NOT NULL,
                 game_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 title_normalized TEXT NOT NULL,
@@ -218,7 +222,7 @@ impl DbStorage {
         if let Some(payload) = pack_payloads.into_iter().next() {
             let rows: Vec<PackDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO packs (id, game_id, name, date_release) VALUES ");
+                sql.push_str("INSERT INTO packs (id, api_id, game_id, name, date_release) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -227,8 +231,9 @@ impl DbStorage {
                             .as_ref()
                             .map_or("NULL".to_string(), |d| quote_sql_string(d));
                         format!(
-                            "({}, {}, {}, {})",
+                            "({}, {}, {}, {}, {})",
                             quote_sql_string(&row.id),
+                            quote_sql_string(&row.api_id),
                             quote_sql_string(&row.game_id),
                             quote_sql_string(&row.name),
                             date
@@ -245,7 +250,7 @@ impl DbStorage {
             let rows: Vec<CardDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
                 sql.push_str(
-                    "INSERT INTO cards (id, game_id, title, title_normalized, side) VALUES ",
+                    "INSERT INTO cards (id, api_id, game_id, title, title_normalized, side) VALUES ",
                 );
                 let values: Vec<String> = chunk
                     .iter()
@@ -255,8 +260,9 @@ impl DbStorage {
                             .as_ref()
                             .map_or("NULL".to_string(), |s| quote_sql_string(s));
                         format!(
-                            "({}, {}, {}, {}, {})",
+                            "({}, {}, {}, {}, {}, {})",
                             quote_sql_string(&row.id),
+                            quote_sql_string(&row.api_id),
                             quote_sql_string(&row.game_id),
                             quote_sql_string(&row.title),
                             quote_sql_string(&row.title_normalized),
