@@ -104,7 +104,11 @@ impl<'a> CollectionManager<'a> {
         let collection_id = next_coll_id;
 
         let versions_q = format!(
-            "SELECT v.id, v.card_id, v.pack_id FROM card_versions v JOIN packs p ON v.pack_id = p.id WHERE p.game_id = {}",
+            "SELECT v.id, c.api_id as card_id, p.api_id as pack_id 
+             FROM card_versions v 
+             JOIN cards c ON v.card_id = c.id
+             JOIN packs p ON v.pack_id = p.id 
+             WHERE p.game_id = {}",
             quote_sql_string(&manifest.game)
         );
         let version_payloads = self.db.execute(&versions_q).await?;
@@ -135,7 +139,7 @@ impl<'a> CollectionManager<'a> {
                 let entry = entry?;
                 let path = entry.path();
 
-                let (card_id, parsed_printing, part) = match Self::parse_filename(&path) {
+                let (api_id, parsed_printing, part) = match Self::parse_filename(&path) {
                     Some(parsed) => parsed,
                     None => continue,
                 };
@@ -144,17 +148,19 @@ impl<'a> CollectionManager<'a> {
                 let file_path = format!("{}/{}/{}", manifest.game, collection_name, file_name);
 
                 let (version_id_sql, variant_sql) =
-                    if let Some(v_id) = version_map.get(&(card_id.clone(), parsed_printing.clone())) {
+                    if let Some(v_id) = version_map.get(&(api_id.clone(), parsed_printing.clone())) {
                         (quote_sql_string(v_id), "NULL".to_string())
                     } else {
                         ("NULL".to_string(), quote_sql_string(&parsed_printing))
                     };
 
+                let db_card_id = format!("{}_{}", manifest.game, api_id);
+
                 let insert_print_q = format!(
                     "INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, part) VALUES ({}, {}, {}, {}, {}, {}, {})",
                     next_print_id,
                     collection_id,
-                    quote_sql_string(&card_id),
+                    quote_sql_string(&db_card_id),
                     version_id_sql,
                     variant_sql,
                     quote_sql_string(&file_path),
