@@ -1034,6 +1034,11 @@
   initial-value: 0deg;
   syntax: '<angle>';
 }
+@layer base {
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
 @property --tw-translate-x {
   syntax: "*";
   inherits: false;
