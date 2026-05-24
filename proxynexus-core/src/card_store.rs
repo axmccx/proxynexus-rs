@@ -242,9 +242,9 @@ impl<'a> CardStore<'a> {
 
         let query = format!(
             "SELECT 
-                c.id, 
+                c.api_id as id, 
                 c.title, 
-                v.pack_id, 
+                p.api_id as pack_id, 
                 c.title_normalized
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
@@ -997,8 +997,8 @@ mod tests {
         db.initialize_schema().await.unwrap();
 
         // Seed some cards
-        db.execute("INSERT INTO cards (id, game_id, title, title_normalized) VALUES ('sure_gamble', 'netrunner', 'Sure Gamble', 'sure_gamble')").await.unwrap();
-        db.execute("INSERT INTO cards (id, game_id, title, title_normalized) VALUES ('snare_', 'netrunner', 'Snare!', 'snare_')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('netrunner_sure_gamble', 'sure_gamble', 'netrunner', 'Sure Gamble', 'sure_gamble')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('netrunner_snare_', 'snare_', 'netrunner', 'Snare!', 'snare_')").await.unwrap();
 
         let mut store = CardStore::new(&mut db, "netrunner".to_string()).unwrap();
 
