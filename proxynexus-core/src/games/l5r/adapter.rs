@@ -33,7 +33,7 @@ impl CatalogProvider for L5rAdapter {
     }
 
     fn game_name(&self) -> &'static str {
-        "L5R"
+        "Legend of the Five Rings"
     }
 
     async fn fetch_catalog(&self) -> Result<Catalog> {
