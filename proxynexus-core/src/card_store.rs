@@ -58,6 +58,15 @@ struct AvailablePrintingRow {
     date_release: Option<String>,
 }
 
+#[derive(Hash, PartialEq, Eq, Debug)]
+struct PrintingGroupKey {
+    normalized_title: String,
+    card_id: String,
+    variant: Option<String>,
+    collection_name: String,
+    pack_id: Option<String>,
+}
+
 pub fn normalize_title(title: &str) -> String {
     deunicode::deunicode(title)
         .to_lowercase()
@@ -536,23 +545,21 @@ impl<'a> CardStore<'a> {
 
     fn assemble_printings(rows: Vec<AvailablePrintingRow>) -> HashMap<String, Vec<Printing>> {
         let mut resolved_printings: HashMap<String, Vec<Printing>> = HashMap::new();
-        let mut groups: HashMap<
-            (String, String, Option<String>, String),
-            Vec<AvailablePrintingRow>,
-        > = HashMap::new();
+        let mut groups: HashMap<PrintingGroupKey, Vec<AvailablePrintingRow>> = HashMap::new();
 
         for row in rows {
             let normalized = normalize_title(&row.title);
-            let key = (
-                normalized,
-                row.id.clone(),
-                row.variant.clone(),
-                row.name.clone(),
-            );
+            let key = PrintingGroupKey {
+                normalized_title: normalized,
+                card_id: row.id.clone(),
+                variant: row.variant.clone(),
+                collection_name: row.name.clone(),
+                pack_id: row.pack_id.clone(),
+            };
             groups.entry(key).or_default().push(row);
         }
 
-        for ((normalized, card_id, variant, collection), rows) in groups {
+        for (key, rows) in groups {
             let mut image_key = String::new();
             let mut parts = Vec::new();
 
@@ -560,7 +567,6 @@ impl<'a> CardStore<'a> {
             let card_title = first_row.title.clone();
             let is_official = first_row.is_official;
             let side = first_row.side.clone();
-            let pack_id = first_row.pack_id.clone();
             let date_release = first_row.date_release.clone();
 
             for row in rows {
@@ -576,19 +582,19 @@ impl<'a> CardStore<'a> {
 
             let printing = Printing {
                 card_title,
-                card_id,
+                card_id: key.card_id,
                 is_official,
-                variant,
+                variant: key.variant,
                 image_key,
                 parts,
-                collection,
+                collection: key.collection_name,
                 side,
-                pack_id,
+                pack_id: key.pack_id,
                 date_release,
             };
 
             resolved_printings
-                .entry(normalized)
+                .entry(key.normalized_title)
                 .or_default()
                 .push(printing);
         }
@@ -902,6 +908,45 @@ mod tests {
         assert_eq!(normalize_title("Snare!"), "snare_");
         assert_eq!(normalize_title("Café"), "cafe");
         assert_eq!(normalize_title("piñata"), "pinata");
+    }
+
+    #[test]
+    fn test_assemble_printings_includes_all_packs() {
+        let row1 = AvailablePrintingRow {
+            title: "Fine Katana".into(),
+            id: "fine-katana".into(),
+            is_official: true,
+            variant: None,
+            file_path: "l5r/collection/fine-katana@core.jpg".into(),
+            part: "front".into(),
+            name: "collection".into(),
+            side: "test".into(),
+            pack_id: Some("core".into()),
+            date_release: Some("2017-10-05".into()),
+        };
+        let row2 = AvailablePrintingRow {
+            title: "Fine Katana".into(),
+            id: "fine-katana".into(),
+            is_official: true,
+            variant: None,
+            file_path: "l5r/collection/fine-katana@emerald-core-set.jpg".into(),
+            part: "front".into(),
+            name: "collection".into(),
+            side: "test".into(),
+            pack_id: Some("emerald-core-set".into()),
+            date_release: Some("2021-10-21".into()),
+        };
+
+        let result = CardStore::assemble_printings(vec![row1, row2]);
+        let printings = result.get("fine_katana").unwrap();
+
+        assert_eq!(printings.len(), 2);
+        let pack_ids: Vec<_> = printings
+            .iter()
+            .map(|p| p.pack_id.as_deref().unwrap())
+            .collect();
+        assert!(pack_ids.contains(&"core"));
+        assert!(pack_ids.contains(&"emerald-core-set"));
     }
 
     fn get_mock_available_printings() -> HashMap<String, Vec<Printing>> {
