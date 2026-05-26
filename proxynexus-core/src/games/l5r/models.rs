@@ -33,6 +33,8 @@ pub struct Pack {
 pub struct EmeraldDbDecklist {
     pub id: String,
     pub cards: HashMap<String, u32>,
+    #[serde(default)]
+    pub card_pack_ids: HashMap<String, String>,
 }
 
 #[cfg(test)]
@@ -115,6 +117,37 @@ mod tests {
         assert_eq!(cards[1].name_extra, Some("2".into()));
         assert_eq!(cards[1].versions[0].image_url, None);
         assert_eq!(cards[1].versions[0].position.as_deref(), Some("168"));
+    }
+
+    #[test]
+    fn deserialize_decklist_with_card_pack_ids() {
+        let json = r#"{
+            "id": "75ffc2ba-93a2-4551-bab3-2bb12ce015d7",
+            "cards": {"levy-2": 3, "fine-katana": 3},
+            "card_pack_ids": {
+                "levy-2": "emerald-core-set",
+                "fine-katana": "emerald-core-set"
+            }
+        }"#;
+
+        let decklist: EmeraldDbDecklist = serde_json::from_str(json).unwrap();
+        assert_eq!(decklist.id, "75ffc2ba-93a2-4551-bab3-2bb12ce015d7");
+        assert_eq!(decklist.cards.get("levy-2"), Some(&3));
+        assert_eq!(
+            decklist.card_pack_ids.get("fine-katana").map(String::as_str),
+            Some("emerald-core-set")
+        );
+    }
+
+    #[test]
+    fn deserialize_decklist_without_card_pack_ids() {
+        let json = r#"{
+            "id": "abc",
+            "cards": {"levy-2": 3}
+        }"#;
+
+        let decklist: EmeraldDbDecklist = serde_json::from_str(json).unwrap();
+        assert!(decklist.card_pack_ids.is_empty());
     }
 
     #[test]
