@@ -246,7 +246,7 @@ pub fn CardListInput(props: CardListInputProps) -> Element {
             textarea {
                 id: "card-list-input",
                 class: "flex-1 w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 resize-none font-mono text-base md:text-sm",
-                placeholder: "Enter your card list here (e.g. 3x Sure Gamble)...",
+                placeholder: "Enter your card list here...",
                 initial_value: "{props.list_text.peek()}",
                 oninput: handle_input,
                 onkeydown: handle_keydown,

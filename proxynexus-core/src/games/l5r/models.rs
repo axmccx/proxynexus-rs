@@ -134,7 +134,10 @@ mod tests {
         assert_eq!(decklist.id, "75ffc2ba-93a2-4551-bab3-2bb12ce015d7");
         assert_eq!(decklist.cards.get("levy-2"), Some(&3));
         assert_eq!(
-            decklist.card_pack_ids.get("fine-katana").map(String::as_str),
+            decklist
+                .card_pack_ids
+                .get("fine-katana")
+                .map(String::as_str),
             Some("emerald-core-set")
         );
     }

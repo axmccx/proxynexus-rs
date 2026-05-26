@@ -10,6 +10,7 @@ from deckbuilding or DB-like websites.
 
 Proxy Nexus can also run locally as an offline desktop app or CLI. 
 The CLI provides features to build and manage card image collections.
+
 ---
 
 ## Building & Running

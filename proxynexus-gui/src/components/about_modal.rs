@@ -38,6 +38,9 @@ pub fn AboutModal(props: AboutModalProps) -> Element {
                 h2 { class: "text-2xl font-bold mb-2 text-center", "Proxy Nexus" }
                 p { class: "text-center mb-8", "by Alex McCulloch (axmccx)" }
 
+                h5 { class: "text-sm font-bold mb-2 text-center", "with contributions from:" }
+                p { class: "text-center mb-8", "Fatih Inan" }
+
                 div { class: "flex flex-col gap-4 text-blue-600 items-center font-medium",
                     a { href: instructions_href, target: "_blank", class: "hover:underline", "Instructions"}
                     a { href: "https://github.com/axmccx/proxynexus-rs", target: "_blank", class: "hover:underline", "GitHub" }
