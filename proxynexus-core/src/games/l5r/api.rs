@@ -24,8 +24,8 @@ pub async fn fetch_decklist_from_emeralddb(url: &str) -> Result<Decklist> {
         .cards
         .into_iter()
         .map(|(card_id, quantity)| DecklistEntry {
+            pack_id: decklist.card_pack_ids.get(&card_id).cloned(),
             card_id,
-            pack_id: None,
             quantity,
         })
         .collect();
@@ -34,17 +34,22 @@ pub async fn fetch_decklist_from_emeralddb(url: &str) -> Result<Decklist> {
 }
 
 fn parse_emeralddb_url(url: &str) -> Result<String> {
-    url.split("/decklists/")
+    extract_path_segment(url, "/decklists/")
+        .or_else(|| extract_path_segment(url, "/decks/"))
+        .ok_or_else(|| ProxyNexusError::Internal("Invalid EmeraldDB decklist URL".into()))
+}
+
+fn extract_path_segment(url: &str, segment: &str) -> Option<String> {
+    url.split(segment)
         .nth(1)
         .map(|s| {
             s.trim_end_matches('/')
-                .split('/')
+                .split(['/', '?', '#'])
                 .next()
                 .unwrap_or("")
                 .to_string()
         })
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| ProxyNexusError::Internal("Invalid EmeraldDB decklist URL".into()))
 }
 
 async fn fetch_json<T: DeserializeOwned>(url: &str) -> Result<T> {
@@ -93,6 +98,31 @@ mod url_tests {
     #[test]
     fn parses_decklist_url_with_trailing_slash() {
         let id = parse_emeralddb_url("https://www.emeralddb.org/decklists/abc123/").unwrap();
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn parses_deck_url_as_decklist_id() {
+        // The site's /decks/<id> share URL actually passes a decklist (version)
+        // id to /api/decklists/<id>. There is no /api/decks/<id> call on this
+        // route in the SPA bundle.
+        let id = parse_emeralddb_url(
+            "https://www.emeralddb.org/decks/16a09606-2987-401b-9aa9-766f523536a2",
+        )
+        .unwrap();
+        assert_eq!(id, "16a09606-2987-401b-9aa9-766f523536a2");
+    }
+
+    #[test]
+    fn parses_deck_url_with_trailing_slash() {
+        let id = parse_emeralddb_url("https://www.emeralddb.org/decks/abc123/").unwrap();
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn parses_url_with_query_and_fragment() {
+        let id =
+            parse_emeralddb_url("https://www.emeralddb.org/decks/abc123?foo=bar#section").unwrap();
         assert_eq!(id, "abc123");
     }
 
