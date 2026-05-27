@@ -395,6 +395,9 @@
   .animate-border {
     animation: var(--animate-border);
   }
+  .cursor-auto {
+    cursor: auto;
+  }
   .cursor-help {
     cursor: help;
   }
@@ -878,6 +881,26 @@
   .focus-visible\:ring-blue-400 {
     &:focus-visible {
       --tw-ring-color: var(--color-blue-400);
+    }
+  }
+  .disabled\:cursor-not-allowed {
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+  .disabled\:bg-gray-100 {
+    &:disabled {
+      background-color: var(--color-gray-100);
+    }
+  }
+  .disabled\:text-gray-500 {
+    &:disabled {
+      color: var(--color-gray-500);
+    }
+  }
+  .disabled\:opacity-50 {
+    &:disabled {
+      opacity: 50%;
     }
   }
   .max-md\:\!fixed {

@@ -41,6 +41,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     let supports_decklists =
         use_memo(move || active_game_id().is_some_and(|id| get_decklist_adapter(&id).is_some()));
 
+    let is_disabled = use_memo(move || active_game_id().is_none());
+
     let mut prev_game_id = use_signal(|| active_game_id.peek().clone());
 
     use_effect(move || {
@@ -111,7 +113,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                     "List"
                 }
                 button {
-                    class: if tab() == "set" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
+                    class: if tab() == "set" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px] disabled:opacity-50 disabled:cursor-not-allowed" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px] disabled:opacity-50 disabled:cursor-not-allowed" },
+                    disabled: is_disabled(),
                     onclick: move |_| {
                         if tab() != "set" {
                             props.on_source_changed.call(());
@@ -123,7 +126,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 }
                 if supports_decklists() {
                     button {
-                        class: if tab() == "decklist" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px]" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px]" },
+                        class: if tab() == "decklist" { "px-4 py-2 border-b-2 border-blue-600 text-blue-600 text-sm font-semibold -mb-[1px] disabled:opacity-50 disabled:cursor-not-allowed" } else { "px-4 py-2 text-gray-500 text-sm font-medium hover:text-gray-700 border-b-2 border-transparent -mb-[1px] disabled:opacity-50 disabled:cursor-not-allowed" },
+                        disabled: is_disabled(),
                         onclick: move |_| {
                             if tab() != "decklist" {
                                 props.on_source_changed.call(());
@@ -141,6 +145,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                     CardListInput {
                         all_cards,
                         list_text: list_text,
+                        disabled: is_disabled(),
                         oninput: move |text: String| {
                             list_text.set(text.clone());
                             source_state.set(ActiveSource::Cardlist(text));
@@ -149,7 +154,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 },
                 "set" => rsx! {
                     select {
-                        class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm",
+                        class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed",
+                        disabled: is_disabled(),
                         value: "{set_name}",
                         onchange: move |evt| {
                             props.on_source_changed.call(());
@@ -167,7 +173,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 "decklist" => rsx! {
                     input {
                         type: "text",
-                        class: "w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm",
+                        class: "w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed",
+                        disabled: is_disabled(),
                         placeholder: "Enter decklist URL...",
                         initial_value: "{decklist_url}",
                         oninput: move |evt| {

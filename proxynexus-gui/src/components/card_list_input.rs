@@ -9,6 +9,8 @@ pub struct CardListInputProps {
     pub all_cards: Resource<Option<Vec<String>>>,
     pub list_text: Signal<String>,
     pub oninput: EventHandler<String>,
+    #[props(default = false)]
+    pub disabled: bool,
 }
 
 #[component]
@@ -245,9 +247,10 @@ pub fn CardListInput(props: CardListInputProps) -> Element {
             class: "relative flex-1 w-full flex flex-col",
             textarea {
                 id: "card-list-input",
-                class: "flex-1 w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 resize-none font-mono text-base md:text-sm",
+                class: "flex-1 w-full p-3 border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-400 resize-none font-mono text-base md:text-sm disabled:bg-gray-100 disabled:text-gray-500 cursor-auto disabled:cursor-not-allowed",
                 placeholder: "Enter your card list here...",
-                initial_value: "{props.list_text.peek()}",
+                value: "{props.list_text}",
+                disabled: props.disabled,
                 oninput: handle_input,
                 onkeydown: handle_keydown,
             }
