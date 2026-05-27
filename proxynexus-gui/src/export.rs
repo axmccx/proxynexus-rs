@@ -2,6 +2,7 @@
 use crate::analytics;
 use crate::components::source_selector::ActiveSource;
 use anyhow::Context;
+use async_lock::Mutex;
 use dioxus::prelude::*;
 use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
@@ -32,7 +33,7 @@ struct ExportMeta {
 }
 
 pub async fn run_export(
-    mut db_signal: Signal<DbStorage>,
+    db_signal: Signal<Arc<Mutex<DbStorage>>>,
     active_game_id: String,
     active_source: ActiveSource,
     options: ExportOptions,
@@ -96,7 +97,8 @@ pub async fn run_export(
     };
 
     let resolved_printings = async {
-        let mut db = db_signal.write();
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
         let mut store = proxynexus_core::card_store::CardStore::new(&mut db, active_game_id)
             .context("Failed to create store")?;
 

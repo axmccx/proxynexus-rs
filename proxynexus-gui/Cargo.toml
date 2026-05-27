@@ -15,6 +15,7 @@ uuid = { version = "1.8", features = ["v4"] }
 web-time = "1.1"
 fuzzy-matcher = "0.3.7"
 anyhow = "1.0.102"
+async-lock = "3.4.2"
 
 [features]
 default = ["desktop"]

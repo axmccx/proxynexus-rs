@@ -210,14 +210,18 @@ async fn hydrate_wasm_db(db: &mut DbStorage) -> anyhow::Result<()> {
     Ok(())
 }
 
+use async_lock::Mutex;
+use std::sync::Arc;
+
 #[component]
 fn App() -> Element {
-    let mut db_signal = use_signal(get_db_storage);
+    let db_signal = use_signal(|| Arc::new(Mutex::new(get_db_storage())));
     let mut db_ready = use_signal(|| false);
 
     use_effect(move || {
         spawn(async move {
-            let mut db = db_signal.write();
+            let db_arc = db_signal.read().clone();
+            let mut db = db_arc.lock().await;
 
             if let Err(e) = db.initialize_schema().await {
                 error!("Schema init failed: {:?}", e);
@@ -247,7 +251,7 @@ fn App() -> Element {
 }
 
 #[component]
-fn Workspace(db_signal: Signal<DbStorage>) -> Element {
+fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
     let progress = use_signal(|| None::<f32>);
 
     let mut active_game_id = use_signal(|| {
@@ -282,7 +286,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
     });
 
     let available_games = use_resource(move || async move {
-        let mut db = db_signal.write();
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
         db.get_games().await.unwrap_or_default()
     });
 
@@ -326,7 +331,8 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
         };
 
         let source = debounced_source();
-        let mut db = db_signal.write();
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
 
         let res = match source {
             ActiveSource::Cardlist(text) => {
@@ -499,6 +505,7 @@ fn Workspace(db_signal: Signal<DbStorage>) -> Element {
                         value: active_game_id().unwrap_or_default(),
                         onchange: move |evt| {
                             active_game_id.set(Some(evt.value()));
+                            debounced_source.set(ActiveSource::default());
                             is_overrides_reset_pending.set(true);
                         },
                         if active_game_id().is_none() {

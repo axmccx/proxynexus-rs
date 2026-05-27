@@ -1,8 +1,10 @@
 use crate::components::card_list_input::CardListInput;
+use async_lock::Mutex;
 use dioxus::prelude::*;
 use proxynexus_core::card_store::CardStore;
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::games::get_decklist_adapter;
+use std::sync::Arc;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ActiveSource {
@@ -21,14 +23,14 @@ impl Default for ActiveSource {
 pub struct SourceSelectorProps {
     pub active_game_id: Signal<Option<String>>,
     pub source_state: Signal<ActiveSource>,
-    pub db_signal: Signal<DbStorage>,
+    pub db_signal: Signal<Arc<Mutex<DbStorage>>>,
     pub on_source_changed: EventHandler<()>,
 }
 
 #[component]
 pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     let mut tab = use_signal(|| "list");
-    let mut db_signal = props.db_signal;
+    let db_signal = props.db_signal;
     let mut source_state = props.source_state;
     let active_game_id = props.active_game_id;
 
@@ -38,6 +40,20 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
 
     let supports_decklists =
         use_memo(move || active_game_id().is_some_and(|id| get_decklist_adapter(&id).is_some()));
+
+    let mut prev_game_id = use_signal(|| active_game_id.peek().clone());
+
+    use_effect(move || {
+        let current = active_game_id();
+        if current != *prev_game_id.peek() {
+            tab.set("list");
+            list_text.set(String::new());
+            set_name.set(String::new());
+            decklist_url.set(String::new());
+            source_state.set(ActiveSource::Cardlist(String::new()));
+            prev_game_id.set(current);
+        }
+    });
 
     use_effect(move || {
         if !supports_decklists() && tab() == "decklist" {
@@ -51,7 +67,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
             Some(id) => id,
             None => return Vec::new(),
         };
-        let mut db = db_signal.write();
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
         match CardStore::new(&mut db, game_id) {
             Ok(mut store) => {
                 let packs = store.get_available_packs().await.unwrap_or_default();
@@ -69,7 +86,8 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
             Some(id) => id,
             None => return None,
         };
-        let mut db = db_signal.write();
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
         match CardStore::new(&mut db, game_id) {
             Ok(mut store) => store.get_all_card_names().await.ok(),
             Err(_) => None,
