@@ -227,6 +227,7 @@ pub async fn run_export(
         options: meta.options,
         runtime_ms: start_time.elapsed().as_millis(),
         success,
+        active_game_id,
         source_type,
         source_text,
         selected_printings,

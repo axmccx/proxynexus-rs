@@ -108,16 +108,28 @@ impl CardBackProvider for L5rAdapter {
         {
             Ok(vec![
                 (
-                    "conflict_back.png".to_string(),
-                    include_bytes!("../../../assets/conflict_back.png").to_vec(),
+                    "conflict_back_original.png".to_string(),
+                    include_bytes!("../../../assets/conflict_back_original.png").to_vec(),
                 ),
                 (
-                    "dynasty_back.png".to_string(),
-                    include_bytes!("../../../assets/dynasty_back.png").to_vec(),
+                    "conflict_back_new.png".to_string(),
+                    include_bytes!("../../../assets/conflict_back_new.png").to_vec(),
                 ),
                 (
-                    "province_back.png".to_string(),
-                    include_bytes!("../../../assets/province_back.png").to_vec(),
+                    "dynasty_back_original.png".to_string(),
+                    include_bytes!("../../../assets/dynasty_back_original.png").to_vec(),
+                ),
+                (
+                    "dynasty_back_new.png".to_string(),
+                    include_bytes!("../../../assets/dynasty_back_new.png").to_vec(),
+                ),
+                (
+                    "province_back_original.png".to_string(),
+                    include_bytes!("../../../assets/province_back_original.png").to_vec(),
+                ),
+                (
+                    "province_back_new.png".to_string(),
+                    include_bytes!("../../../assets/province_back_new.png").to_vec(),
                 ),
             ])
         }
@@ -127,7 +139,14 @@ impl CardBackProvider for L5rAdapter {
             use futures::future::join_all;
             use gloo_net::http::Request;
 
-            let filenames = ["conflict_back.png", "dynasty_back.png", "province_back.png"];
+            let filenames = [
+                "conflict_back_original.png",
+                "conflict_back_new.png",
+                "dynasty_back_original.png",
+                "dynasty_back_new.png",
+                "province_back_original.png",
+                "province_back_new.png",
+            ];
 
             let fetch_futures = filenames.iter().map(|filename| async move {
                 let url = format!("card_backs/{}", filename);
