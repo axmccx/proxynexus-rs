@@ -513,7 +513,11 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                         }
                         if let Some(games) = available_games.read().as_ref() {
                             for (id, display_name) in games {
-                                option { value: id.clone(), "{display_name}" }
+                                option {
+                                    value: id.clone(),
+                                    selected: Some(id.clone()) == active_game_id(),
+                                    "{display_name}"
+                                }
                             }
                         }
                     }
