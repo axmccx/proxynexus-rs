@@ -5,6 +5,7 @@ use proxynexus_core::catalog::CatalogManager;
 use proxynexus_core::collection_builder::build_collection;
 use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::db_storage::DbStorage;
+use proxynexus_core::games::get_card_back_adapter;
 use proxynexus_core::image_provider::LocalImageProvider;
 use proxynexus_core::models::Printing;
 use proxynexus_core::mpc::generate_mpc_zip;
@@ -467,10 +468,17 @@ async fn handle_generate(
 
             let printings = get_printings_from_source(db, game, source).await?;
 
+            let card_backs = if let Some(adapter) = get_card_back_adapter(game) {
+                adapter.fetch_card_backs().await.unwrap_or_default()
+            } else {
+                vec![]
+            };
+
             let mpc_bytes = generate_mpc_zip(
                 printings,
                 image_provider,
                 proxynexus_core::mpc::MpcOptions { upscale },
+                card_backs,
                 None,
             )
             .await

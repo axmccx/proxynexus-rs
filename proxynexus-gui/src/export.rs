@@ -6,6 +6,7 @@ use async_lock::Mutex;
 use dioxus::prelude::*;
 use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
+use proxynexus_core::games::get_card_back_adapter;
 use proxynexus_core::mpc::{MpcOptions, generate_mpc_zip};
 use proxynexus_core::pdf::{PdfOptions, generate_pdf};
 use proxynexus_core::query::apply_variant_overrides;
@@ -99,8 +100,9 @@ pub async fn run_export(
     let resolved_printings = async {
         let db_arc = db_signal.read().clone();
         let mut db = db_arc.lock().await;
-        let mut store = proxynexus_core::card_store::CardStore::new(&mut db, active_game_id)
-            .context("Failed to create store")?;
+        let mut store =
+            proxynexus_core::card_store::CardStore::new(&mut db, active_game_id.clone())
+                .context("Failed to create store")?;
 
         let reqs = match active_source {
             ActiveSource::Cardlist(text) => Cardlist(text)
@@ -169,9 +171,25 @@ pub async fn run_export(
                     .context("PDF generation failed")
             }
             ExportOptions::Mpc(mpc_opts) => {
-                generate_mpc_zip(printings, &image_provider, mpc_opts, progress_callback)
-                    .await
-                    .context("MPC ZIP generation failed")
+                let card_backs =
+                    if let Some(card_back_adapter) = get_card_back_adapter(&active_game_id) {
+                        card_back_adapter
+                            .fetch_card_backs()
+                            .await
+                            .unwrap_or_default()
+                    } else {
+                        vec![]
+                    };
+
+                generate_mpc_zip(
+                    printings,
+                    &image_provider,
+                    mpc_opts,
+                    card_backs,
+                    progress_callback,
+                )
+                .await
+                .context("MPC ZIP generation failed")
             }
         },
         (Err(e), _) => Err(e),

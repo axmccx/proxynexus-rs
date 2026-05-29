@@ -7,6 +7,7 @@ use crate::games::netrunner::api::{
     fetch_card_sets, fetch_cards, fetch_decklist_from_nrdb, fetch_printings,
 };
 use crate::models::Decklist;
+use crate::mpc::CardBackProvider;
 use async_trait::async_trait;
 
 pub struct NetrunnerAdapter {}
@@ -83,5 +84,66 @@ impl CatalogProvider for NetrunnerAdapter {
 impl DecklistProvider for NetrunnerAdapter {
     async fn fetch(&self, url: &str) -> Result<Decklist> {
         fetch_decklist_from_nrdb(url).await
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl CardBackProvider for NetrunnerAdapter {
+    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(vec![
+                (
+                    "corp_back_original.png".to_string(),
+                    include_bytes!("../../../assets/corp_back_original.png").to_vec(),
+                ),
+                (
+                    "corp_back_proxy.png".to_string(),
+                    include_bytes!("../../../assets/corp_back_proxy.png").to_vec(),
+                ),
+                (
+                    "runner_back_original.png".to_string(),
+                    include_bytes!("../../../assets/runner_back_original.png").to_vec(),
+                ),
+                (
+                    "runner_back_proxy.png".to_string(),
+                    include_bytes!("../../../assets/runner_back_proxy.png").to_vec(),
+                ),
+            ])
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            use futures::future::join_all;
+            use gloo_net::http::Request;
+
+            let filenames = [
+                "corp_back_original.png",
+                "corp_back_proxy.png",
+                "runner_back_original.png",
+                "runner_back_proxy.png",
+            ];
+
+            let fetch_futures = filenames.iter().map(|filename| async move {
+                let url = format!("card_backs/{}", filename);
+                let response = Request::get(&url).send().await?;
+
+                if !response.ok() {
+                    return Err(crate::error::ProxyNexusError::Internal(format!(
+                        "Failed to fetch {}: HTTP {}",
+                        url,
+                        response.status()
+                    )));
+                }
+
+                let bytes = response.binary().await?;
+
+                Ok((filename.to_string(), bytes))
+            });
+
+            let results: Vec<Result<(String, Vec<u8>)>> = join_all(fetch_futures).await;
+            results.into_iter().collect()
+        }
     }
 }

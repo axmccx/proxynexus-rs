@@ -2,6 +2,7 @@ use crate::error::Result;
 use crate::image_provider::ImageProvider;
 use crate::models::Printing;
 use crate::print_prep;
+use async_trait::async_trait;
 use image::ImageFormat;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -10,6 +11,12 @@ use tracing::info;
 use web_time::Instant;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+pub trait CardBackProvider {
+    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>>;
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 pub struct MpcOptions {
@@ -20,6 +27,7 @@ pub async fn generate_mpc_zip(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     options: MpcOptions,
+    card_backs: Vec<(String, Vec<u8>)>,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
     let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
@@ -62,56 +70,9 @@ pub async fn generate_mpc_zip(
 
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        zip.start_file("corp_back_original.png", options)?;
-        zip.write_all(include_bytes!("../assets/corp_back_original.png"))?;
-
-        zip.start_file("corp_back_proxy.png", options)?;
-        zip.write_all(include_bytes!("../assets/corp_back_proxy.png"))?;
-
-        zip.start_file("runner_back_original.png", options)?;
-        zip.write_all(include_bytes!("../assets/runner_back_original.png"))?;
-
-        zip.start_file("runner_back_proxy.png", options)?;
-        zip.write_all(include_bytes!("../assets/runner_back_proxy.png"))?;
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        use futures::future::join_all;
-        use gloo_net::http::Request;
-
-        let filenames = [
-            "corp_back_original.png",
-            "corp_back_proxy.png",
-            "runner_back_original.png",
-            "runner_back_proxy.png",
-        ];
-
-        let fetch_futures = filenames.iter().map(|filename| async move {
-            let url = format!("card_backs/{}", filename);
-            let response = Request::get(&url).send().await?;
-
-            if !response.ok() {
-                return Err(crate::error::ProxyNexusError::Internal(format!(
-                    "Failed to fetch {}: HTTP {}",
-                    url,
-                    response.status()
-                )));
-            }
-
-            let bytes = response.binary().await?;
-
-            Ok((*filename, bytes))
-        });
-
-        let results: Vec<Result<(&str, Vec<u8>)>> = join_all(fetch_futures).await;
-        for result in results {
-            let (filename, bytes) = result?;
-            zip.start_file(filename, options)?;
-            zip.write_all(&bytes)?;
-        }
+    for (filename, bytes) in card_backs {
+        zip.start_file(filename, options)?;
+        zip.write_all(&bytes)?;
     }
 
     zip.finish()?;
