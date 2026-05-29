@@ -7,6 +7,7 @@ use crate::games::l5r::api::fetch_decklist_from_emeralddb;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::l5r::api::{fetch_cards, fetch_packs};
 use crate::models::Decklist;
+use crate::mpc::CardBackProvider;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
 use futures::join;
@@ -96,6 +97,58 @@ fn parse_position(s: Option<&str>) -> Option<i64> {
 impl DecklistProvider for L5rAdapter {
     async fn fetch(&self, url: &str) -> Result<Decklist> {
         fetch_decklist_from_emeralddb(url).await
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl CardBackProvider for L5rAdapter {
+    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(vec![
+                (
+                    "conflict_back.png".to_string(),
+                    include_bytes!("../../../assets/conflict_back.png").to_vec(),
+                ),
+                (
+                    "dynasty_back.png".to_string(),
+                    include_bytes!("../../../assets/dynasty_back.png").to_vec(),
+                ),
+                (
+                    "province_back.png".to_string(),
+                    include_bytes!("../../../assets/province_back.png").to_vec(),
+                ),
+            ])
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            use futures::future::join_all;
+            use gloo_net::http::Request;
+
+            let filenames = ["conflict_back.png", "dynasty_back.png", "province_back.png"];
+
+            let fetch_futures = filenames.iter().map(|filename| async move {
+                let url = format!("card_backs/{}", filename);
+                let response = Request::get(&url).send().await?;
+
+                if !response.ok() {
+                    return Err(crate::error::ProxyNexusError::Internal(format!(
+                        "Failed to fetch {}: HTTP {}",
+                        url,
+                        response.status()
+                    )));
+                }
+
+                let bytes = response.binary().await?;
+
+                Ok((filename.to_string(), bytes))
+            });
+
+            let results: Vec<Result<(String, Vec<u8>)>> = join_all(fetch_futures).await;
+            results.into_iter().collect()
+        }
     }
 }
 

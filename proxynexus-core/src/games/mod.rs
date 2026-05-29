@@ -16,6 +16,7 @@ pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> 
 pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>> {
     match game_id {
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
+        "l5r" => Some(Box::new(L5rAdapter::new())),
         _ => None,
     }
 }
