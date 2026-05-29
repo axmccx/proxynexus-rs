@@ -87,6 +87,27 @@ When building a `DecklistEntry`, the `card_id` and `quantity` are required.
 However, some deckbuilding APIs may not provide a `pack_id`, so it is an `Option<String>`. 
 If omitted (`None`), Proxy Nexus's will try to find the best available printing in the user's local collection.
 
+### `CardBackProvider` (Optional)
+Found in `proxynexus-core/src/mpc.rs`. It provides the ability to bundle game-specific default card back images directly 
+into the generated MPC zip file. If a game doesn't need to bundle custom back images, you can skip this trait.
+
+```rust
+use async_trait::async_trait;
+use crate::mpc::CardBackProvider;
+use crate::error::Result;
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl CardBackProvider for NewGameAdapter {
+    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
+        // Return a vector of tuples containing the desired filename and the raw image bytes.
+        // E.g. native: include_bytes!("path/to/back.png").to_vec()
+        // E.g. WASM: fetch using gloo_net::http::Request
+        Ok(vec![])
+    }
+}
+```
+
 ## 3. Register the Adapter
 Once your adapter is written, you must register it in two places:
 
@@ -124,6 +145,18 @@ pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> 
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
         "new_game" => Some(Box::new(NewGameAdapter::new())), // 3. Register your game if supported
         // "unsupported_game" => None, // Just return None!
+        _ => None,
+    }
+}
+```
+
+**C. Register for Card Backs (`proxynexus-core/src/games/mod.rs`)**
+Similar to decklists, register your adapter in `get_card_back_adapter` if your game implements `CardBackProvider`.
+```rust
+pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>> {
+    match game_id {
+        "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
+        "new_game" => Some(Box::new(NewGameAdapter::new())), // Register your game if supported
         _ => None,
     }
 }
