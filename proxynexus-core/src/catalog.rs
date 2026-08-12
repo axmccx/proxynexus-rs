@@ -5,6 +5,7 @@ use crate::games::agot::adapter::AgotAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
+use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use async_trait::async_trait;
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
@@ -57,6 +58,7 @@ impl<'a> CatalogManager<'a> {
     pub fn new(db: &'a mut DbStorage) -> Self {
         let adapters: Vec<Box<dyn CatalogProvider>> = vec![
             Box::new(NetrunnerAdapter::new()),
+            Box::new(NetrunnerRebootAdapter::new()),
             Box::new(L5rAdapter::new()),
             Box::new(AgotAdapter::new()),
             Box::new(LotrLcgAdapter::new()),

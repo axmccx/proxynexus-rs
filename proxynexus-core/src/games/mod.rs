@@ -2,12 +2,14 @@ pub mod agot;
 pub mod l5r;
 pub mod lotrlcg;
 pub mod netrunner;
+pub mod netrunner_reboot;
 use crate::card_source::DecklistProvider;
 use crate::error::{ProxyNexusError, Result};
 use crate::games::agot::adapter::AgotAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
+use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use crate::mpc::CardBackProvider;
 use serde::de::DeserializeOwned;
 
@@ -22,6 +24,7 @@ pub trait GameAdapterInfo {
 pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
     let adapters: Vec<Box<dyn GameAdapterInfo>> = vec![
         Box::new(NetrunnerAdapter::new()),
+        Box::new(NetrunnerRebootAdapter::new()),
         Box::new(L5rAdapter::new()),
         Box::new(AgotAdapter::new()),
         Box::new(LotrLcgAdapter::new()),
@@ -38,6 +41,7 @@ pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
 pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> {
     match game_id {
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
+        "netrunner-reboot" => Some(Box::new(NetrunnerRebootAdapter::new())),
         "l5r" => Some(Box::new(L5rAdapter::new())),
         "agot" => Some(Box::new(AgotAdapter::new())),
         "lotrlcg" => Some(Box::new(LotrLcgAdapter::new())),
@@ -48,6 +52,7 @@ pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> 
 pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>> {
     match game_id {
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
+        "netrunner-reboot" => Some(Box::new(NetrunnerRebootAdapter::new())),
         "l5r" => Some(Box::new(L5rAdapter::new())),
         _ => None,
     }

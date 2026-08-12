@@ -61,10 +61,8 @@ The CLI is able to create these collections from a folder of card scan image fil
 To build a collection, you need a folder of correctly named card images. 
 The file names in the folder **must** follow the [image file naming conventions](#image-file-naming-convention). 
 
-#### Netrunner
-You can find the images used to create the Netrunner collections here: 
-[Google Drive - Proxy Nexus Collections](https://drive.google.com/drive/folders/1d84k6Od5bSBK31-lQkJzRc71xGx6-zVS?usp=sharing). 
-This includes scans of FFG cards and images extracted from Null Signal Games (NSG) PDFs.
+You can find the images used in the collections here: 
+[Google Drive - Proxy Nexus Collections](https://mega.nz/folder/El9QRTLD#sRPGDODVCESlswE6hvpZRA).
 
 ### 2. Building a Collection `.pnx` File
 ```bash
