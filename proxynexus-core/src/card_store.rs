@@ -326,7 +326,7 @@ impl<'a> CardStore<'a> {
         struct PackGroup {
             id: String,
             name: String,
-            date_release: String,
+            date_release: Option<String>,
             collections: Vec<String>,
         }
 
@@ -336,7 +336,7 @@ impl<'a> CardStore<'a> {
             let pack_rows = payload.rows_as::<PackRow>()?;
 
             for row in pack_rows {
-                let date_release = row.date_release.unwrap_or_default();
+                let date_release = row.date_release;
 
                 let entry = pack_data
                     .entry(row.pack_id.clone())
@@ -358,7 +358,13 @@ impl<'a> CardStore<'a> {
         }
 
         let mut sorted_packs: Vec<_> = pack_data.into_values().collect();
-        sorted_packs.sort_by(|a, b| a.date_release.cmp(&b.date_release));
+        sorted_packs.sort_by(|a, b| {
+            a.date_release
+                .is_none()
+                .cmp(&b.date_release.is_none())
+                .then_with(|| b.date_release.cmp(&a.date_release))
+                .then_with(|| a.name.cmp(&b.name))
+        });
 
         let mut results = Vec::new();
 

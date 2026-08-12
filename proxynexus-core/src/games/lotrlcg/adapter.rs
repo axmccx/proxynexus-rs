@@ -69,14 +69,12 @@ impl CatalogProvider for LotrLcgAdapter {
         let mut packs = Vec::new();
         let mut seen_pack_names = HashSet::new();
 
-        // Build a mapping of normalized pack name to release date from RingsDB
+        // Build a mapping of normalized pack name to release date from RingsDB.
         let mut pack_dates = HashMap::new();
-        if let Ok(ringsdb_packs) = crate::games::lotrlcg::api::fetch_ringsdb_packs().await {
-            for rp in ringsdb_packs {
-                let clean_pack_name = rp.name.replace("ALeP - ", "").replace(".English", "");
-                let clean_pack_id = normalize_title(&clean_pack_name);
-                pack_dates.insert(clean_pack_id, rp.available);
-            }
+        for rp in crate::games::lotrlcg::api::fetch_ringsdb_packs().await? {
+            let clean_pack_name = rp.name.replace("ALeP - ", "").replace(".English", "");
+            let clean_pack_id = normalize_title(&clean_pack_name);
+            pack_dates.insert(clean_pack_id, rp.available);
         }
 
         for c in &all_hob_cards {
@@ -129,140 +127,140 @@ impl CatalogProvider for LotrLcgAdapter {
             }
         }
 
-        if let Ok(alep_cards) = crate::games::lotrlcg::api::fetch_alep_catalog().await {
-            for rc in alep_cards {
-                if rc.is_official.unwrap_or(true) {
-                    continue;
+        let alep_cards = crate::games::lotrlcg::api::fetch_alep_catalog().await?;
+        for rc in alep_cards {
+            if rc.is_official.unwrap_or(true) {
+                continue;
+            }
+
+            let base_normalized = normalize_title(&rc.name);
+            let clean_pack_name = rc.pack_name.replace("ALeP - ", "").replace(".English", "");
+            let display_name = format!("ALeP - {}", clean_pack_name);
+            let clean_pack_id = normalize_title(&clean_pack_name);
+            let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
+
+            if seen_pack_names.insert(clean_pack_id.clone()) {
+                packs.push(Pack {
+                    id: clean_pack_id.clone(),
+                    name: display_name.clone(),
+                    date_release: pack_dates.get(&clean_pack_id).cloned(),
+                });
+            } else if let Some(pack) = packs
+                .iter_mut()
+                .find(|p| p.id == clean_pack_id && !p.name.starts_with("ALeP - "))
+            {
+                pack.name = display_name;
+            }
+
+            let side = match rc.type_code.as_deref() {
+                Some("hero")
+                | Some("ally")
+                | Some("attachment")
+                | Some("event")
+                | Some("player-side-quest")
+                | Some("contract")
+                | Some("treasure") => "player",
+                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
+                    "quest"
                 }
+                _ => "encounter",
+            };
 
-                let base_normalized = normalize_title(&rc.name);
-                let clean_pack_name = rc.pack_name.replace("ALeP - ", "").replace(".English", "");
-                let display_name = format!("ALeP - {}", clean_pack_name);
-                let clean_pack_id = normalize_title(&clean_pack_name);
-                let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
+            if seen_cards.insert(normalized_id.clone()) {
+                cards.push(Card {
+                    id: normalized_id.clone(),
+                    title: rc.name,
+                    title_normalized: base_normalized,
+                    side: Some(side.to_string()),
+                });
+            }
 
-                if seen_pack_names.insert(clean_pack_id.clone()) {
-                    packs.push(Pack {
-                        id: clean_pack_id.clone(),
-                        name: display_name.clone(),
-                        date_release: pack_dates.get(&clean_pack_id).cloned(),
-                    });
-                } else if let Some(pack) = packs
-                    .iter_mut()
-                    .find(|p| p.id == clean_pack_id && !p.name.starts_with("ALeP - "))
-                {
-                    pack.name = display_name;
+            if seen_versions.insert((normalized_id.clone(), clean_pack_id.clone())) {
+                if let Some(pos) = rc.position {
+                    provided_pack_positions.insert((clean_pack_id.clone(), pos as i64));
                 }
-
-                let side = match rc.type_code.as_deref() {
-                    Some("hero")
-                    | Some("ally")
-                    | Some("attachment")
-                    | Some("event")
-                    | Some("player-side-quest")
-                    | Some("contract")
-                    | Some("treasure") => "player",
-                    Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                        "quest"
-                    }
-                    _ => "encounter",
-                };
-
-                if seen_cards.insert(normalized_id.clone()) {
-                    cards.push(Card {
-                        id: normalized_id.clone(),
-                        title: rc.name,
-                        title_normalized: base_normalized,
-                        side: Some(side.to_string()),
-                    });
-                }
-
-                if seen_versions.insert((normalized_id.clone(), clean_pack_id.clone())) {
-                    if let Some(pos) = rc.position {
-                        provided_pack_positions.insert((clean_pack_id.clone(), pos as i64));
-                    }
-                    card_versions.push(CardVersion {
-                        card_id: normalized_id,
-                        pack_id: clean_pack_id,
-                        quantity: rc.quantity.unwrap_or(3) as i64,
-                        position: rc.position.map(|p| p as i64),
-                    });
-                }
+                card_versions.push(CardVersion {
+                    card_id: normalized_id,
+                    pack_id: clean_pack_id,
+                    quantity: rc.quantity.unwrap_or(3) as i64,
+                    position: rc.position.map(|p| p as i64),
+                });
             }
         }
-        if let Ok(ringsdb_cards) = crate::games::lotrlcg::api::fetch_all_cards().await {
-            for rc in ringsdb_cards {
-                let base_normalized = normalize_title(&rc.name);
 
-                let mut clean_pack_name = rc.pack_name.replace(".English", "");
-                let is_alep = clean_pack_name.starts_with("ALeP - ");
-                if is_alep {
-                    clean_pack_name = clean_pack_name.replace("ALeP - ", "");
-                }
+        let ringsdb_cards = crate::games::lotrlcg::api::fetch_all_cards().await?;
+        for rc in ringsdb_cards {
+            let base_normalized = normalize_title(&rc.name);
 
-                let display_name = if is_alep {
-                    format!("ALeP - {}", clean_pack_name)
-                } else {
-                    clean_pack_name.clone()
-                };
+            let mut clean_pack_name = rc.pack_name.replace(".English", "");
+            let is_alep = clean_pack_name.starts_with("ALeP - ");
+            if is_alep {
+                clean_pack_name = clean_pack_name.replace("ALeP - ", "");
+            }
 
-                let clean_pack_id = normalize_title(&clean_pack_name);
-                let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
+            let display_name = if is_alep {
+                format!("ALeP - {}", clean_pack_name)
+            } else {
+                clean_pack_name.clone()
+            };
 
-                if seen_pack_names.insert(clean_pack_id.clone()) {
-                    packs.push(Pack {
-                        id: clean_pack_id.clone(),
-                        name: display_name.clone(),
-                        date_release: None,
-                    });
-                } else if is_alep
-                    && let Some(pack) = packs
-                        .iter_mut()
-                        .find(|p| p.id == clean_pack_id && !p.name.starts_with("ALeP - "))
-                {
+            let clean_pack_id = normalize_title(&clean_pack_name);
+            let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
+
+            if seen_pack_names.insert(clean_pack_id.clone()) {
+                packs.push(Pack {
+                    id: clean_pack_id.clone(),
+                    name: display_name.clone(),
+                    date_release: pack_dates.get(&clean_pack_id).cloned(),
+                });
+            } else if let Some(pack) = packs.iter_mut().find(|p| p.id == clean_pack_id) {
+                if is_alep && !pack.name.starts_with("ALeP - ") {
                     pack.name = display_name;
                 }
-
-                let side = match rc.type_code.as_deref() {
-                    Some("hero")
-                    | Some("ally")
-                    | Some("attachment")
-                    | Some("event")
-                    | Some("player-side-quest")
-                    | Some("contract")
-                    | Some("treasure") => "player",
-                    Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                        "quest"
-                    }
-                    _ => "encounter",
-                };
-
-                if rc.position.is_some_and(|pos| {
-                    provided_pack_positions.contains(&(clean_pack_id.clone(), pos as i64))
-                }) {
-                    continue;
+                if pack.date_release.is_none() {
+                    pack.date_release = pack_dates.get(&clean_pack_id).cloned();
                 }
+            }
 
-                if seen_cards.insert(normalized_id.clone()) {
-                    cards.push(Card {
-                        id: normalized_id.clone(),
-                        title: rc.name,
-                        title_normalized: base_normalized,
-                        side: Some(side.to_string()),
-                    });
+            let side = match rc.type_code.as_deref() {
+                Some("hero")
+                | Some("ally")
+                | Some("attachment")
+                | Some("event")
+                | Some("player-side-quest")
+                | Some("contract")
+                | Some("treasure") => "player",
+                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
+                    "quest"
                 }
+                _ => "encounter",
+            };
 
-                if seen_versions.insert((normalized_id.clone(), clean_pack_id.clone())) {
-                    if let Some(pos) = rc.position {
-                        provided_pack_positions.insert((clean_pack_id.clone(), pos as i64));
-                    }
-                    card_versions.push(CardVersion {
-                        card_id: normalized_id,
-                        pack_id: clean_pack_id,
-                        quantity: rc.quantity.unwrap_or(3) as i64,
-                        position: rc.position.map(|p| p as i64),
-                    });
+            if rc.position.is_some_and(|pos| {
+                provided_pack_positions.contains(&(clean_pack_id.clone(), pos as i64))
+            }) {
+                continue;
+            }
+
+            if seen_cards.insert(normalized_id.clone()) {
+                cards.push(Card {
+                    id: normalized_id.clone(),
+                    title: rc.name,
+                    title_normalized: base_normalized,
+                    side: Some(side.to_string()),
+                });
+            }
+
+            if seen_versions.insert((normalized_id.clone(), clean_pack_id.clone())) {
+                if let Some(pos) = rc.position {
+                    provided_pack_positions.insert((clean_pack_id.clone(), pos as i64));
                 }
+                card_versions.push(CardVersion {
+                    card_id: normalized_id,
+                    pack_id: clean_pack_id,
+                    quantity: rc.quantity.unwrap_or(3) as i64,
+                    position: rc.position.map(|p| p as i64),
+                });
             }
         }
 
