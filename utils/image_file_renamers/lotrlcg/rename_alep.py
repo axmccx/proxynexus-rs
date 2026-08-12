@@ -7,6 +7,7 @@ import re
 import argparse
 import importlib.util
 import pathlib
+from unidecode import unidecode
 from PIL import Image
 
 # Matching, id normalization and logging are shared with rename.py. Loaded by
@@ -136,20 +137,89 @@ def build_alep_catalog():
 
     return card_lookup
 
+def build_wildcard_pattern(raw_title):
+    """Compile a matcher for a title fragment whose non-ASCII characters were
+    replaced by a placeholder during filename generation.
+
+    The archives render "Smeóhbrand Rogue of Orthanc" as "Sme?hbrand Rogue of
+    Orthanc" -- each non-ASCII character becomes exactly one non-alphanumeric
+    character, which clean_for_match then drops along with the real separators.
+    The mangled fragment therefore cleans to a string that is short by one
+    letter per mangled character. Allowing an optional single character at
+    every separator recovers those without a hand-written ENCODING_FIXES entry
+    per card.
+
+    Returns None for a fragment with no alphanumeric content.
+    """
+    parts = re.split(r"[^a-z0-9]+", unidecode(raw_title).lower())
+
+    # clean_for_match strips a leading "the"; mirror it here so the pattern
+    # lines up with the keys it gets matched against.
+    if "".join(parts).startswith("the"):
+        drop = 3
+        while drop and parts:
+            take = min(drop, len(parts[0]))
+            parts[0] = parts[0][take:]
+            drop -= take
+            if not parts[0] and len(parts) > 1:
+                parts.pop(0)
+
+    if not any(parts):
+        return None
+    return re.compile(".?".join(re.escape(p) for p in parts))
+
+
+def find_wildcard_match(raw_title, pack_cards):
+    """Look up a mangled title fragment against this pack's cards, tolerating
+    the swallowed characters described in build_wildcard_pattern.
+
+    Only an unambiguous hit counts: if the pattern matches two or more cards
+    the fragment is too lossy to place, and the caller falls through to
+    ENCODING_FIXES rather than guessing.
+    """
+    pattern = build_wildcard_pattern(raw_title)
+    if not pattern:
+        return None
+
+    hits = [cards for key, cards in pack_cards.items() if pattern.fullmatch(key)]
+    if len(hits) == 1:
+        return hits[0][0]
+    return None
+
+
 def resolve_target_id(raw_title, clean_pack, pack_cards):
     """Resolve a scan's title fragment to a target_id: an exact match in the
-    live-catalog lookup for this pack, or the ENCODING_FIXES fallback applied
-    to the raw title, normalized against the pack. Shared by both the front-
-    and back-face loops in main() so the two paths can't drift again.
+    live-catalog lookup for this pack, a wildcard match recovering mangled
+    non-ASCII characters, or the ENCODING_FIXES fallback applied to the raw
+    title and normalized against the pack. Shared by both the front- and
+    back-face loops in main() so the two paths can't drift again.
     """
-    clean_name = clean_for_match(raw_title)
-    matched = pack_cards.get(clean_name)
+    matched = pack_cards.get(clean_for_match(raw_title))
+    if matched:
+        return matched[0]['target_id']
 
-    if not matched:
-        for bad, good in ENCODING_FIXES.items():
-            raw_title = raw_title.replace(bad, good)
-        return normalize_title(f"{raw_title}-{clean_pack}")
-    return matched[0]['target_id']
+    wildcard = find_wildcard_match(raw_title, pack_cards)
+    if wildcard:
+        return wildcard['target_id']
+
+    fixed = raw_title
+    for bad, good in ENCODING_FIXES.items():
+        fixed = fixed.replace(bad, good)
+
+    # Re-check the catalog: a fix that lands on a real card should use that
+    # card's id rather than a second, independently normalized spelling of it.
+    matched = pack_cards.get(clean_for_match(fixed))
+    if matched:
+        return matched[0]['target_id']
+
+    target_id = normalize_title(f"{fixed}-{clean_pack}")
+    if pack_cards:
+        # A pack with a populated catalog that still can't place this title is
+        # how "Írensaga" and "Smeóhbrand" shipped as _rensaga / sme_hbrand:
+        # the id gets fabricated from the mangled spelling and never matches a
+        # card. Say so instead of failing silently.
+        log(f"[UNMATCHED] '{raw_title}' in {clean_pack} -> fabricated id {target_id}")
+    return target_id
 
 def parse_alep_filename(filename):
     """Parse an ALeP scan filename shaped like 'PREFIX-1-Card Title-1o.png'.
