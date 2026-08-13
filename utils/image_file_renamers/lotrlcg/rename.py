@@ -24,18 +24,12 @@ CACHE_PATH = pathlib.Path(__file__).resolve().parent / "lotrlcg_catalog_cache.js
 # Source archives in the order they are searched. A card is taken from the first
 # folder that has it, so this order is the quality preference.
 #
-# The Nightmare archive must stay ahead of "Lord of the Rings LCG": that archive
-# carries its own Nightmare/ subfolder inside every cycle, so behind it the
-# dedicated 600 dpi Nightmare scans are claimed away silently — no skip, no
-# warning, just a lower-resolution image with the same filename.
-#
 # `has_bleed` says whether that archive's scans already carry a print-bleed
 # border. It has to be declared per archive rather than measured: the trimmed
 # scans in "Lord of the Rings LCG RAW" and the bled quest cards in "Lord of the
 # Rings LCG" overlap in aspect ratio, so no threshold separates them.
 SOURCE_FOLDERS = [
     ("Enhanced Proxies", True),
-    ("Lotr Lcg Nightmare 600 dpi Scans", True),
     ("Lord of the Rings LCG", True),
     ("Lord of the Rings LCG RAW", False),
 ]
@@ -224,9 +218,11 @@ def find_orphaned_backs(folder_file_lists):
             orphans_by_folder[folder] = folder_orphans
     return orphans_by_folder
 
-def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, nightmare_folder, args):
+def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args):
     """Walk all input folders, match scans against the catalog, and copy/crop
-    them into enhanced_folder / nightmare_folder. Returns (copied, skipped, audit_rows).
+    them into output_folder. Returns (copied, skipped, audit_rows).
+
+    Nightmare packs belong to rename_nightmare.py and are skipped here.
     """
     processed_cards = set() # Track (target_id, pack_code, is_back)
     copied = 0
@@ -286,55 +282,15 @@ def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, ni
                 # log(f"[DEBUG] Silently skipping folder: {root}")
                 continue
 
+            # Skipping on the resolved pack rather than on the path keeps the
+            # rule in one place, and catches the Nightmare/ subfolders that sit
+            # inside every cycle of "Lord of the Rings LCG".
+            if "nightmare" in pack_code.lower():
+                continue
+
             for filename in files:
                 if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
                     continue
-
-                # Skip the 000 prefix cards for nightmare packs as they are redundant intro/flavor cards
-                if pack_code and "nightmare" in pack_code.lower() and filename.startswith("000 - "):
-                    continue
-
-                # --- SPECIAL INTERCEPT FOR NIN-IN-EILPH NIGHTMARE FRONTS ---
-                if "The Nîn in Eilph" in root and "Nightmare" in root:
-                    old_path = os.path.join(root, filename)
-                    targets = []
-                    if filename == "- - 2A - Lost in the Swanfleet.jpg":
-                        targets = [
-                            "through_the_marsh_an_arduous_journey_nien"
-                        ]
-                    elif filename == "- - 3A - Lost in the Swanfleet.jpg":
-                        targets = [
-                            "lost_in_the_swanfleet_deadly_waters_nien"
-                        ]
-
-                    if targets:
-                        for target_id in targets:
-                            bleed_name = f"{target_id}@the_nin_in_eilph_nightmare{bleed_suffix}.jpg"
-                            dest_folder = nightmare_folder # This is explicitly the Nin-in-Eilph Nightmare intercept
-                            bleed_path = os.path.join(dest_folder, bleed_name)
-                            unique_key = (target_id, "The Nîn-in-Eilph Nightmare", False)
-
-                            if unique_key in processed_cards:
-                                continue
-                            processed_cards.add(unique_key)
-
-                            log(f"{'[DRY] ' if args.dry_run else '[OK]  '} {filename} -> {bleed_name}")
-                            audit_rows.append([old_path, bleed_name, ""])
-
-                            if not args.dry_run:
-                                try:
-                                    with Image.open(old_path) as img:
-                                        bleed_img = img
-                                        if bleed_img.mode in ("RGBA", "P"):
-                                            bleed_img = bleed_img.convert("RGB")
-                                        bleed_img.save(bleed_path, format="JPEG", quality=90)
-                                    copied += 1
-                                except Exception as e:
-                                    print(f"[ERR]  {filename}: {e}")
-                            else:
-                                copied += 1
-                        continue
-                # ---------------------------------------------------------
 
                 base_name = os.path.splitext(filename)[0]
 
@@ -376,17 +332,6 @@ def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, ni
 
                 if not matched_cards:
                     matched_cards = pack_cards.get(clean_for_match(base_name), [])
-
-                if not matched_cards and (clean_name in ("setup", clean_folder, clean_for_match(pack_code.replace("Nightmare", "")))) and "nightmare" in pack_code.lower():
-                    for cards_list in pack_cards.values():
-                        for c in cards_list:
-                            if c.get('CardType') == "Nightmare_Setup":
-                                matched_cards.append(c)
-                                if clean_name == "setup":
-                                    is_back = True
-                                break
-                        if matched_cards:
-                            break
 
                 # Fallback to matching against the slug if title match fails
                 if not matched_cards:
@@ -452,15 +397,12 @@ def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, ni
                         continue
                     processed_cards.add(unique_key)
 
-                    ext = os.path.splitext(filename)[1].lower()
                     clean_pack_code = normalize_title(pack_code)
 
                     part_suffix = "~back" if is_back else ""
                     bleed_name = f"{target_id}@{clean_pack_code}{part_suffix}{bleed_suffix}.jpg"
                     old_path = os.path.join(root, filename)
-                    is_nightmare = "nightmare" in pack_code.lower()
-                    dest_folder = nightmare_folder if is_nightmare else enhanced_folder
-                    bleed_path = os.path.join(dest_folder, bleed_name)
+                    bleed_path = os.path.join(output_folder, bleed_name)
 
                     log(f"{'[DRY] ' if args.dry_run else '[OK]  '} {filename} -> {bleed_name}")
                     audit_rows.append([old_path, bleed_name, ""])
@@ -493,7 +435,7 @@ def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, ni
                         if alt_key not in processed_cards:
                             processed_cards.add(alt_key)
                             alt_bleed_name = f"{alt_id}@{clean_pack_code}~back{bleed_suffix}.jpg"
-                            alt_bleed_path = os.path.join(dest_folder, alt_bleed_name)
+                            alt_bleed_path = os.path.join(output_folder, alt_bleed_name)
 
                             log(f"{'[DRY] ' if args.dry_run else '[OK]  '} {filename} -> {alt_bleed_name} (double-sided link)")
                             audit_rows.append([old_path, alt_bleed_name, ""])
@@ -511,16 +453,14 @@ def process_folders(input_folders, pack_lookup, card_lookup, enhanced_folder, ni
 def main():
     parser = argparse.ArgumentParser(description="Migrate and crop LotR LCG images.")
     parser.add_argument("archive", help="Folder holding the source archives named in SOURCE_FOLDERS")
-    parser.add_argument("-o", "--output", default=".", help="Folder to create the two output folders in")
+    parser.add_argument("-o", "--output", default=".", help="Folder to create lotrlcg-enhanced/ in")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without copying or cropping")
     args = parser.parse_args()
 
     archive_root = pathlib.Path(args.archive)
     input_folders = [(str(archive_root / name), has_bleed) for name, has_bleed in SOURCE_FOLDERS]
 
-    # Two output folders, split by pack type.
     enhanced_folder = os.path.abspath(os.path.join(args.output, "lotrlcg-enhanced"))
-    nightmare_folder = os.path.abspath(os.path.join(args.output, "lotrlcg-nightmare"))
 
     all_cards = load_catalog()
 
@@ -577,14 +517,13 @@ def main():
     global log_file_handle
     log_path = os.path.join(enhanced_folder, "migrate.log")
     os.makedirs(enhanced_folder, exist_ok=True)
-    os.makedirs(nightmare_folder, exist_ok=True)
     log_file_handle = open(log_path, "w", encoding="utf-8")
 
     try:
         log(f"\n--- Scanning {'(DRY RUN) ' if args.dry_run else ''}---")
 
         copied, skipped, audit_rows = process_folders(
-            input_folders, pack_lookup, card_lookup, enhanced_folder, nightmare_folder, args
+            input_folders, pack_lookup, card_lookup, enhanced_folder, args
         )
 
         audit_log_path = os.path.join(enhanced_folder, "migration_audit_log.csv")
@@ -595,15 +534,13 @@ def main():
             print(f"\nAudit log written to: {audit_log_path}")
 
         if not args.dry_run and copied > 0:
-            # Validate each output folder independently for orphaned backs. A
-            # back file's front must exist in the SAME folder as the back -- a
-            # back in lotrlcg-nightmare/ whose front landed in
-            # lotrlcg-enhanced/ (or vice versa) is genuinely orphaned within
-            # its own collection even though the union of both folders has it.
+            # A back file's front must exist in the SAME folder as the back.
+            # Each output folder becomes its own collection, so a back whose
+            # front lives in another one is orphaned within its own even though
+            # the union of the folders has it -- hence the mapping.
             print("\nValidating generated images...")
             folder_file_lists = {
                 enhanced_folder: os.listdir(enhanced_folder),
-                nightmare_folder: os.listdir(nightmare_folder),
             }
             orphans_by_folder = find_orphaned_backs(folder_file_lists)
             total_orphans = sum(len(v) for v in orphans_by_folder.values())
