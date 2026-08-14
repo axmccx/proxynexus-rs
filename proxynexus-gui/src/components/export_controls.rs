@@ -153,6 +153,12 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
 
     let validation = page_size_validation();
 
+    let instructions_href = if cfg!(target_arch = "wasm32") {
+        "/instructions.html"
+    } else {
+        "https://proxynexus.net/instructions.html"
+    };
+
     rsx! {
         div {
             class: "md:h-[480px] flex-shrink-0 p-2 md:p-4 border-t border-gray-200 bg-gray-50 flex flex-col gap-2 md:gap-4 overflow-y-auto",
@@ -338,6 +344,16 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                             (PrintLayout::LargeMargin, "L Margin"),
                         ],
                         on_change: move |v| print_layout.set(v)
+                    }
+                }
+            } else {
+                p { class: "text-xs md:text-sm text-gray-600",
+                    "For help on printing, have a look at the "
+                    a {
+                        href: instructions_href,
+                        target: "_blank",
+                        class: "text-blue-500 hover:text-blue-700 hover:underline",
+                        "instructions"
                     }
                 }
             }
