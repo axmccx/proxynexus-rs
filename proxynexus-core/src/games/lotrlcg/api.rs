@@ -20,8 +20,13 @@ pub async fn fetch_decklist_from_ringsdb(url: &str) -> Result<Decklist> {
         code_to_card.insert(card.code.clone(), card);
     }
 
+    let mut slots = decklist_response.slots;
+    for (code, quantity) in decklist_response.sideslots {
+        *slots.entry(code).or_insert(0) += quantity;
+    }
+
     let mut cards = Vec::new();
-    for (code, quantity) in decklist_response.slots {
+    for (code, quantity) in slots {
         let mut lookup_code = code.as_str();
 
         // MotK hero variants on RingsDB are prepended with "99" and refer to the base ally card

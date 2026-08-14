@@ -241,47 +241,37 @@ def has_split_sibling(pack_cards, card):
                 return True
     return False
 
-def ringsdb_pack_prefix(card):
-    """The RingsDB pack a card really belongs to, as the leading digits of its id.
+# The `Lord of the Rings LCG` archive keeps the standalone scenarios' alt-art
+# heroes in one `Alt_Art_Heroes/` folder at its root instead of with the
+# scenario that shipped them. Nothing in the filename says which set a card
+# belongs to and the folder resolves to no pack, so the whole folder was being
+# walked past in silence. Mapped by hand, keyed by filename.
+#
+# Each was identified from the scan itself -- sphere, stats and card number --
+# because titles alone are ambiguous: there are four Gimlis in the catalog and
+# five Glorfindels. The Gimli here reads "The Sands of Harad" along the bottom,
+# which is the cycle, not the set; it is the Tactics Gimli from The Ruins of
+# Belegost, that cycle's print-on-demand scenario.
+ALT_ART_HERO_FILES = {
+    "007 - Eowyn.jpg": ("The Woodland Realm", "Eowyn-TWR"),
+    "112 - Galadriel.jpg": ("Attack on Dol Guldur", "Galadriel-AoDG"),
+    "Boromir_Alt_Art.jpg": ("The Siege of Annúminas", "Boromir-TSoA"),
+    "Faramir_Alt_Art.jpg": ("The Siege of Annúminas", "Faramir-TSoA"),
+    "Gimli_Alt_Art.jpg": ("The Ruins of Belegost", "Gimli-TRoB"),
+    "Glorfindel_Alt_Art.jpg": ("The Wizard's Quest", "Glorfindel-TWQ"),
+    "Legolas_Alt_Art.jpg": ("Murder at the Prancing Pony", "Legolas-MatPP"),
+}
 
-    RingsDbCardId is <pack><3-digit number>, so dropping the last three digits
-    leaves the pack.
+ALT_ART_FOLDER = clean_for_match("Alt_Art_Heroes")
+
+def slug_haystack(slug):
+    """A slug flattened for substring matching against a cleaned filename.
+
+    unidecode is the point: filenames spell the Bridge of Khazad-dum with a
+    plain u and the slug spells it with a circumflex, so a needle cleaned by
+    clean_for_match can never be found in a slug that was only lowercased.
     """
-    rdb = card.get('RingsDbCardId') or ''
-    return rdb[:-3] if len(rdb) > 3 else None
-
-def find_promo_slugs(all_cards, threshold=0.6):
-    """Slugs of promo cards that Hall of Beorn files inside another product's set.
-
-    Gen Con and preorder promo heroes were handed out alongside a scenario, and
-    the catalog lists them as part of that scenario's card set even though the
-    box does not contain them. Their RingsDbCardId still points at the pack they
-    were actually printed in, so within a set they are the cards whose pack
-    prefix disagrees with everyone else's.
-
-    Sets without a clear majority prefix are left alone: the hero and starter
-    products (Defenders of Gondor, Elves of Lorien, the Two-Player Starter) are
-    collections of reprints, where a mixed prefix is the honest answer.
-    """
-    by_set = {}
-    for card in all_cards:
-        prefix = ringsdb_pack_prefix(card)
-        if prefix:
-            by_set.setdefault(card.get('CardSet', ''), []).append((prefix, card))
-
-    promos = set()
-    for prefixes_and_cards in by_set.values():
-        counts = {}
-        for prefix, _ in prefixes_and_cards:
-            counts[prefix] = counts.get(prefix, 0) + 1
-        # Sorted so a tie resolves the same way on every run.
-        dominant, hits = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
-        if hits < len(prefixes_and_cards) * threshold:
-            continue
-        for prefix, card in prefixes_and_cards:
-            if prefix != dominant and card.get('Slug'):
-                promos.add(card['Slug'])
-    return promos
+    return "".join(c for c in unidecode(slug).lower() if c.isalnum())
 
 def find_orphaned_backs(folder_file_lists):
     """Validate '~back' files against their front within EACH folder independently.
@@ -368,7 +358,11 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                 if not pack_code:
                     pack_code = pack_lookup.get(clean_for_match(folder_name_stripped + " Nightmare"))
 
-            if not pack_code:
+            # The alt-art hero folder has no pack of its own -- each file names a
+            # card in a different set -- so its pack is resolved per file below.
+            is_alt_art = clean_folder == ALT_ART_FOLDER
+
+            if not pack_code and not is_alt_art:
                 # Optionally log a debug message so we don't silently ignore folders we should process
                 # log(f"[DEBUG] Silently skipping folder: {root}")
                 continue
@@ -376,12 +370,21 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
             # Skipping on the resolved pack rather than on the path keeps the
             # rule in one place, and catches the Nightmare/ subfolders that sit
             # inside every cycle of "Lord of the Rings LCG".
-            if "nightmare" in pack_code.lower():
+            if pack_code and "nightmare" in pack_code.lower():
                 continue
 
             for filename in files:
                 if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
                     continue
+
+                alt_art_slug = None
+                if is_alt_art:
+                    entry = ALT_ART_HERO_FILES.get(filename)
+                    if not entry:
+                        log(f"[SKIP] {filename} (no entry in ALT_ART_HERO_FILES)")
+                        skipped += 1
+                        continue
+                    pack_code, alt_art_slug = entry
 
                 base_name = os.path.splitext(filename)[0]
 
@@ -419,20 +422,28 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                 )
 
                 pack_cards = card_lookup.get(pack_code, {})
-                matched_cards = pack_cards.get(clean_name, [])
-
-                if not matched_cards:
-                    matched_cards = pack_cards.get(clean_for_match(base_name), [])
-
-                # Fallback to matching against the slug if title match fails
                 matched_by_slug = False
-                if not matched_cards:
-                    for cards_list in pack_cards.values():
-                        for card in cards_list:
-                            slug = card.get('Slug', '').replace('-', '').replace("'", "").lower()
-                            if clean_name in slug:
-                                matched_cards.append(card)
-                    matched_by_slug = bool(matched_cards)
+
+                if alt_art_slug:
+                    # The table names the exact card, so none of the title and
+                    # slug guessing below applies -- 'Gimli_Alt_Art.jpg' would
+                    # otherwise match four different Gimlis.
+                    matched_cards = [c for cards_list in pack_cards.values()
+                                     for c in cards_list
+                                     if c.get('Slug') == alt_art_slug]
+                else:
+                    matched_cards = pack_cards.get(clean_name, [])
+
+                    if not matched_cards:
+                        matched_cards = pack_cards.get(clean_for_match(base_name), [])
+
+                    # Fallback to matching against the slug if title match fails
+                    if not matched_cards:
+                        for cards_list in pack_cards.values():
+                            for card in cards_list:
+                                if clean_name in slug_haystack(card.get('Slug', '')):
+                                    matched_cards.append(card)
+                        matched_by_slug = bool(matched_cards)
 
                 if not matched_cards:
                     log(f"[SKIP] {filename} (Card '{text_name}' not found in pack {pack_code})")
@@ -445,9 +456,18 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                 # "Storm the Castle" backs as '161 - Castle Garrison.jpg' with no
                 # side marker anywhere; without this they are written as fronts,
                 # collide with the shared A-side, and all four backs are lost.
+                #
+                # The match may be to several cards at once, and that is the
+                # other half of the same shape: The Grey Havens ships one
+                # 'Lost Island.jpg' that is the common back of six cards whose
+                # fronts are named individually. Requiring a single match wrote
+                # that scan as a seventh front and deduped it away.
+                is_shared_back = False
                 if (matched_by_slug and not is_back and not stage_str
-                        and len(matched_cards) == 1 and matched_cards[0].get('Back')):
-                    log(f"[INFO] {filename} matched a subtitle, treating as the back face.")
+                        and all(mc.get('Back') for mc in matched_cards)):
+                    is_shared_back = len(matched_cards) > 1
+                    log(f"[INFO] {filename} matched a subtitle, treating as the back face"
+                        f"{f' of all {len(matched_cards)} matched cards' if is_shared_back else ''}.")
                     is_back = True
 
                 # Hall of Beorn prints the stage code on the card, so where the
@@ -497,6 +517,13 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                             # It's an A face (front) and we couldn't resolve by position.
                             # Map this front face to ALL matching cards!
                             log(f"[INFO] Mapping front face {filename} to all {len(matched_cards)} matched cards.")
+                            selected_cards = matched_cards
+                        elif is_shared_back:
+                            # One scan of a back that several cards print in
+                            # common, named by the subtitle they share. There is
+                            # no number on it to resolve, and nothing to resolve:
+                            # every match wants this same image.
+                            log(f"[INFO] Mapping shared back {filename} to all {len(matched_cards)} matched cards.")
                             selected_cards = matched_cards
                         else:
                             # Print warning for back faces
@@ -615,19 +642,18 @@ def main():
 
     # 3. Build Card Lookup: card_set -> clean_for_match(title) -> list of cards
     #
-    # Promo heroes filed under a scenario they were only handed out with are left
-    # out entirely, so their scans resolve to no card and are skipped. Mirrors the
-    # same exclusion in the lotrlcg catalog adapter.
-    promo_slugs = find_promo_slugs(all_cards)
-    log(f"Excluding {len(promo_slugs)} promo cards filed under another product's set")
-
+    # The alt-art heroes Hall of Beorn files under a standalone scenario are kept.
+    # An earlier pass dropped them, reading their foreign RingsDbCardId as proof
+    # the box never held them; it is not. RingsDB tracks a card's rules identity,
+    # not its printing, so an alt art of an existing hero necessarily carries the
+    # original's id. The scenarios really did ship them, with art of their own --
+    # Fog on the Barrow-downs' Aragorn is Sebastian Giacobino's, not the Core
+    # Set's John Stanko.
     card_lookup = {}
     for c in all_cards:
         title = c.get('Title', '')
         card_set = c.get('CardSet', '')
         if not title or not card_set:
-            continue
-        if c.get('Slug') in promo_slugs:
             continue
 
         clean_name = clean_for_match(title)

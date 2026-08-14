@@ -193,41 +193,30 @@ def test_card_stage_none_for_single_sided_and_unstaged():
     assert rename.card_stage({"Front": {"Stats": {}}, "Back": None}, is_back=False) is None
 
 
-# --- DQ6: promo cards filed under another product's set ----------------------
+# --- slug matching must transliterate the slug, not just lowercase it -------
 
-def _card(slug, card_set, rdb):
-    return {"Slug": slug, "CardSet": card_set, "RingsDbCardId": rdb}
-
-
-def test_find_promo_slugs_flags_foreign_pack_prefix():
-    cards = [
-        _card("Standard-Game-Mode-TSoA", "The Siege of Annuminas", "00001"),
-        _card("Rebuild-the-Defenses-TSoA", "The Siege of Annuminas", "00003"),
-        _card("Defend-the-City-TSoA", "The Siege of Annuminas", "00004"),
-        _card("Lead-the-Sortie-TSoA", "The Siege of Annuminas", "00005"),
-        _card("Faramir-TSoA", "The Siege of Annuminas", "06081"),
-        _card("Boromir-TSoA", "The Siege of Annuminas", "02095"),
-    ]
-    assert rename.find_promo_slugs(cards) == {"Faramir-TSoA", "Boromir-TSoA"}
+def test_slug_haystack_transliterates_and_flattens():
+    # 'Nearing the Gate' ships its 3B face as
+    # '007 - 3B - The Bridge of Khazad-dum.jpg', spelled with a plain u, while
+    # the slug spells it with a circumflex. Cleaning only one side of the
+    # comparison meant that back was never written.
+    assert rename.clean_for_match("The Bridge of Khazad-dum") in rename.slug_haystack(
+        "Nearing-the-Gate-The-Bridge-of-Khazad-d\u00fbm-EfKD"
+    )
 
 
-def test_find_promo_slugs_leaves_reprint_collections_alone():
-    # Hero expansions are collections of reprints with no dominant prefix, so the
-    # rule must not fire and strip the whole product.
-    cards = [
-        _card("Boromir-DoG", "Defenders of Gondor", "01001"),
-        _card("Faramir-Ally-DoG", "Defenders of Gondor", "02010"),
-        _card("Faramir-Hero-DoG", "Defenders of Gondor", "06028"),
-        _card("Mablung-DoG", "Defenders of Gondor", "13003"),
-    ]
-    assert rename.find_promo_slugs(cards) == set()
+def test_slug_haystack_matches_hob_mangled_spelling():
+    # Hall of Beorn's own export stores this title as 'L\u2264rien'. Both sides go
+    # through unidecode, so the needle and the haystack agree on the mangling.
+    assert rename.clean_for_match("Lost Soul of L\u2264rien") in rename.slug_haystack(
+        "Lost-Soul-of-L\u2264rien-TDMN"
+    )
 
 
-def test_ringsdb_pack_prefix_drops_the_card_number():
-    assert rename.ringsdb_pack_prefix({"RingsDbCardId": "02095"}) == "02"
-    assert rename.ringsdb_pack_prefix({"RingsDbCardId": "148020"}) == "148"
-    assert rename.ringsdb_pack_prefix({"RingsDbCardId": ""}) is None
-    assert rename.ringsdb_pack_prefix({}) is None
+def test_slug_haystack_still_matches_plain_ascii_subtitles():
+    assert rename.clean_for_match("Last Lord of Moria") in rename.slug_haystack(
+        "Nearing-the-Gate-Last-Lord-of-Moria-EfKD"
+    )
 
 
 # --- DQ1: backs must not be written onto single-sided cards ------------------
@@ -259,3 +248,166 @@ def test_has_split_sibling_false_when_titles_match_but_numbers_differ():
     c = {"Title": "Setting Out", "position": 51, "Slug": "Setting-Out-C-RaH", "Back": {}}
     pack_cards = {"settingout": [a, c]}
     assert rename.has_split_sibling(pack_cards, a) is False
+
+
+# --- one scan that is the shared back of several cards -----------------------
+
+def _run_process_folders(tmp_path, pack, files, cards, dry_run=True):
+    """Drive process_folders over a synthetic archive and return the output names.
+
+    The Grey Havens ships six cards whose fronts are named individually and whose
+    single common back is one file called 'Lost Island.jpg'. Nothing short of the
+    real loop exercises that, so the fixture builds the folder rather than
+    calling a helper.
+    """
+    import types
+
+    archive = tmp_path / "Archive"
+    folder = archive / f"01 - {pack}"
+    folder.mkdir(parents=True)
+    for name in files:
+        (folder / name).write_bytes(b"")
+
+    pack_lookup = {rename.clean_for_match(pack): pack}
+    card_lookup = {pack: {}}
+    for c in cards:
+        c = dict(c, target_id=rename.normalize_title(c["Slug"]),
+                 position=c.get("Number"), pack_code=pack)
+        card_lookup[pack].setdefault(rename.clean_for_match(c["Title"]), []).append(c)
+
+    args = types.SimpleNamespace(dry_run=dry_run)
+    _, _, rows = rename.process_folders(
+        [(str(archive), True)], pack_lookup, card_lookup, str(tmp_path / "out"), args
+    )
+    return sorted(row[1] for row in rows[1:])
+
+
+def _lost_island(number, subtitle):
+    return {
+        "Title": subtitle,
+        "Slug": f"{subtitle.replace(' ', '-')}-Lost-Island-TGH",
+        "Number": number,
+        "Front": {"Stats": {}},
+        "Back": {"Stats": {}},
+    }
+
+
+def test_shared_back_is_written_for_every_card_that_prints_it(tmp_path):
+    cards = [_lost_island(27, "Shrine to Morgoth"),
+             _lost_island(30, "Lush Jungle"),
+             _lost_island(31, "Forbidden Coast")]
+    files = ["027 - Shrine to Morgoth.jpg", "030 - Lush Jungle.jpg",
+             "031 - Forbidden Coast.jpg", "Lost Island.jpg"]
+
+    written = _run_process_folders(tmp_path, "The Grey Havens", files, cards)
+
+    assert written == sorted([
+        "shrine_to_morgoth_lost_island_tgh@the_grey_havens.bleed.jpg",
+        "lush_jungle_lost_island_tgh@the_grey_havens.bleed.jpg",
+        "forbidden_coast_lost_island_tgh@the_grey_havens.bleed.jpg",
+        "shrine_to_morgoth_lost_island_tgh@the_grey_havens~back.bleed.jpg",
+        "lush_jungle_lost_island_tgh@the_grey_havens~back.bleed.jpg",
+        "forbidden_coast_lost_island_tgh@the_grey_havens~back.bleed.jpg",
+    ])
+
+
+def test_subtitle_named_back_still_resolves_to_its_one_card(tmp_path):
+    # The Fortress of Nurn's four 'Storm the Castle' backs are named
+    # individually, one file per card. Relaxing the shared-back rule must not
+    # smear each of them across all four.
+    def storm(number, subtitle):
+        return {
+            "Title": "Storm the Castle",
+            "Slug": f"Storm-the-Castle-{subtitle.replace(' ', '-')}-TFoN",
+            "Number": number,
+            "Front": {"Stats": {}},
+            "Back": {"Stats": {}},
+        }
+
+    cards = [storm(161, "Castle Garrison"), storm(162, "Lethal Counterattack")]
+    files = ["--- - Storm the Castle.jpg", "161 - Castle Garrison.jpg",
+             "162 - Lethal Counterattack.jpg"]
+
+    written = _run_process_folders(tmp_path, "The Fortress of Nurn", files, cards)
+
+    assert written == sorted([
+        "storm_the_castle_castle_garrison_tfon@the_fortress_of_nurn.bleed.jpg",
+        "storm_the_castle_lethal_counterattack_tfon@the_fortress_of_nurn.bleed.jpg",
+        "storm_the_castle_castle_garrison_tfon@the_fortress_of_nurn~back.bleed.jpg",
+        "storm_the_castle_lethal_counterattack_tfon@the_fortress_of_nurn~back.bleed.jpg",
+    ])
+
+
+def test_diacritic_only_back_is_matched(tmp_path):
+    cards = [{
+        "Title": "Nearing the Gate",
+        "Slug": "Nearing-the-Gate-The-Bridge-of-Khazad-dûm-EfKD",
+        "Number": 7,
+        "Front": {"Stats": {"StageNumber": "3A"}},
+        "Back": {"Stats": {"StageNumber": "3B"}},
+    }]
+    files = ["006 - 3A - Nearing the Gate.jpg",
+             "007 - 3B - The Bridge of Khazad-dum.jpg"]
+
+    written = _run_process_folders(tmp_path, "Escape from Khazad-dûm", files, cards)
+
+    assert written == sorted([
+        "nearing_the_gate_the_bridge_of_khazad_dum_efkd@escape_from_khazad_dum.bleed.jpg",
+        "nearing_the_gate_the_bridge_of_khazad_dum_efkd@escape_from_khazad_dum~back.bleed.jpg",
+    ])
+
+
+# --- the archive's Alt_Art_Heroes folder ------------------------------------
+
+def test_alt_art_hero_folder_routes_each_file_to_its_own_set(tmp_path):
+    # The folder sits at the archive root and resolves to no pack; each file
+    # names a card in a different set, so the pack comes from the table.
+    import types
+
+    archive = tmp_path / "Archive"
+    folder = archive / "Alt_Art_Heroes"
+    folder.mkdir(parents=True)
+    for name in ("Gimli_Alt_Art.jpg", "Glorfindel_Alt_Art.jpg", "Unmapped_Alt_Art.jpg"):
+        (folder / name).write_bytes(b"")
+
+    def hero(title, slug):
+        return {"Title": title, "Slug": slug, "Number": 4,
+                "Front": {"Stats": {}}, "Back": None}
+
+    # Two Gimlis in the pack, to show the table picks the card and not the title.
+    card_lookup = {
+        "The Ruins of Belegost": {
+            "gimli": [dict(hero("Gimli", "Gimli-TRoB"), target_id="gimli_trob",
+                           position=4, pack_code="The Ruins of Belegost"),
+                      dict(hero("Gimli", "Gimli-Other-TRoB"), target_id="gimli_other_trob",
+                           position=9, pack_code="The Ruins of Belegost")],
+        },
+        "The Wizard's Quest": {
+            "glorfindel": [dict(hero("Glorfindel", "Glorfindel-TWQ"),
+                                target_id="glorfindel_twq", position=111,
+                                pack_code="The Wizard's Quest")],
+        },
+    }
+    pack_lookup = {rename.clean_for_match(p): p for p in card_lookup}
+
+    args = types.SimpleNamespace(dry_run=True)
+    copied, skipped, rows = rename.process_folders(
+        [(str(archive), True)], pack_lookup, card_lookup, str(tmp_path / "out"), args
+    )
+
+    assert sorted(row[1] for row in rows[1:]) == sorted([
+        "gimli_trob@the_ruins_of_belegost.bleed.jpg",
+        "glorfindel_twq@the_wizard_s_quest.bleed.jpg",
+    ])
+    assert copied == 2
+    assert skipped == 1  # the unmapped file, reported rather than walked past
+
+
+def test_alt_art_table_names_cards_that_exist_in_the_catalog():
+    # Guards the hand-written table against a catalog rename.
+    catalog = rename.load_catalog()
+    by_slug = {c["Slug"]: c for c in catalog}
+    for filename, (card_set, slug) in rename.ALT_ART_HERO_FILES.items():
+        assert slug in by_slug, f"{filename}: no card with slug {slug}"
+        assert by_slug[slug]["CardSet"] == card_set, filename
+        assert by_slug[slug]["CardType"] == "Hero", filename
