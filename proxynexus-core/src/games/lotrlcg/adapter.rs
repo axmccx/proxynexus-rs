@@ -29,6 +29,64 @@ impl Default for LotrLcgAdapter {
     }
 }
 
+/// The RingsDB pack a card really belongs to: its id less the 3-digit number.
+#[cfg(not(target_arch = "wasm32"))]
+fn ringsdb_pack_prefix(card: &HobCard) -> Option<&str> {
+    let id = card.rings_db_card_id.as_deref()?;
+    (id.len() > 3).then(|| &id[..id.len() - 3])
+}
+
+/// Slugs of promo cards Hall of Beorn files inside another product's card set.
+///
+/// Gen Con and preorder promo heroes were handed out alongside a scenario, and
+/// the catalog lists them as part of that scenario even though the box does not
+/// contain them. Their `RingsDbCardId` still points at the pack they were really
+/// printed in, so within a set they are the cards whose pack prefix disagrees
+/// with everyone else's.
+///
+/// Sets with no clear majority prefix are left alone. The hero and starter
+/// products -- Defenders of Gondor, Elves of Lorien, the Two-Player Starter --
+/// are collections of reprints, where a mixed prefix is the honest answer.
+#[cfg(not(target_arch = "wasm32"))]
+fn promo_slugs(cards: &[HobCard]) -> HashSet<String> {
+    const DOMINANT_SHARE: f64 = 0.6;
+
+    let mut by_set: HashMap<&str, Vec<(&str, &HobCard)>> = HashMap::new();
+    for card in cards {
+        if let Some(prefix) = ringsdb_pack_prefix(card) {
+            by_set
+                .entry(card.card_set.as_str())
+                .or_default()
+                .push((prefix, card));
+        }
+    }
+
+    let mut promos = HashSet::new();
+    for members in by_set.values() {
+        let mut counts: HashMap<&str, usize> = HashMap::new();
+        for (prefix, _) in members {
+            *counts.entry(prefix).or_default() += 1;
+        }
+
+        // Sorted so a tie resolves the same way on every run.
+        let mut ranked: Vec<_> = counts.into_iter().collect();
+        ranked.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let Some(&(dominant, hits)) = ranked.first() else {
+            continue;
+        };
+        if (hits as f64) < members.len() as f64 * DOMINANT_SHARE {
+            continue;
+        }
+
+        for (prefix, card) in members {
+            if *prefix != dominant {
+                promos.insert(card.slug.clone());
+            }
+        }
+    }
+    promos
+}
+
 impl GameAdapterInfo for LotrLcgAdapter {
     fn game_id(&self) -> &'static str {
         "lotrlcg"
@@ -65,6 +123,12 @@ impl CatalogProvider for LotrLcgAdapter {
 
         all_hob_cards.append(&mut encounter_cards);
         all_hob_cards.append(&mut quest_cards);
+
+        // Dropped before anything else reads the export, so promos never reach
+        // the catalog and their scans resolve to no card. rename.py applies the
+        // same rule in find_promo_slugs.
+        let promos = promo_slugs(&all_hob_cards);
+        all_hob_cards.retain(|c| !promos.contains(&c.slug));
 
         let mut packs = Vec::new();
         let mut seen_pack_names = HashSet::new();
@@ -271,5 +335,68 @@ impl CatalogProvider for LotrLcgAdapter {
             cards,
             card_versions,
         })
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use crate::games::lotrlcg::models::HobCard;
+
+    fn hob(slug: &str, card_set: &str, rings_db_card_id: &str) -> HobCard {
+        HobCard {
+            title: slug.split('-').next().unwrap_or(slug).to_string(),
+            slug: slug.to_string(),
+            card_set: card_set.to_string(),
+            number: 0,
+            quantity: Some(1),
+            front: None,
+            card_type: "Hero".into(),
+            rings_db_card_id: Some(rings_db_card_id.to_string()),
+        }
+    }
+
+    #[test]
+    fn ringsdb_pack_prefix_drops_the_card_number() {
+        assert_eq!(ringsdb_pack_prefix(&hob("a", "s", "02095")), Some("02"));
+        assert_eq!(ringsdb_pack_prefix(&hob("a", "s", "148020")), Some("148"));
+        assert_eq!(ringsdb_pack_prefix(&hob("a", "s", "")), None);
+    }
+
+    #[test]
+    fn promo_slugs_flags_cards_from_a_foreign_pack() {
+        // The Siege of Annuminas' own cards are all 000NN. The two Gen Con promo
+        // heroes keep the ids of the packs they were really printed in.
+        let cards = vec![
+            hob("Standard-Game-Mode-TSoA", "The Siege of Annuminas", "00001"),
+            hob(
+                "Rebuild-the-Defenses-TSoA",
+                "The Siege of Annuminas",
+                "00003",
+            ),
+            hob("Defend-the-City-TSoA", "The Siege of Annuminas", "00004"),
+            hob("Lead-the-Sortie-TSoA", "The Siege of Annuminas", "00005"),
+            hob("Faramir-TSoA", "The Siege of Annuminas", "06081"),
+            hob("Boromir-TSoA", "The Siege of Annuminas", "02095"),
+        ];
+
+        let promos = promo_slugs(&cards);
+        assert_eq!(promos.len(), 2);
+        assert!(promos.contains("Faramir-TSoA"));
+        assert!(promos.contains("Boromir-TSoA"));
+    }
+
+    #[test]
+    fn promo_slugs_leaves_reprint_collections_alone() {
+        // Hero expansions are collections of reprints with no dominant prefix.
+        // Without the threshold the rule would strip most of the product.
+        let cards = vec![
+            hob("Boromir-DoG", "Defenders of Gondor", "01001"),
+            hob("Faramir-Ally-DoG", "Defenders of Gondor", "02010"),
+            hob("Faramir-Hero-DoG", "Defenders of Gondor", "06028"),
+            hob("Mablung-DoG", "Defenders of Gondor", "13003"),
+        ];
+
+        assert!(promo_slugs(&cards).is_empty());
     }
 }

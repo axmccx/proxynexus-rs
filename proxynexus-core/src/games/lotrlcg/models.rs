@@ -16,6 +16,7 @@ pub struct HobCard {
     pub quantity: Option<i64>,
     pub front: Option<HobCardFront>,
     pub card_type: String,
+    pub rings_db_card_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

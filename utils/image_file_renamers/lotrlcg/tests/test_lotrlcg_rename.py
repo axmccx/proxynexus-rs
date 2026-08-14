@@ -32,32 +32,35 @@ def test_normalize_title_replaces_non_alnum_with_underscore():
 # --- parse_filename: position / name splitting ------------------------------
 
 def test_parse_filename_simple_numbered_card():
-    position_str, text_name, is_back = rename.parse_filename("001 - Aragorn")
+    position_str, stage_str, text_name, is_back = rename.parse_filename("001 - Aragorn")
     assert position_str == "001"
+    assert stage_str is None
     assert text_name == "Aragorn"
     assert is_back is False
 
 
 def test_parse_filename_lettered_position_suffix():
-    position_str, text_name, is_back = rename.parse_filename("047a - A Perilous Voyage")
+    position_str, stage_str, text_name, is_back = rename.parse_filename("047a - A Perilous Voyage")
     assert position_str == "047a"
     assert text_name == "A Perilous Voyage"
     assert is_back is False
 
 
-def test_parse_filename_secondary_position_in_name():
-    # '011 - 1B - The Hunt Begins' -> the secondary '1B -' overrides position_str
-    # and marks it a back face.
-    position_str, text_name, is_back = rename.parse_filename("011 - 1B - The Hunt Begins")
-    assert position_str == "1B"
+def test_parse_filename_keeps_card_number_and_stage_apart():
+    # '011 - 1B - The Hunt Begins' carries both. The card number must survive:
+    # folding the stage over it is what loses same-titled cards.
+    position_str, stage_str, text_name, is_back = rename.parse_filename("011 - 1B - The Hunt Begins")
+    assert position_str == "011"
+    assert stage_str == "1B"
     assert text_name == "The Hunt Begins"
     assert is_back is True
 
 
 def test_parse_filename_dash_dash_form_normalized():
     # '- - 2A - Lost in the Swanfleet' is normalized to '000 - 2A - ...' first.
-    position_str, text_name, is_back = rename.parse_filename("- - 2A - Lost in the Swanfleet")
-    assert position_str == "2A"
+    position_str, stage_str, text_name, is_back = rename.parse_filename("- - 2A - Lost in the Swanfleet")
+    assert position_str == "000"
+    assert stage_str == "2A"
     assert text_name == "Lost in the Swanfleet"
     assert is_back is False
 
@@ -66,24 +69,24 @@ def test_parse_filename_dash_dash_form_normalized():
 
 def test_parse_filename_back_suffix_letters():
     for letter in ("B", "D", "F", "H"):
-        _, _, is_back = rename.parse_filename(f"012{letter} - Some Card")
+        _, _, _, is_back = rename.parse_filename(f"012{letter} - Some Card")
         assert is_back is True, f"letter {letter} should mark a back face"
 
 
 def test_parse_filename_side_b_marks_back():
-    _, text_name, is_back = rename.parse_filename("012 - Some Card (side b)")
+    _, _, text_name, is_back = rename.parse_filename("012 - Some Card (side b)")
     assert is_back is True
     assert "(side b)" not in text_name.lower()
 
 
 def test_parse_filename_side_a_does_not_mark_back():
-    _, text_name, is_back = rename.parse_filename("012 - Some Card (side a)")
+    _, _, text_name, is_back = rename.parse_filename("012 - Some Card (side a)")
     assert is_back is False
     assert "(side a)" not in text_name.lower()
 
 
 def test_parse_filename_reverse_marks_back():
-    _, text_name, is_back = rename.parse_filename("012 - Some Card reverse")
+    _, _, text_name, is_back = rename.parse_filename("012 - Some Card reverse")
     assert is_back is True
     assert "reverse" not in text_name.lower()
 
@@ -91,12 +94,12 @@ def test_parse_filename_reverse_marks_back():
 # --- (errata) stripping and trailing dedup-number stripping ------------------
 
 def test_parse_filename_strips_errata_suffix():
-    _, text_name, _ = rename.parse_filename("012 - Some Card (errata)")
+    _, _, text_name, _ = rename.parse_filename("012 - Some Card (errata)")
     assert text_name == "Some Card"
 
 
 def test_parse_filename_strips_trailing_dedup_number():
-    _, text_name, _ = rename.parse_filename("012 - Dark Pools 3")
+    _, _, text_name, _ = rename.parse_filename("012 - Dark Pools 3")
     assert text_name == "Dark Pools"
 
 
@@ -140,3 +143,119 @@ def test_back_with_front_in_same_folder_is_not_orphaned():
     }
     orphans = rename.find_orphaned_backs(folder_file_lists)
     assert orphans == {}
+
+
+# --- DQ4: '026 -1A' loses the space before the stage code --------------------
+
+def test_parse_filename_stage_glued_to_card_number():
+    # The Mumakil ships '026 -1A - Welcome to the Jungle.jpg'. The missing space
+    # hid the stage code, so the 1B scan was written as a second front and
+    # deduped away, leaving the card with no back.
+    position_str, stage_str, text_name, is_back = rename.parse_filename("026 -1A - Welcome to the Jungle")
+    assert position_str == "026"
+    assert stage_str == "1A"
+    assert text_name == "Welcome to the Jungle"
+    assert is_back is False
+
+    _, stage_str, _, is_back = rename.parse_filename("026 -1B - Welcome to the Jungle")
+    assert stage_str == "1B"
+    assert is_back is True
+
+
+# --- DQ5: C/D-side quest cards must keep their own number --------------------
+
+def test_parse_filename_c_and_d_sides():
+    # Race Across Harad prints 'Setting Out' twice, at 1A/1B and again at 1C/1D.
+    position_str, stage_str, _, is_back = rename.parse_filename("051 - 1C - Setting Out")
+    assert position_str == "051"
+    assert stage_str == "1C"
+    assert is_back is False
+
+    position_str, stage_str, _, is_back = rename.parse_filename("051 - 1D - Setting Out")
+    assert position_str == "051"
+    assert stage_str == "1D"
+    assert is_back is True
+
+
+# --- card_stage: Hall of Beorn's printed stage code --------------------------
+
+def test_card_stage_reads_each_face():
+    card = {
+        "Front": {"Stats": {"StageNumber": "1C"}},
+        "Back": {"Stats": {"StageNumber": "1D", "QuestPoints": "10"}},
+    }
+    assert rename.card_stage(card, is_back=False) == "1C"
+    assert rename.card_stage(card, is_back=True) == "1D"
+
+
+def test_card_stage_none_for_single_sided_and_unstaged():
+    assert rename.card_stage({"Front": {"Stats": {}}, "Back": None}, is_back=True) is None
+    assert rename.card_stage({"Front": {"Stats": {}}, "Back": None}, is_back=False) is None
+
+
+# --- DQ6: promo cards filed under another product's set ----------------------
+
+def _card(slug, card_set, rdb):
+    return {"Slug": slug, "CardSet": card_set, "RingsDbCardId": rdb}
+
+
+def test_find_promo_slugs_flags_foreign_pack_prefix():
+    cards = [
+        _card("Standard-Game-Mode-TSoA", "The Siege of Annuminas", "00001"),
+        _card("Rebuild-the-Defenses-TSoA", "The Siege of Annuminas", "00003"),
+        _card("Defend-the-City-TSoA", "The Siege of Annuminas", "00004"),
+        _card("Lead-the-Sortie-TSoA", "The Siege of Annuminas", "00005"),
+        _card("Faramir-TSoA", "The Siege of Annuminas", "06081"),
+        _card("Boromir-TSoA", "The Siege of Annuminas", "02095"),
+    ]
+    assert rename.find_promo_slugs(cards) == {"Faramir-TSoA", "Boromir-TSoA"}
+
+
+def test_find_promo_slugs_leaves_reprint_collections_alone():
+    # Hero expansions are collections of reprints with no dominant prefix, so the
+    # rule must not fire and strip the whole product.
+    cards = [
+        _card("Boromir-DoG", "Defenders of Gondor", "01001"),
+        _card("Faramir-Ally-DoG", "Defenders of Gondor", "02010"),
+        _card("Faramir-Hero-DoG", "Defenders of Gondor", "06028"),
+        _card("Mablung-DoG", "Defenders of Gondor", "13003"),
+    ]
+    assert rename.find_promo_slugs(cards) == set()
+
+
+def test_ringsdb_pack_prefix_drops_the_card_number():
+    assert rename.ringsdb_pack_prefix({"RingsDbCardId": "02095"}) == "02"
+    assert rename.ringsdb_pack_prefix({"RingsDbCardId": "148020"}) == "148"
+    assert rename.ringsdb_pack_prefix({"RingsDbCardId": ""}) is None
+    assert rename.ringsdb_pack_prefix({}) is None
+
+
+# --- DQ1: backs must not be written onto single-sided cards ------------------
+
+def test_has_split_sibling_detects_hob_two_entry_cards():
+    # The Hunt for the Dreadnaught prints Eithiliant as one double-sided card,
+    # 6a / 6b, but Hall of Beorn stores two entries with Back: null on both.
+    basic = {"Title": "Eithiliant", "position": 6, "Slug": "Eithiliant-THftD", "Back": None}
+    upgraded = {"Title": "Eithiliant", "position": 6, "Slug": "Eithiliant-Upgraded-THftD", "Back": None}
+    pack_cards = {"eithiliant": [basic, upgraded]}
+    assert rename.has_split_sibling(pack_cards, basic) is True
+    assert rename.has_split_sibling(pack_cards, upgraded) is True
+
+
+def test_has_split_sibling_false_for_a_lone_single_sided_card():
+    # The Massing at Osgiliath's treachery is genuinely single-sided, so the
+    # product back-cover scan must not be written as its back.
+    treachery = {"Title": "Massing at Osgiliath", "position": 14,
+                 "Slug": "Massing-at-Osgiliath-TMaO", "Back": None}
+    other = {"Title": "Cut Off", "position": 12, "Slug": "Cut-Off-TMaO", "Back": None}
+    pack_cards = {"massingatosgiliath": [treachery], "cutoff": [other]}
+    assert rename.has_split_sibling(pack_cards, treachery) is False
+
+
+def test_has_split_sibling_false_when_titles_match_but_numbers_differ():
+    # Race Across Harad prints 'Setting Out' twice, at 47 and 51. Different
+    # cards, not two faces of one.
+    a = {"Title": "Setting Out", "position": 47, "Slug": "Setting-Out-RaH", "Back": {}}
+    c = {"Title": "Setting Out", "position": 51, "Slug": "Setting-Out-C-RaH", "Back": {}}
+    pack_cards = {"settingout": [a, c]}
+    assert rename.has_split_sibling(pack_cards, a) is False

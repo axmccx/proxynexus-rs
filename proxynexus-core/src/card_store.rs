@@ -650,8 +650,20 @@ impl<'a> CardStore<'a> {
                 .push(printing);
         }
 
+        // Groups come out of a HashMap, so date alone leaves the order varying
+        // between runs -- and with it which printing select_printing falls back
+        // to and how the variant picker lists them. card_id separates same-title
+        // cards sharing a pack (lotrlcg quest stages); variant separates alt arts
+        // of one card, which every other game relies on.
         for printings in resolved_printings.values_mut() {
-            printings.sort_by_key(|p| (p.date_release.is_none(), p.date_release.clone()));
+            printings.sort_by_key(|p| {
+                (
+                    p.date_release.is_none(),
+                    p.date_release.clone(),
+                    p.card_id.clone(),
+                    p.variant.clone(),
+                )
+            });
         }
 
         resolved_printings
@@ -697,9 +709,28 @@ impl<'a> CardStore<'a> {
                 && request.printing != p.pack_id
                 && request.printing != p.variant;
 
+            let collection_miss =
+                request.collection.is_some() && request.collection.as_ref() != Some(&p.collection);
+
+            // Candidates are looked up by normalized title, so a pack that prints
+            // several cards under one title (LotR quest stages, "Search for an Exit"
+            // x7 in Khazad-dum) hands us every one of them. Without this the rest
+            // of the key ties, the stable sort keeps index 0, and every copy
+            // renders as the same card.
+            //
+            // Ranked below the explicit pack and collection requests on purpose.
+            // Only lotrlcg gives each pack's printing its own card id; the other
+            // adapters share one id across every pack, so this ties for them and
+            // changes nothing. But a lotrlcg decklist can carry an id resolved
+            // from one pack alongside a pack_id naming another -- see the
+            // resolved_by_norm fallback in resolve_decklist_to_requests -- and
+            // there the pack the caller asked for has to win.
+            let id_miss = p.card_id != request.id;
+
             (
                 printing_miss,
-                request.collection.is_some() && request.collection.as_ref() != Some(&p.collection),
+                collection_miss,
+                id_miss,
                 !p.is_official,
                 p.date_release.is_none(),
                 p.date_release.clone(),
@@ -741,6 +772,97 @@ mod tests {
             pack_id: pack.map(|p| p.to_string()),
             date_release: date.map(|s| s.to_string()),
         }
+    }
+
+    #[test]
+    fn test_select_printing_distinguishes_same_title_different_card_id() {
+        // The Nîn-in-Eilph prints three "Through the Marsh" cards: same title,
+        // same pack, same collection, different card ids and different B-sides.
+        let p1 = mock_printing(
+            "through_the_marsh_no_end_in_sight_nie",
+            true,
+            None,
+            "lotrlcg-enhanced",
+            Some("the_nin_in_eilph"),
+            Some("2014-11-20"),
+        );
+        let p2 = mock_printing(
+            "through_the_marsh_a_weary_passage_nie",
+            true,
+            None,
+            "lotrlcg-enhanced",
+            Some("the_nin_in_eilph"),
+            Some("2014-11-20"),
+        );
+        let p3 = mock_printing(
+            "through_the_marsh_a_forgotten_land_nie",
+            true,
+            None,
+            "lotrlcg-enhanced",
+            Some("the_nin_in_eilph"),
+            Some("2014-11-20"),
+        );
+        let available = vec![p1, p2, p3];
+
+        for want in [
+            "through_the_marsh_no_end_in_sight_nie",
+            "through_the_marsh_a_weary_passage_nie",
+            "through_the_marsh_a_forgotten_land_nie",
+        ] {
+            let req = CardRequest {
+                title: "Through the Marsh".into(),
+                id: want.into(),
+                printing: Some("the_nin_in_eilph".into()),
+                collection: None,
+            };
+            assert_eq!(
+                CardStore::select_printing(&req, &available)
+                    .unwrap()
+                    .card_id,
+                want,
+                "asked for {want}, got a different card"
+            );
+        }
+    }
+
+    #[test]
+    fn test_explicit_pack_request_outranks_card_id_match() {
+        // Only lotrlcg gives each pack's printing its own card id, and its
+        // decklist path can pair an id resolved from one pack with a pack_id
+        // naming another (the resolved_by_norm fallback). The pack the caller
+        // asked for must still win, or asking for a reprint silently returns
+        // the original.
+        let core = mock_printing(
+            "faramir_core",
+            true,
+            None,
+            "lotrlcg-enhanced",
+            Some("core_set"),
+            Some("2011-01-01"),
+        );
+        let starter = mock_printing(
+            "faramir_tples",
+            true,
+            None,
+            "lotrlcg-enhanced",
+            Some("two_player_limited_edition_starter"),
+            Some("2013-01-01"),
+        );
+        let available = vec![core, starter];
+
+        let req = CardRequest {
+            title: "Faramir".into(),
+            id: "faramir_tples".into(),
+            printing: Some("core_set".into()),
+            collection: None,
+        };
+        assert_eq!(
+            CardStore::select_printing(&req, &available)
+                .unwrap()
+                .card_id,
+            "faramir_core",
+            "the requested pack must beat the card id carried by the request"
+        );
     }
 
     #[test]

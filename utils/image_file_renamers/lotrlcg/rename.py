@@ -125,14 +125,27 @@ PACK_TITLE_FIXES_CLEAN = {
     for (pack, name), fixed in PACK_TITLE_FIXES.items()
 }
 
-def parse_filename(base_name):
-    """Parse a scan filename (without extension) into (position_str, text_name, is_back).
+# A quest card's back is the next letter up from its front: 1A/1B, 1C/1D, and the
+# Siege of Annuminas' three-mode 1E/1F. Every even letter is a back face.
+BACK_STAGE_LETTERS = ('B', 'D', 'F', 'H')
 
-    Handles filename shapes seen in the real archive:
-      '001 - Aragorn'
-      '047a - A Perilous Voyage'
-      '011 - 1B - The Hunt Begins'
-      '- - 2A - Lost in the Swanfleet'  (normalized to '000 - ...' first)
+def parse_filename(base_name):
+    """Parse a scan filename (without extension) into
+    (position_str, stage_str, text_name, is_back).
+
+    position_str is the card's printed number and stage_str the quest stage code
+    ('1A', '2D') when the filename carries one. They are kept apart deliberately:
+    the number says which card, the stage says which face. Folding the stage over
+    the number loses the card, and every pack that prints several cards under one
+    title then misresolves -- Race Across Harad's C-side quests end up with the
+    A-side art and no back at all.
+
+    Shapes seen in the real archives:
+      '001 - Aragorn'                    -> ('001',  None, 'Aragorn', False)
+      '047a - A Perilous Voyage'         -> ('047a', None, 'A Perilous Voyage', False)
+      '011 - 1B - The Hunt Begins'       -> ('011',  '1B', 'The Hunt Begins', True)
+      '026 -1A - Welcome to the Jungle'  -> ('026',  '1A', 'Welcome to the Jungle', False)
+      '- - 2A - Lost in the Swanfleet'   -> ('000',  '2A', 'Lost in the Swanfleet', False)
 
     Returns None if base_name could not be parsed at all (mirrors the original
     inline `continue` in main()'s per-file loop).
@@ -143,35 +156,42 @@ def parse_filename(base_name):
     else:
         filename_to_parse = base_name
 
+    stage_str = None
+
     # Extract position and name: '001 - Aragorn' or '047a - A Perilous Voyage'
     if " - " in filename_to_parse:
         position_str, text_name = filename_to_parse.split(" - ", 1)
         secondary_match = re.match(r'^(\d+[A-Za-z])\s*[-_.]\s*(.*)$', text_name)
         if secondary_match:
-            side_str, text_name = secondary_match.groups()
-            position_str = side_str
+            stage_str, text_name = secondary_match.groups()
     else:
         match = re.match(r'^(\d+[A-Za-z]?)?\s*(?:[-_.]\s*)?(.*)$', base_name)
         if not match:
             return None
         position_str, text_name = match.groups()
 
-    is_back = False
-
-    # Check position_str for side indicators (e.g. if the file is just '1B - The Hunt Begins')
+    # '026 -1A - Welcome to the Jungle' loses the space before the stage code, so
+    # the split above leaves both halves stuck together in position_str. Without
+    # this the stage is never seen and the 1B scan is written as a second front.
     if position_str:
-        pos_match = re.match(r'^\d+([A-Za-z])$', position_str)
-        if pos_match and pos_match.group(1).upper() in ('B', 'D', 'F', 'H'):
-            is_back = True
+        embedded = re.match(r'^(\d+)\s*[-_.]\s*(\d*[A-Za-z])$', position_str)
+        if embedded:
+            position_str, embedded_stage = embedded.groups()
+            if not stage_str:
+                stage_str = embedded_stage
 
-    # Check text_name for side indicators (e.g. if the file is '011 - 1B - The Hunt Begins')
-    side_match = re.match(r'^(\d+)([A-Za-z])\s*[-_.]\s*(.*)$', text_name)
-    if side_match:
-        if side_match.group(2).upper() == 'B':
-            is_back = True
+    # A bare '012B - Some Card' is its own stage code.
+    if position_str and not stage_str and re.match(r'^\d+[A-Za-z]$', position_str):
+        stage_str = position_str
 
-    # Now strip the prefix if it exists
-    text_name = re.sub(r'^\d+[A-Za-z]\s*[-_.]\s*', '', text_name)
+    # '011 - 1B - The Hunt Begins' where the outer split didn't fire.
+    stage_in_text = re.match(r'^(\d+[A-Za-z])\s*[-_.]\s*(.*)$', text_name)
+    if stage_in_text:
+        if not stage_str:
+            stage_str = stage_in_text.group(1)
+        text_name = stage_in_text.group(2)
+
+    is_back = bool(stage_str) and stage_str[-1].upper() in BACK_STAGE_LETTERS
 
     # Handle Explicit Back-Faces and Side indicators
     text_name_lower = text_name.lower()
@@ -190,7 +210,78 @@ def parse_filename(base_name):
     # Strip trailing deduplication numbers (e.g. "Dark Pools 3" -> "Dark Pools")
     text_name = re.sub(r'\s+\d+$', '', text_name)
 
-    return position_str, text_name, is_back
+    return position_str, stage_str, text_name, is_back
+
+def card_stage(card, is_back):
+    """The stage code Hall of Beorn prints on one face of a card, e.g. '1C'.
+
+    Authoritative where it exists, which is every Quest and Campaign card. Side
+    quests and encounter cards carry no stage and return None.
+    """
+    face = card.get('Back') if is_back else card.get('Front')
+    if not face:
+        return None
+    stage = (face.get('Stats') or {}).get('StageNumber')
+    return stage.upper() if stage else None
+
+def has_split_sibling(pack_cards, card):
+    """True when another entry in the pack shares this card's title and number.
+
+    Hall of Beorn models a few genuinely double-sided cards as two single-sided
+    entries at one number. The ships in The Hunt for the Dreadnaught print '6a'
+    and '6b' on one physical card -- the b face reads "After Eithiliant flips" --
+    yet both entries carry Back: null. So a null Back alone cannot be taken to
+    mean the card is single-sided; a sibling at the same number is the tell.
+    """
+    for cards_list in pack_cards.values():
+        for other in cards_list:
+            if (other is not card
+                    and other.get('Title') == card.get('Title')
+                    and other.get('position') == card.get('position')):
+                return True
+    return False
+
+def ringsdb_pack_prefix(card):
+    """The RingsDB pack a card really belongs to, as the leading digits of its id.
+
+    RingsDbCardId is <pack><3-digit number>, so dropping the last three digits
+    leaves the pack.
+    """
+    rdb = card.get('RingsDbCardId') or ''
+    return rdb[:-3] if len(rdb) > 3 else None
+
+def find_promo_slugs(all_cards, threshold=0.6):
+    """Slugs of promo cards that Hall of Beorn files inside another product's set.
+
+    Gen Con and preorder promo heroes were handed out alongside a scenario, and
+    the catalog lists them as part of that scenario's card set even though the
+    box does not contain them. Their RingsDbCardId still points at the pack they
+    were actually printed in, so within a set they are the cards whose pack
+    prefix disagrees with everyone else's.
+
+    Sets without a clear majority prefix are left alone: the hero and starter
+    products (Defenders of Gondor, Elves of Lorien, the Two-Player Starter) are
+    collections of reprints, where a mixed prefix is the honest answer.
+    """
+    by_set = {}
+    for card in all_cards:
+        prefix = ringsdb_pack_prefix(card)
+        if prefix:
+            by_set.setdefault(card.get('CardSet', ''), []).append((prefix, card))
+
+    promos = set()
+    for prefixes_and_cards in by_set.values():
+        counts = {}
+        for prefix, _ in prefixes_and_cards:
+            counts[prefix] = counts.get(prefix, 0) + 1
+        # Sorted so a tie resolves the same way on every run.
+        dominant, hits = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+        if hits < len(prefixes_and_cards) * threshold:
+            continue
+        for prefix, card in prefixes_and_cards:
+            if prefix != dominant and card.get('Slug'):
+                promos.add(card['Slug'])
+    return promos
 
 def find_orphaned_backs(folder_file_lists):
     """Validate '~back' files against their front within EACH folder independently.
@@ -297,7 +388,7 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                 parsed = parse_filename(base_name)
                 if parsed is None:
                     continue
-                position_str, text_name, is_back = parsed
+                position_str, stage_str, text_name, is_back = parsed
 
                 # Fix known FFG typos
                 text_name = text_name.replace("The Gathering of the Clouds", "The Gathering of Clouds")
@@ -334,17 +425,40 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                     matched_cards = pack_cards.get(clean_for_match(base_name), [])
 
                 # Fallback to matching against the slug if title match fails
+                matched_by_slug = False
                 if not matched_cards:
                     for cards_list in pack_cards.values():
                         for card in cards_list:
                             slug = card.get('Slug', '').replace('-', '').replace("'", "").lower()
                             if clean_name in slug:
                                 matched_cards.append(card)
+                    matched_by_slug = bool(matched_cards)
 
                 if not matched_cards:
                     log(f"[SKIP] {filename} (Card '{text_name}' not found in pack {pack_code})")
                     skipped += 1
                     continue
+
+                # A file that matched only through the slug was named after the
+                # card's subtitle rather than its title, and the subtitle is what
+                # is printed on the back. The Fortress of Nurn ships the four
+                # "Storm the Castle" backs as '161 - Castle Garrison.jpg' with no
+                # side marker anywhere; without this they are written as fronts,
+                # collide with the shared A-side, and all four backs are lost.
+                if (matched_by_slug and not is_back and not stage_str
+                        and len(matched_cards) == 1 and matched_cards[0].get('Back')):
+                    log(f"[INFO] {filename} matched a subtitle, treating as the back face.")
+                    is_back = True
+
+                # Hall of Beorn prints the stage code on the card, so where the
+                # filename carries one it settles which of several same-titled
+                # cards this is. Race Across Harad prints 'Setting Out' at both
+                # 1A and 1C; only the stage tells them apart.
+                if stage_str and re.match(r'^\d+[A-Za-z]$', stage_str):
+                    staged = [mc for mc in matched_cards
+                              if card_stage(mc, is_back) == stage_str.upper()]
+                    if staged:
+                        matched_cards = staged
 
                 selected_cards = []
                 if len(matched_cards) == 1:
@@ -391,6 +505,19 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
 
                 for selected_card in selected_cards:
                     target_id = selected_card['target_id']
+
+                    # A scan whose name says "reverse" still isn't a back if the
+                    # card is single-sided -- The Massing at Osgiliath's product
+                    # cover matches the treachery of the same name by title, and
+                    # being written as its back put a barcode on all three copies.
+                    # Cards Hall of Beorn split across two entries are exempt,
+                    # see has_split_sibling.
+                    if (is_back and not selected_card.get('Back')
+                            and not has_split_sibling(pack_cards, selected_card)):
+                        log(f"[SKIP] {filename} ({selected_card['Slug']} is single-sided, not writing a back)")
+                        skipped += 1
+                        continue
+
                     unique_key = (target_id, pack_code, is_back)
 
                     if unique_key in processed_cards:
@@ -487,11 +614,20 @@ def main():
         name_pack_counts[key] = name_pack_counts.get(key, 0) + 1
 
     # 3. Build Card Lookup: card_set -> clean_for_match(title) -> list of cards
+    #
+    # Promo heroes filed under a scenario they were only handed out with are left
+    # out entirely, so their scans resolve to no card and are skipped. Mirrors the
+    # same exclusion in the lotrlcg catalog adapter.
+    promo_slugs = find_promo_slugs(all_cards)
+    log(f"Excluding {len(promo_slugs)} promo cards filed under another product's set")
+
     card_lookup = {}
     for c in all_cards:
         title = c.get('Title', '')
         card_set = c.get('CardSet', '')
         if not title or not card_set:
+            continue
+        if c.get('Slug') in promo_slugs:
             continue
 
         clean_name = clean_for_match(title)
