@@ -70,6 +70,26 @@ pub fn start_capture() {
     }
 }
 
+pub fn send_event(event: &str) {
+    let Some(key) = API_KEY else { return };
+
+    let (os, browser) = platform_info();
+
+    let payload = json!({
+        "api_key": key,
+        "event": event,
+        "distinct_id": get_distinct_id(),
+        "properties": {
+            "app_version": env!("CARGO_PKG_VERSION"),
+            "platform": if cfg!(target_arch = "wasm32") { "web" } else { "desktop" },
+            "os": os,
+            "browser": browser,
+        }
+    });
+
+    spawn_send(payload);
+}
+
 pub fn send_report(report: GenerationReport) {
     let Some(key) = API_KEY else { return };
 
@@ -79,6 +99,34 @@ pub fn send_report(report: GenerationReport) {
         Vec::new()
     };
 
+    let (os, browser) = platform_info();
+
+    let payload = json!({
+        "api_key": key,
+        "event": "export_generated",
+        "distinct_id": get_distinct_id(),
+        "properties": {
+            "app_version": env!("CARGO_PKG_VERSION"),
+            "platform": if cfg!(target_arch = "wasm32") { "web" } else { "desktop" },
+            "os": os,
+            "browser": browser,
+            "game_id": report.active_game_id,
+            "format": report.format,
+            "options": report.options,
+            "runtime_ms": report.runtime_ms,
+            "success": report.success,
+            "source_type": report.source_type,
+            "source_text": report.source_text.lines().collect::<Vec<_>>(),
+            "selected_printings": report.selected_printings,
+            "error_message": report.error_message,
+            "logs": logs,
+        }
+    });
+
+    spawn_send(payload);
+}
+
+fn platform_info() -> (String, String) {
     #[cfg(target_arch = "wasm32")]
     let (os, browser) = {
         let mut os = "unknown".to_string();
@@ -113,29 +161,7 @@ pub fn send_report(report: GenerationReport) {
     #[cfg(not(target_arch = "wasm32"))]
     let (os, browser) = { (std::env::consts::OS.to_string(), "desktop_app".to_string()) };
 
-    let payload = json!({
-        "api_key": key,
-        "event": "export_generated",
-        "distinct_id": get_distinct_id(),
-        "properties": {
-            "app_version": env!("CARGO_PKG_VERSION"),
-            "platform": if cfg!(target_arch = "wasm32") { "web" } else { "desktop" },
-            "os": os,
-            "browser": browser,
-            "game_id": report.active_game_id,
-            "format": report.format,
-            "options": report.options,
-            "runtime_ms": report.runtime_ms,
-            "success": report.success,
-            "source_type": report.source_type,
-            "source_text": report.source_text.lines().collect::<Vec<_>>(),
-            "selected_printings": report.selected_printings,
-            "error_message": report.error_message,
-            "logs": logs,
-        }
-    });
-
-    spawn_send(payload);
+    (os, browser)
 }
 
 fn get_distinct_id() -> &'static str {

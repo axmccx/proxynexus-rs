@@ -681,6 +681,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                                             };
 
                                             copy_selection_to_clipboard(&game_id, &printings_clone);
+                                            analytics::send_event("copy_link_clicked");
                                             show_copy_toast.set(true);
                                             spawn(async move {
                                                 sleep(2000).await;
@@ -695,7 +696,10 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                         }
                         button {
                             class: "px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 flex-shrink-0 whitespace-nowrap",
-                            onclick: move |_| is_about_open.set(true),
+                            onclick: move |_| {
+                                analytics::send_event("about_clicked");
+                                is_about_open.set(true);
+                            },
                             title: "About Proxy Nexus",
                             "About"
                         }
