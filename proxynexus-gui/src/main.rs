@@ -667,11 +667,11 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                         }
                     }
                     div {
-                        class: "flex items-center gap-3",
+                        class: "flex items-center gap-2",
                         if let Some(Ok((_, resolved_printing, _, _))) = ordered_printings.read().as_ref() {
                             if !resolved_printing.is_empty() {
                                 button {
-                                    class: "text-gray-400 hover:text-gray-600 focus:outline-none flex-shrink-0 transition-colors group",
+                                    class: "px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 flex-shrink-0 whitespace-nowrap",
                                     onclick: move |_| {
                                         if let Some(game_id) = active_game_id() {
                                             let printings_clone = if let Some(Ok((_, resolved_printing, _, _))) = ordered_printings.read().as_ref() {
@@ -688,37 +688,16 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                                             });
                                         }
                                     },
-                                    title: "Copy Selection URL",
-                                    svg {
-                                        class: "w-5 h-5",
-                                        fill: "none",
-                                        stroke: "currentColor",
-                                        view_box: "0 0 24 24",
-                                        stroke_width: "2",
-                                        stroke_linecap: "round",
-                                        stroke_linejoin: "round",
-                                        path { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }
-                                        path { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" }
-                                    }
+                                    title: "Copy a link to the current card and variant selection",
+                                    "Copy Link"
                                 }
                             }
                         }
                         button {
-                            class: "text-gray-400 hover:text-gray-600 focus:outline-none flex-shrink-0",
+                            class: "px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 flex-shrink-0 whitespace-nowrap",
                             onclick: move |_| is_about_open.set(true),
                             title: "About Proxy Nexus",
-                            svg {
-                                class: "w-6 h-6",
-                                fill: "none",
-                                stroke: "currentColor",
-                                view_box: "0 0 24 24",
-                                stroke_width: "2",
-                                stroke_linecap: "round",
-                                stroke_linejoin: "round",
-                                circle { cx: "12", cy: "12", r: "10" }
-                                path { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }
-                                path { d: "M12 17h.01" }
-                            }
+                            "About"
                         }
                     }
                 }
