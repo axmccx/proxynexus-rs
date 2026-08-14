@@ -361,12 +361,21 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
             div { class: "mt-auto pt-4 md:pt-0 flex flex-col gap-2",
                 if show_donate() {
                     div { class: "text-sm text-center text-gray-600 pb-1",
-                        "finding this site useful? please consider "
+                        "Finding this site useful? Please consider "
                         a {
                             href: "https://ko-fi.com/axmccx",
                             target: "_blank",
                             class: "text-blue-500 hover:text-blue-700 hover:underline",
                             "donating"
+                        }
+                    }
+                    div { class: "text-sm text-center text-gray-600 pb-1",
+                        "Issues? Report it "
+                        a {
+                            href: "https://github.com/axmccx/proxynexus-rs/issues/new",
+                            target: "_blank",
+                            class: "text-blue-500 hover:text-blue-700 hover:underline",
+                            "here"
                         }
                     }
                 }
