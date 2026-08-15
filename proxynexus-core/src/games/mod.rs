@@ -3,6 +3,7 @@ pub mod l5r;
 pub mod lotrlcg;
 pub mod netrunner;
 pub mod netrunner_reboot;
+pub mod whinvasion;
 use crate::card_source::DecklistProvider;
 use crate::error::{ProxyNexusError, Result};
 use crate::games::agot::adapter::AgotAdapter;
@@ -10,6 +11,7 @@ use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
+use crate::games::whinvasion::adapter::WhiAdapter;
 use crate::mpc::CardBackProvider;
 use serde::de::DeserializeOwned;
 
@@ -28,6 +30,7 @@ pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
         Box::new(L5rAdapter::new()),
         Box::new(AgotAdapter::new()),
         Box::new(LotrLcgAdapter::new()),
+        Box::new(WhiAdapter::new()),
     ];
 
     for adapter in adapters {
@@ -54,6 +57,7 @@ pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>>
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
         "netrunner-reboot" => Some(Box::new(NetrunnerRebootAdapter::new())),
         "l5r" => Some(Box::new(L5rAdapter::new())),
+        "whinvasion" => Some(Box::new(WhiAdapter::new())),
         _ => None,
     }
 }
