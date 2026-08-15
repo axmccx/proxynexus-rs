@@ -66,7 +66,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
 
                         rsx! {
                             button {
-                                class: format!("relative w-[80px] md:w-[150px] shrink-0 rounded overflow-hidden aspect-[2.5/3.5] border-2 transition-all {}",
+                                class: format!("relative w-[80px] md:w-[150px] shrink-0 rounded overflow-hidden border-2 transition-all {}",
                                     if is_selected {
                                         "border-blue-500 shadow-md ring-2 ring-blue-500 ring-offset-1"
                                     } else {
@@ -89,11 +89,14 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                         "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
                                     };
                                     rsx! {
-                                        img {
-                                            src: "{build_image_url(&image_key)}",
-                                            crossorigin: "anonymous",
-                                            style: "{style}",
-                                            alt: "{variant_label}",
+                                        div {
+                                            class: "w-full aspect-[2.5/3.5] overflow-hidden flex items-center justify-center",
+                                            img {
+                                                src: "{build_image_url(&image_key)}",
+                                                crossorigin: "anonymous",
+                                                style: "{style}",
+                                                alt: "{variant_label}",
+                                            }
                                         }
                                     }
                                 }
