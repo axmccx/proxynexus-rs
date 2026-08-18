@@ -1,9 +1,27 @@
 use serde::{Deserialize, Deserializer};
 
+#[derive(Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[serde(rename_all = "PascalCase")]
+pub struct HobCardStats {
+    pub threat: Option<String>,
+    pub threat_cost: Option<String>,
+    pub resource_cost: Option<String>,
+    pub willpower: Option<String>,
+    pub attack: Option<String>,
+    pub defense: Option<String>,
+    pub hit_points: Option<String>,
+    pub quest_points: Option<String>,
+    pub engagement_cost: Option<String>,
+    pub stage_number: Option<String>,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
-pub struct HobCardFront {
+pub struct HobCardFace {
     pub image_path: Option<String>,
+    pub stats: Option<HobCardStats>,
+    pub text: Option<Vec<String>>,
+    pub subtitle: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -14,8 +32,10 @@ pub struct HobCard {
     pub card_set: String,
     pub number: i64,
     pub quantity: Option<i64>,
-    pub front: Option<HobCardFront>,
+    pub front: Option<HobCardFace>,
+    pub back: Option<HobCardFace>,
     pub card_type: String,
+    pub sphere: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

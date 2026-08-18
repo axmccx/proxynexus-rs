@@ -10,6 +10,8 @@ use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::fetch_json;
 use crate::games::lotrlcg::api::fetch_decklist_from_ringsdb;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::games::lotrlcg::side_from_type_code;
 use crate::models::Decklist;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
@@ -76,6 +78,16 @@ impl CatalogProvider for LotrLcgAdapter {
             let clean_pack_id = normalize_title(&clean_pack_name);
             pack_dates.insert(clean_pack_id, rp.available);
         }
+
+        // TODO POC'ing
+        let card_ids =
+            crate::games::lotrlcg::identity::printing_card_ids(&all_hob_cards, &pack_dates);
+        let card_titles = crate::games::lotrlcg::identity::card_titles(&all_hob_cards, &card_ids);
+        tracing::debug!(
+            "{} hob printings resolve to {} distinct cards",
+            card_ids.len(),
+            card_titles.len()
+        );
 
         for c in &all_hob_cards {
             let clean_pack_id = normalize_title(&c.card_set);
@@ -152,19 +164,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 pack.name = display_name;
             }
 
-            let side = match rc.type_code.as_deref() {
-                Some("hero")
-                | Some("ally")
-                | Some("attachment")
-                | Some("event")
-                | Some("player-side-quest")
-                | Some("contract")
-                | Some("treasure") => "player",
-                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                    "quest"
-                }
-                _ => "encounter",
-            };
+            let side = side_from_type_code(rc.type_code.as_deref());
 
             if seen_cards.insert(normalized_id.clone()) {
                 cards.push(Card {
@@ -222,19 +222,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 }
             }
 
-            let side = match rc.type_code.as_deref() {
-                Some("hero")
-                | Some("ally")
-                | Some("attachment")
-                | Some("event")
-                | Some("player-side-quest")
-                | Some("contract")
-                | Some("treasure") => "player",
-                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                    "quest"
-                }
-                _ => "encounter",
-            };
+            let side = side_from_type_code(rc.type_code.as_deref());
 
             if rc.position.is_some_and(|pos| {
                 provided_pack_positions.contains(&(clean_pack_id.clone(), pos as i64))
