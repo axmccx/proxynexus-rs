@@ -75,6 +75,7 @@ impl CatalogProvider for L5rAdapter {
                     pack_id: v.pack_id,
                     quantity: v.quantity,
                     position: parse_position(v.position.as_deref()),
+                    api_id: None,
                 });
             }
         }
