@@ -27,6 +27,7 @@ pub async fn fetch_decklist_from_emeralddb(url: &str) -> Result<Decklist> {
             pack_id: decklist.card_pack_ids.get(&card_id).cloned(),
             card_id,
             quantity,
+            position: None,
         })
         .collect();
 

@@ -57,11 +57,10 @@ pub struct CatalogManager<'a> {
 impl<'a> CatalogManager<'a> {
     pub fn new(db: &'a mut DbStorage) -> Self {
         let adapters: Vec<Box<dyn CatalogProvider>> = vec![
-            // TODO uncomment
-            // Box::new(NetrunnerAdapter::new()),
-            // Box::new(NetrunnerRebootAdapter::new()),
-            // Box::new(L5rAdapter::new()),
-            // Box::new(AgotAdapter::new()),
+            Box::new(NetrunnerAdapter::new()),
+            Box::new(NetrunnerRebootAdapter::new()),
+            Box::new(L5rAdapter::new()),
+            Box::new(AgotAdapter::new()),
             Box::new(LotrLcgAdapter::new()),
         ];
 

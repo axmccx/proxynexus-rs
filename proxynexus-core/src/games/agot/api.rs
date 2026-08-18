@@ -39,6 +39,7 @@ pub async fn fetch_decklist_from_thronesdb(url: &str) -> Result<Decklist> {
                 card_id,
                 pack_id: Some(card.pack_code.clone()),
                 quantity,
+                position: None,
             });
         }
     }

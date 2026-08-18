@@ -45,6 +45,7 @@ pub async fn fetch_decklist_from_reteki(url: &str) -> Result<Decklist> {
                 card_id: normalize_title(&card.title),
                 pack_id: Some(card.pack_code.clone()),
                 quantity,
+                position: None,
             });
         }
     }

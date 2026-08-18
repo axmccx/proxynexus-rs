@@ -83,6 +83,7 @@ pub struct DecklistEntry {
     pub card_id: String,
     pub pack_id: Option<String>,
     pub quantity: u32,
+    pub position: Option<i64>,
 }
 
 #[derive(Debug, Clone)]

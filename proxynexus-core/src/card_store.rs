@@ -23,6 +23,7 @@ struct CardNameRow {
     title: String,
     pack_id: String,
     title_normalized: String,
+    position: Option<i64>,
 }
 
 #[derive(FromGlueRow)]
@@ -259,11 +260,12 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(unique_normalized_name);
 
         let query = format!(
-            "SELECT 
-                c.api_id as id, 
-                c.title, 
-                p.api_id as pack_id, 
-                c.title_normalized
+            "SELECT
+                c.api_id as id,
+                c.title,
+                p.api_id as pack_id,
+                c.title_normalized,
+                v.position
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
@@ -271,7 +273,8 @@ impl<'a> CardStore<'a> {
                AND c.game_id = {}
              ORDER BY
                  CASE WHEN p.date_release IS NULL THEN 1 ELSE 0 END,
-                 p.date_release DESC",
+                 p.date_release DESC,
+                 c.api_id",
             in_clause,
             quote_sql_string(&self.active_game_id)
         );
@@ -440,57 +443,106 @@ impl<'a> CardStore<'a> {
         }
 
         let card_ids: HashSet<&String> = decklist.cards.iter().map(|e| &e.card_id).collect();
+        let packs: HashSet<&String> = decklist
+            .cards
+            .iter()
+            .filter_map(|e| e.pack_id.as_ref())
+            .collect();
         let in_clause = build_in_clause(card_ids);
+        let pack_clause = if packs.is_empty() {
+            String::new()
+        } else {
+            format!(" OR p.api_id IN ({})", build_in_clause(packs))
+        };
 
         let query = format!(
-            "SELECT 
-                c.api_id as id, 
-                c.title, 
-                p.api_id as pack_id, 
-                c.title_normalized
+            "SELECT
+                c.api_id as id,
+                c.title,
+                p.api_id as pack_id,
+                c.title_normalized,
+                v.position
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
-             WHERE (c.api_id IN ({0}) OR c.title_normalized IN ({0}))
-               AND c.game_id = {1}",
+             WHERE (c.api_id IN ({0}) OR c.title_normalized IN ({0}){1})
+               AND c.game_id = {2}
+             ORDER BY c.api_id",
             in_clause,
+            pack_clause,
             quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
         let mut resolved_by_id = HashMap::new();
-        let mut resolved_by_norm_pack = HashMap::new();
+        let mut resolved_by_pack_position = HashMap::new();
+        let mut rows_by_pack: HashMap<String, Vec<(String, String, String)>> = HashMap::new();
         let mut resolved_by_norm = HashMap::new();
 
         if let Some(payload) = payloads.into_iter().next() {
-            let card_rows = payload.rows_as::<CardNameRow>()?;
-            for row in card_rows {
-                resolved_by_id.insert(row.id.clone(), (row.id.clone(), row.title.clone()));
-                resolved_by_norm_pack.insert(
-                    (row.title_normalized.clone(), row.pack_id.clone()),
-                    (row.id.clone(), row.title.clone()),
-                );
-                resolved_by_norm.insert(row.title_normalized.clone(), (row.id, row.title));
+            for row in payload.rows_as::<CardNameRow>()? {
+                let card = (row.id.clone(), row.title.clone());
+                resolved_by_id.entry(row.id.clone()).or_insert(card.clone());
+                if let Some(pos) = row.position {
+                    resolved_by_pack_position
+                        .entry((row.pack_id.clone(), pos))
+                        .or_insert(card.clone());
+                }
+                rows_by_pack.entry(row.pack_id.clone()).or_default().push((
+                    row.id.clone(),
+                    row.title.clone(),
+                    row.title_normalized.clone(),
+                ));
+                resolved_by_norm
+                    .entry(row.title_normalized.clone())
+                    .or_insert(card);
             }
         }
+
+        // Matches a deck's plain name against stored titles, handling the unique suffix.
+        // More than one match falls back to position.
+        let name_in_pack = |pack: &String, name: &str| -> Option<(String, String)> {
+            let boundary = format!("{}__", name);
+            let mut matched: Option<(String, String)> = None;
+            for (id, title, title_normalized) in rows_by_pack.get(pack)? {
+                if title_normalized == name || title_normalized.starts_with(&boundary) {
+                    match &matched {
+                        Some((prev_id, _)) if prev_id != id => return None,
+                        _ => matched = Some((id.clone(), title.clone())),
+                    }
+                }
+            }
+            matched
+        };
 
         let mut requests = Vec::new();
         let mut not_found = Vec::new();
         for entry in &decklist.cards {
-            let matched = resolved_by_id
-                .get(&entry.card_id)
-                .or_else(|| {
-                    entry.pack_id.as_ref().and_then(|pack| {
-                        resolved_by_norm_pack.get(&(entry.card_id.clone(), pack.clone()))
-                    })
-                })
-                .or_else(|| resolved_by_norm.get(&entry.card_id));
+            let by_exact_id = resolved_by_id.get(&entry.card_id).cloned();
+            let by_unique_name_in_pack = entry
+                .pack_id
+                .as_ref()
+                .and_then(|pack| name_in_pack(pack, &entry.card_id));
+            let by_pack_and_position =
+                entry
+                    .pack_id
+                    .as_ref()
+                    .zip(entry.position)
+                    .and_then(|(pack, pos)| {
+                        resolved_by_pack_position.get(&(pack.clone(), pos)).cloned()
+                    });
+            let by_normalized_title = resolved_by_norm.get(&entry.card_id).cloned();
+
+            let matched = by_exact_id
+                .or(by_unique_name_in_pack)
+                .or(by_pack_and_position)
+                .or(by_normalized_title);
 
             if let Some((real_id, title)) = matched {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
-                        title: title.clone(),
-                        id: real_id.clone(),
+                        title,
+                        id: real_id,
                         printing: entry.pack_id.clone(),
                         collection: None,
                     },
@@ -1235,11 +1287,13 @@ mod tests {
                     card_id: "sure_gamble".to_string(),
                     pack_id: Some("core".to_string()),
                     quantity: 3,
+                    position: None,
                 },
                 crate::models::DecklistEntry {
                     card_id: "snare_".to_string(),
                     pack_id: None,
                     quantity: 1,
+                    position: None,
                 },
             ],
         };
@@ -1260,5 +1314,123 @@ mod tests {
         assert_eq!(snare_reqs.len(), 1);
         assert_eq!(snare_reqs[0].printing, None);
         assert_eq!(snare_reqs[0].title, "Snare!");
+    }
+
+    async fn seed_lotrlcg_db(db: &mut DbStorage) {
+        db.initialize_schema().await.unwrap();
+        db.execute("INSERT INTO packs (id, api_id, name, game_id) VALUES ('pack_voi', 'voi', 'The Voice of Isengard', 'lotrlcg')").await.unwrap();
+
+        // Two cards sharing the plain title "Gríma" -- titles aren't
+        // disambiguated yet, that lands in a later commit.
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_grima_hero_voi', 'grima_hero_voi', 'lotrlcg', 'Gríma', 'grima')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_grima_objective_ally_voi', 'grima_objective_ally_voi', 'lotrlcg', 'Gríma', 'grima')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_grima_hero', 'lotrlcg_grima_hero_voi', 'pack_voi', 3, 2)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_grima_ally', 'lotrlcg_grima_objective_ally_voi', 'pack_voi', 3, 16)").await.unwrap();
+
+        // Thorin Stonehelm (actual position 36) and Aragorn (position 1) in
+        // the same pack -- RingsDB code 22001 names Thorin but claims #1.
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_thorin_stonehelm', 'thorin_stonehelm', 'lotrlcg', 'Thorin Stonehelm', 'thorin_stonehelm')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_aragorn_tples', 'aragorn_tples', 'lotrlcg', 'Aragorn', 'aragorn')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_thorin', 'lotrlcg_thorin_stonehelm', 'pack_voi', 3, 36)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_aragorn', 'lotrlcg_aragorn_tples', 'pack_voi', 1, 1)").await.unwrap();
+
+        // Gildor Inglorion, already stored under its disambiguated title, and
+        // Eyes in the Dark at the position RingsDB code 22081 lies about
+        // (#81, an encounter treachery).
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_gildor_inglorion_tples', 'gildor_inglorion_tples', 'lotrlcg', 'Gildor Inglorion (TPLES)', 'gildor_inglorion__tples_')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_eyes_in_the_dark', 'eyes_in_the_dark', 'lotrlcg', 'Eyes in the Dark', 'eyes_in_the_dark')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_gildor', 'lotrlcg_gildor_inglorion_tples', 'pack_voi', 1, 5)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_eyes', 'lotrlcg_eyes_in_the_dark', 'pack_voi', 1, 81)").await.unwrap();
+    }
+
+    fn grima_entry(position: Option<i64>) -> Decklist {
+        Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "grima".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position,
+            }],
+        }
+    }
+
+    #[tokio::test]
+    async fn two_cards_sharing_a_title_resolve_by_position() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let hero = store
+            .resolve_decklist_to_requests(&grima_entry(Some(2)))
+            .await
+            .unwrap();
+        assert_eq!(hero.requests[0].id, "grima_hero_voi");
+
+        let ally = store
+            .resolve_decklist_to_requests(&grima_entry(Some(16)))
+            .await
+            .unwrap();
+        assert_eq!(ally.requests[0].id, "grima_objective_ally_voi");
+    }
+
+    #[tokio::test]
+    async fn a_shared_title_with_no_position_still_resolves_deterministically() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let result = store
+            .resolve_decklist_to_requests(&grima_entry(None))
+            .await
+            .unwrap();
+        assert_eq!(result.requests[0].id, "grima_hero_voi");
+    }
+
+    #[tokio::test]
+    async fn a_lying_position_does_not_override_a_unique_name_match_in_the_pack() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        // RingsDB code 22001: names Thorin Stonehelm, but claims position 1,
+        // which in this pack actually belongs to Aragorn.
+        let decklist = Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "thorin_stonehelm".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position: Some(1),
+            }],
+        };
+
+        let result = store.resolve_decklist_to_requests(&decklist).await.unwrap();
+        assert_eq!(result.requests[0].id, "thorin_stonehelm");
+    }
+
+    #[tokio::test]
+    async fn a_lying_position_does_not_override_a_disambiguated_title_match() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        // RingsDB code 22081: names Gildor Inglorion, but claims position 81,
+        // which in this pack belongs to Eyes in the Dark, an encounter card.
+        // The stored title is disambiguated ("Gildor Inglorion (TPLES)"), so
+        // the deck's plain name only matches its disambiguating suffix.
+        let decklist = Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "gildor_inglorion".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position: Some(81),
+            }],
+        };
+
+        let result = store.resolve_decklist_to_requests(&decklist).await.unwrap();
+        assert_eq!(result.requests[0].id, "gildor_inglorion_tples");
     }
 }
