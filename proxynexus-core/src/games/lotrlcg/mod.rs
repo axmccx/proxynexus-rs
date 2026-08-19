@@ -11,6 +11,7 @@ pub fn side_from_type_code(type_code: Option<&str>) -> &'static str {
         | Some("attachment")
         | Some("event")
         | Some("player-side-quest")
+        | Some("player-objective")
         | Some("contract")
         | Some("treasure") => "player",
         Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => "quest",
@@ -34,6 +35,7 @@ mod tests {
     fn player_type_codes_map_to_player_side() {
         assert_eq!(side_from_type_code(Some("hero")), "player");
         assert_eq!(side_from_type_code(Some("treasure")), "player");
+        assert_eq!(side_from_type_code(Some("player-objective")), "player");
     }
 
     #[test]
