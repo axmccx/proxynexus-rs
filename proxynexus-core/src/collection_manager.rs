@@ -549,12 +549,8 @@ mod tests {
 
     #[test]
     fn a_file_named_by_its_printings_own_id_links_to_that_version_and_card() {
-        let by_printing_id = printing_id_map(&[(
-            "aragorn_revcore",
-            "v1",
-            "aragorn_core",
-            "revised_core_set",
-        )]);
+        let by_printing_id =
+            printing_id_map(&[("aragorn_revcore", "v1", "aragorn_core", "revised_core_set")]);
         let by_card_pack = HashMap::new();
 
         let (card_id, version_id) = resolve_card_and_version(
@@ -570,16 +566,16 @@ mod tests {
 
     #[test]
     fn a_printing_id_in_an_unstored_pack_becomes_a_variant_of_its_card() {
-        let by_printing_id = printing_id_map(&[(
-            "aragorn_revcore",
-            "v1",
-            "aragorn_core",
-            "revised_core_set",
-        )]);
+        let by_printing_id =
+            printing_id_map(&[("aragorn_revcore", "v1", "aragorn_core", "revised_core_set")]);
         let by_card_pack = HashMap::new();
 
-        let (card_id, version_id) =
-            resolve_card_and_version("aragorn_revcore", "enhanced", &by_printing_id, &by_card_pack);
+        let (card_id, version_id) = resolve_card_and_version(
+            "aragorn_revcore",
+            "enhanced",
+            &by_printing_id,
+            &by_card_pack,
+        );
 
         assert_eq!(card_id, "aragorn_core");
         assert_eq!(version_id, None);

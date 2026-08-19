@@ -30,6 +30,7 @@ pub struct Printing {
     pub side: String,
     pub pack_id: Option<String>,
     pub date_release: Option<String>,
+    pub position: Option<i64>,
 }
 
 impl PrintingPart {
@@ -68,6 +69,16 @@ impl Printing {
             (String::new(), false)
         }
     }
+
+    pub fn variant_key(&self) -> String {
+        let display = self
+            .pack_id
+            .as_deref()
+            .or(self.variant.as_deref())
+            .unwrap_or("official");
+        let position = self.position.map_or(String::new(), |pos| pos.to_string());
+        format!("{}:{}:{}", display, position, self.collection)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -76,6 +87,7 @@ pub struct CardRequest {
     pub id: String,
     pub printing: Option<String>,
     pub collection: Option<String>,
+    pub position: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -102,4 +114,66 @@ pub struct ResolvedPrintings {
     pub printings: Vec<Printing>,
     pub available_variants: std::collections::HashMap<String, Vec<Printing>>,
     pub not_found: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn printing(pack_id: Option<&str>, variant: Option<&str>, position: Option<i64>) -> Printing {
+        Printing {
+            card_id: "gandalf_core".into(),
+            card_title: "Gandalf".into(),
+            is_official: true,
+            variant: variant.map(|v| v.to_string()),
+            image_key: String::new(),
+            bleed_image_key: None,
+            parts: Vec::new(),
+            collection: "enhanced".into(),
+            side: "player".into(),
+            pack_id: pack_id.map(|p| p.to_string()),
+            date_release: None,
+            position,
+        }
+    }
+
+    #[test]
+    fn variant_key_uses_the_pack_when_present() {
+        assert_eq!(
+            printing(Some("core_set"), None, None).variant_key(),
+            "core_set::enhanced"
+        );
+    }
+
+    #[test]
+    fn variant_key_falls_back_to_the_variant_name() {
+        assert_eq!(
+            printing(None, Some("alt1"), None).variant_key(),
+            "alt1::enhanced"
+        );
+    }
+
+    #[test]
+    fn variant_key_falls_back_to_official_with_neither() {
+        assert_eq!(
+            printing(None, None, None).variant_key(),
+            "official::enhanced"
+        );
+    }
+
+    #[test]
+    fn variant_key_distinguishes_two_printings_of_one_card_in_one_pack() {
+        let gandalf_4 = printing(Some("two_player_limited_edition_starter"), None, Some(4));
+        let gandalf_37 = printing(Some("two_player_limited_edition_starter"), None, Some(37));
+
+        assert_eq!(
+            gandalf_4.variant_key(),
+            "two_player_limited_edition_starter:4:enhanced"
+        );
+        assert_eq!(
+            gandalf_37.variant_key(),
+            "two_player_limited_edition_starter:37:enhanced"
+        );
+        assert_ne!(gandalf_4.variant_key(), gandalf_37.variant_key());
+    }
 }

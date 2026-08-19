@@ -279,12 +279,7 @@ fn copy_selection_to_clipboard(game_id: &str, printings: &[Printing]) {
     };
 
     for p in printings {
-        let p_display = p
-            .pack_id
-            .as_deref()
-            .or(p.variant.as_deref())
-            .unwrap_or("official");
-        let variant_str = format!("{}:{}", p_display, p.collection);
+        let variant_str = p.variant_key();
 
         if p.card_title == current_title && variant_str == current_variant {
             current_count += 1;
