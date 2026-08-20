@@ -32,6 +32,8 @@ pub const MIN_CUT_LINE_THICKNESS: f32 = 0.1;
 pub const MAX_CUT_LINE_THICKNESS: f32 = 10.0;
 pub const DEFAULT_CUT_LINE_THICKNESS: f32 = 0.5;
 
+pub const PDF_BLEED_MM: f32 = 1.0;
+
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize)]
 pub enum PageSize {
     #[default]
@@ -65,6 +67,7 @@ pub enum PrintLayout {
     Gap,
     SmallMargin,
     LargeMargin,
+    Bleed,
 }
 
 impl PrintLayout {
@@ -107,11 +110,73 @@ impl Default for PdfOptions {
 
 impl PdfOptions {
     fn effective_gap(&self) -> f32 {
-        let base = self.print_layout.gap_points();
+        // TODO can we clean this up later?
+        let base = match self.print_layout {
+            PrintLayout::Bleed => 2.0 * self.bleed_pt(),
+            layout => layout.gap_points(),
+        };
         match self.cut_lines {
             CutLines::FullPage => base.max(self.cut_line_thickness),
             _ => base,
         }
+    }
+
+    fn base_gap(&self) -> f32 {
+        match self.cut_lines {
+            CutLines::FullPage => self.cut_line_thickness,
+            _ => 0.0,
+        }
+    }
+
+    fn base_capacity(&self) -> (usize, usize) {
+        let (page_width, page_height) = self.page_size.dimensions();
+        let gap = self.base_gap();
+        let max_cols = ((page_width - (MINIMUM_MARGIN * 2.0) + gap) / (CARD_WIDTH + gap))
+            .floor()
+            .max(0.0) as usize;
+        let max_rows = ((page_height - (MINIMUM_MARGIN * 2.0) + gap) / (CARD_HEIGHT + gap))
+            .floor()
+            .max(0.0) as usize;
+        (max_rows, max_cols)
+    }
+
+    fn bleed_pt(&self) -> f32 {
+        if self.print_layout != PrintLayout::Bleed {
+            return 0.0;
+        }
+
+        let (rows, cols) = self.base_capacity();
+        if rows == 0 || cols == 0 {
+            return 0.0;
+        }
+
+        let (page_width, page_height) = self.page_size.dimensions();
+        let gap = self.base_gap();
+
+        let free_w = page_width
+            - (MINIMUM_MARGIN * 2.0)
+            - ((cols - 1) as f32 * gap)
+            - (cols as f32 * CARD_WIDTH);
+        let free_h = page_height
+            - (MINIMUM_MARGIN * 2.0)
+            - ((rows - 1) as f32 * gap)
+            - (rows as f32 * CARD_HEIGHT);
+
+        let fits_w = free_w / (2.0 * cols as f32);
+        let fits_h = free_h / (2.0 * rows as f32);
+
+        (PDF_BLEED_MM * MM_TO_POINTS)
+            .min(fits_w)
+            .min(fits_h)
+            .max(0.0)
+    }
+
+    pub fn bleed_mm(&self) -> f32 {
+        self.bleed_pt() / MM_TO_POINTS
+    }
+
+    fn bleed_ratio(&self) -> f32 {
+        self.bleed_pt() / CARD_WIDTH
     }
 
     fn capacity(&self) -> (usize, usize) {
@@ -161,13 +226,24 @@ pub async fn generate_pdf(
 
     let (max_rows, max_cols) = options.capacity();
     let max_cards_per_page = max_rows * max_cols;
+    let bleed_ratio = options.bleed_ratio();
+
+    if bleed_ratio > 0.0 {
+        info!(
+            "bleed layout: {}x{} grid, {:.2}mm per side (target {:.2}mm)",
+            max_rows,
+            max_cols,
+            options.bleed_mm(),
+            PDF_BLEED_MM
+        );
+    }
 
     for chunk in image_requests.chunks(max_cards_per_page) {
         let page_settings = PageSettings::from_wh(page_width, page_height).unwrap();
         let mut page = document.start_page_with(page_settings);
         let mut surface = page.surface();
 
-        for (index, (image_key, requires_cropping)) in chunk.iter().enumerate() {
+        for (index, (image_key, source_has_bleed)) in chunk.iter().enumerate() {
             let start = Instant::now();
 
             if !image_cache.contains_key(image_key) {
@@ -177,11 +253,16 @@ pub async fn generate_pdf(
                     image_data = crate::upscale_image(&image_data).await?
                 }
 
-                if *requires_cropping {
-                    let img = image::load_from_memory(&image_data)?;
-                    let cropped_img = crate::print_prep::crop_bleed_border(&img).to_rgb8();
+                if *source_has_bleed {
                     let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-                    image_data = crate::print_prep::encode_image(cropped_img, format)?;
+                    let img = image::load_from_memory(&image_data)?;
+                    let cropped = crate::print_prep::crop_bleed_border(&img, bleed_ratio).to_rgb8();
+                    image_data = crate::print_prep::encode_image(cropped, format)?;
+                } else if bleed_ratio > 0.0 {
+                    let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
+                    let img = image::load_from_memory(&image_data)?;
+                    let bled = crate::print_prep::add_uniform_bleed_border(&img, bleed_ratio);
+                    image_data = crate::print_prep::encode_image(bled, format)?;
                 }
 
                 let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
@@ -200,13 +281,7 @@ pub async fn generate_pdf(
             }
 
             let image = image_cache.get(image_key).unwrap().clone();
-            let (pos_x, pos_y) = calculate_card_position(index, &options);
-            let inset = options.print_layout.inset_points();
-
-            let draw_x = pos_x + inset;
-            let draw_y = pos_y + inset;
-            let draw_width = CARD_WIDTH - (2.0 * inset);
-            let draw_height = CARD_HEIGHT - (2.0 * inset);
+            let (draw_x, draw_y, draw_width, draw_height) = calculate_draw_rect(index, &options);
 
             let size = Size::from_wh(draw_width, draw_height).unwrap();
 
@@ -269,6 +344,19 @@ fn calculate_card_position(card_index: usize, options: &PdfOptions) -> (f32, f32
     let y = top_margin + (row * CARD_HEIGHT) + (row * gap);
 
     (x, y)
+}
+
+fn calculate_draw_rect(card_index: usize, options: &PdfOptions) -> (f32, f32, f32, f32) {
+    let (pos_x, pos_y) = calculate_card_position(card_index, options);
+    let inset = options.print_layout.inset_points();
+    let bleed = options.bleed_pt();
+
+    (
+        pos_x + inset - bleed,
+        pos_y + inset - bleed,
+        CARD_WIDTH - (2.0 * inset) + (2.0 * bleed),
+        CARD_HEIGHT - (2.0 * inset) + (2.0 * bleed),
+    )
 }
 
 fn calculate_margin_cutlines(options: &PdfOptions) -> Vec<Path> {
@@ -524,5 +612,266 @@ mod tests {
             false,
         );
         assert_eq!(thin.capacity(), thick.capacity());
+    }
+
+    fn layout_opts(
+        cut_lines: CutLines,
+        page_size: PageSize,
+        print_layout: PrintLayout,
+        thickness: f32,
+    ) -> PdfOptions {
+        PdfOptions {
+            page_size,
+            cut_lines,
+            print_layout,
+            cut_line_thickness: thickness,
+            upscale: false,
+        }
+    }
+
+    fn bleed_opts(cut_lines: CutLines, page_size: PageSize, thickness: f32) -> PdfOptions {
+        layout_opts(cut_lines, page_size, PrintLayout::Bleed, thickness)
+    }
+
+    #[test]
+    fn only_the_bleed_layout_bleeds() {
+        for layout in [
+            PrintLayout::EdgeToEdge,
+            PrintLayout::Gap,
+            PrintLayout::SmallMargin,
+            PrintLayout::LargeMargin,
+        ] {
+            let o = opts(CutLines::Margins, layout, DEFAULT_CUT_LINE_THICKNESS, false);
+            assert_eq!(o.bleed_pt(), 0.0, "{:?} should not bleed", layout);
+            assert_eq!(o.bleed_ratio(), 0.0);
+        }
+        assert!(
+            bleed_opts(
+                CutLines::Margins,
+                PageSize::Letter,
+                DEFAULT_CUT_LINE_THICKNESS
+            )
+            .bleed_pt()
+                > 0.0
+        );
+    }
+
+    #[test]
+    fn bleed_never_costs_a_row_or_column() {
+        for page_size in [PageSize::Letter, PageSize::A4, PageSize::Custom(5.0, 7.0)] {
+            for cut_lines in [CutLines::None, CutLines::Margins, CutLines::FullPage] {
+                for thickness in [MIN_CUT_LINE_THICKNESS, DEFAULT_CUT_LINE_THICKNESS, 2.0] {
+                    let bled = bleed_opts(cut_lines, page_size, thickness);
+                    let plain =
+                        layout_opts(cut_lines, page_size, PrintLayout::EdgeToEdge, thickness);
+
+                    assert_eq!(
+                        bled.capacity(),
+                        plain.capacity(),
+                        "{:?} {:?} t={} changed the grid",
+                        page_size,
+                        cut_lines,
+                        thickness,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn no_ink_falls_outside_the_minimum_margin() {
+        // The grid plus its outer ring of bleed has to sit inside the reserve.
+        for page_size in [PageSize::Letter, PageSize::A4] {
+            for cut_lines in [CutLines::None, CutLines::Margins, CutLines::FullPage] {
+                let o = bleed_opts(cut_lines, page_size, DEFAULT_CUT_LINE_THICKNESS);
+                let (rows, cols) = o.capacity();
+                let (left_margin, top_margin) = o.margins();
+                let b = o.bleed_pt();
+                let gap = o.effective_gap();
+                let (page_w, page_h) = page_size.dimensions();
+
+                let ink_left = left_margin - b;
+                let ink_right =
+                    left_margin + cols as f32 * CARD_WIDTH + (cols - 1) as f32 * gap + b;
+                let ink_top = top_margin - b;
+                let ink_bottom =
+                    top_margin + rows as f32 * CARD_HEIGHT + (rows - 1) as f32 * gap + b;
+
+                assert!(ink_left >= MINIMUM_MARGIN - 0.01, "left {}", ink_left);
+                assert!(ink_top >= MINIMUM_MARGIN - 0.01, "top {}", ink_top);
+                assert!(
+                    ink_right <= page_w - MINIMUM_MARGIN + 0.01,
+                    "right {}",
+                    ink_right
+                );
+                assert!(
+                    ink_bottom <= page_h - MINIMUM_MARGIN + 0.01,
+                    "bottom {}",
+                    ink_bottom
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn bleed_is_capped_at_the_target_and_pinned_per_page() {
+        let letter = bleed_opts(
+            CutLines::Margins,
+            PageSize::Letter,
+            DEFAULT_CUT_LINE_THICKNESS,
+        );
+        let a4 = bleed_opts(CutLines::Margins, PageSize::A4, DEFAULT_CUT_LINE_THICKNESS);
+
+        // Letter is the tight case: 3 rows need 747.27pt of the 756pt printable
+        // height, leaving 8.73pt to split over six bleed edges.
+        assert!(
+            (letter.bleed_mm() - 0.51).abs() < 0.01,
+            "letter {}mm",
+            letter.bleed_mm()
+        );
+        // A4 has room for the whole target.
+        assert!(
+            (a4.bleed_mm() - PDF_BLEED_MM).abs() < 0.001,
+            "a4 {}mm",
+            a4.bleed_mm()
+        );
+
+        assert_eq!(letter.capacity(), (3, 3));
+        assert_eq!(a4.capacity(), (3, 3));
+    }
+
+    #[test]
+    fn the_gap_is_exactly_two_bleeds() {
+        // The two neighbours each fill their own half, leaving no white between.
+        let o = bleed_opts(
+            CutLines::Margins,
+            PageSize::Letter,
+            DEFAULT_CUT_LINE_THICKNESS,
+        );
+        assert!((o.effective_gap() - 2.0 * o.bleed_pt()).abs() < 0.001);
+    }
+
+    #[test]
+    fn margin_cut_marks_pair_up_on_the_card_edges() {
+        // Edge to edge, neighbouring card edges coincide and there is one mark per
+        // boundary. Under bleed they are 2 * bleed apart, so interior boundaries
+        // get two, exactly as they do under the gap layout.
+        let plain = opts(
+            CutLines::Margins,
+            PrintLayout::EdgeToEdge,
+            DEFAULT_CUT_LINE_THICKNESS,
+            false,
+        );
+        let bled = bleed_opts(
+            CutLines::Margins,
+            PageSize::Letter,
+            DEFAULT_CUT_LINE_THICKNESS,
+        );
+
+        let (rows, cols) = bled.capacity();
+        // Column boundaries are marked from the top and the bottom, row boundaries
+        // from the left and the right, so each interior boundary gains two marks.
+        let interior = (cols - 1) + (rows - 1);
+        assert_eq!(
+            calculate_margin_cutlines(&bled).len(),
+            calculate_margin_cutlines(&plain).len() + 2 * interior
+        );
+
+        // And the pair straddles the boundary at the two card edges, 2 * bleed apart.
+        let (left_margin, _) = bled.margins();
+        let gap = bled.effective_gap();
+        let first_card_right = left_margin + CARD_WIDTH;
+        let second_card_left = left_margin + CARD_WIDTH + gap;
+        assert!((second_card_left - first_card_right - 2.0 * bled.bleed_pt()).abs() < 0.001);
+    }
+
+    #[test]
+    fn full_page_lines_land_on_the_bleed_edges() {
+        let o = bleed_opts(
+            CutLines::Margins,
+            PageSize::Letter,
+            DEFAULT_CUT_LINE_THICKNESS,
+        );
+        let (left_margin, _) = o.margins();
+        let gap = o.effective_gap();
+        let b = o.bleed_pt();
+
+        // One line per boundary, unchanged by bleed.
+        let plain = opts(
+            CutLines::FullPage,
+            PrintLayout::EdgeToEdge,
+            DEFAULT_CUT_LINE_THICKNESS,
+            false,
+        );
+        assert_eq!(
+            calculate_full_page_cutlines(&o).len(),
+            calculate_full_page_cutlines(&plain).len()
+        );
+
+        // i = 0 sits on the outer edge of the first column's bleed.
+        let outer = left_margin + (0.0 * CARD_WIDTH) - (0.5 * gap);
+        assert!((outer - (left_margin - b)).abs() < 0.001, "{}", outer);
+
+        // i = 1 sits where card 0's bleed ends and card 1's begins.
+        let interior = left_margin + CARD_WIDTH + (0.5 * gap);
+        assert!(
+            (interior - (left_margin + CARD_WIDTH + b)).abs() < 0.001,
+            "{}",
+            interior
+        );
+    }
+
+    #[test]
+    fn neighbouring_images_meet_exactly() {
+        // The whole point of the layout: card 0's image ends where card 1's begins,
+        // so the strip between two cards is bleed all the way across with no seam
+        // and no overlap.
+        let o = bleed_opts(
+            CutLines::Margins,
+            PageSize::Letter,
+            DEFAULT_CUT_LINE_THICKNESS,
+        );
+        let (_, cols) = o.capacity();
+
+        let (x0, _, w0, _) = calculate_draw_rect(0, &o);
+        let (x1, ..) = calculate_draw_rect(1, &o);
+        assert!((x0 + w0 - x1).abs() < 0.001, "{} vs {}", x0 + w0, x1);
+
+        let (_, y0, _, h0) = calculate_draw_rect(0, &o);
+        let (_, y_next, ..) = calculate_draw_rect(cols, &o);
+        assert!(
+            (y0 + h0 - y_next).abs() < 0.001,
+            "{} vs {}",
+            y0 + h0,
+            y_next
+        );
+
+        // And the card art still sits `bleed` inside the image it is drawn in.
+        let (pos_x, _) = calculate_card_position(0, &o);
+        assert!((pos_x - x0 - o.bleed_pt()).abs() < 0.001);
+    }
+
+    #[test]
+    fn non_bleed_layouts_draw_the_card_rect_unchanged() {
+        // Nothing about the existing layouts moves.
+        for layout in [
+            PrintLayout::EdgeToEdge,
+            PrintLayout::Gap,
+            PrintLayout::SmallMargin,
+            PrintLayout::LargeMargin,
+        ] {
+            let o = opts(CutLines::Margins, layout, DEFAULT_CUT_LINE_THICKNESS, false);
+            let (pos_x, pos_y) = calculate_card_position(0, &o);
+            let inset = layout.inset_points();
+            let (x, y, w, h) = calculate_draw_rect(0, &o);
+
+            assert_eq!((x, y), (pos_x + inset, pos_y + inset), "{:?}", layout);
+            assert_eq!(
+                (w, h),
+                (CARD_WIDTH - 2.0 * inset, CARD_HEIGHT - 2.0 * inset),
+                "{:?}",
+                layout
+            );
+        }
     }
 }

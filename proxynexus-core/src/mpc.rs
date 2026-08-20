@@ -169,7 +169,7 @@ async fn process_side<W: Write + Seek>(
             let bleed_image = if req.has_bleed {
                 img.to_rgb8()
             } else {
-                print_prep::add_bleed_border(&img)
+                print_prep::add_mpc_bleed_border(&img)
             };
 
             current_cache = Some(CachedImage {

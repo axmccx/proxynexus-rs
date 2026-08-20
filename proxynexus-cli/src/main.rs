@@ -129,7 +129,11 @@ enum GenerateType {
         #[arg(long, default_value_t = DEFAULT_CUT_LINE_THICKNESS)]
         cut_line_thickness: f32,
 
-        #[arg(long, default_value = "edge-to-edge")]
+        #[arg(
+            long,
+            default_value = "edge-to-edge",
+            help = "edge-to-edge, gap, small-margin, large-margin, or bleed"
+        )]
         print_layout: String,
 
         #[arg(long)]
@@ -452,20 +456,30 @@ async fn handle_generate(
 
             let printings = get_printings_from_source(db, game, source).await?;
 
-            let pdf_bytes = generate_pdf(
-                printings,
-                image_provider,
-                PdfOptions {
-                    page_size: page_size_enum,
-                    cut_lines: cut_lines_enum,
-                    print_layout: print_layout_enum,
-                    cut_line_thickness,
-                    upscale,
-                },
-                None,
-            )
-            .await
-            .context("Failed to generate PDF")?;
+            let pdf_options = PdfOptions {
+                page_size: page_size_enum,
+                cut_lines: cut_lines_enum,
+                print_layout: print_layout_enum,
+                cut_line_thickness,
+                upscale,
+            };
+
+            let bleed_mm = pdf_options.bleed_mm();
+            if bleed_mm > 0.0 {
+                let target = proxynexus_core::pdf::PDF_BLEED_MM;
+                if bleed_mm < target {
+                    println!(
+                        "Bleed: {:.2}mm per side, capped from {:.2}mm to keep the page's card grid.",
+                        bleed_mm, target
+                    );
+                } else {
+                    println!("Bleed: {:.2}mm per side.", bleed_mm);
+                }
+            }
+
+            let pdf_bytes = generate_pdf(printings, image_provider, pdf_options, None)
+                .await
+                .context("Failed to generate PDF")?;
 
             std::fs::write(&output_path, pdf_bytes)
                 .with_context(|| format!("Failed to write PDF to {:?}", output_path))?;
@@ -527,7 +541,7 @@ async fn handle_generate(
                     if (ext == "png" || ext == "jpg" || ext == "jpeg")
                         && let Ok(img) = image::open(&path)
                     {
-                        let bordered = proxynexus_core::print_prep::add_bleed_border(&img);
+                        let bordered = proxynexus_core::print_prep::add_mpc_bleed_border(&img);
                         if let Ok(encoded) = proxynexus_core::print_prep::encode_image(
                             bordered,
                             image::ImageFormat::Png,
@@ -611,8 +625,9 @@ fn parse_print_layout(layout: &str) -> anyhow::Result<proxynexus_core::pdf::Prin
         "small-margin" => Ok(proxynexus_core::pdf::PrintLayout::SmallMargin),
         "large-margin" => Ok(proxynexus_core::pdf::PrintLayout::LargeMargin),
         "gap" => Ok(proxynexus_core::pdf::PrintLayout::Gap),
+        "bleed" => Ok(proxynexus_core::pdf::PrintLayout::Bleed),
         _ => Err(anyhow!(
-            "Unsupported print layout: '{}'. Options are 'edge-to-edge', 'small-margin', 'large-margin', 'gap'",
+            "Unsupported print layout: '{}'. Options are 'edge-to-edge', 'small-margin', 'large-margin', 'gap', 'bleed'",
             layout
         )),
     }
