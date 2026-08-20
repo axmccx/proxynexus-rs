@@ -190,15 +190,15 @@ def pick_card(number, title, by_number, by_title):
     """Resolve a manifest reference to a catalog card.
 
     Position is the primary key: the manifest's numbers come off the printed
-    cards and agree with Hall of Beorn's `Number` for every numbered card in the
-    archive, including the ones whose titles disagree. Hall of Beorn stores
+    cards and match Hall of Beorn's `Number` for every numbered card in the
+    archive, including the ones whose titles differ. Hall of Beorn stores
     "Writing Tentacle", "Gobline Trapper", "Swarming Mosquitos" and two more as
     printed typos, and every Nightmare Mode card carries a " Nightmare" suffix
     the manifest omits.
 
-    Title wins only when it resolves unambiguously and position disagrees, for
-    the opposite error: Hall of Beorn has Intruders in Chetwood #5 and #6
-    transposed, and the scans read 5 = Outskirts of Archet, 6 = Greenway Path.
+    Title overrides position only when it resolves unambiguously to a different
+    card, for the opposite error: Hall of Beorn has Intruders in Chetwood #5 and
+    #6 transposed, and the scans read 5 = Outskirts of Archet, 6 = Greenway Path.
 
     Returns (card, how) where how is "position", "title" or "position-mismatch".
     """

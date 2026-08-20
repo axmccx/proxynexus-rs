@@ -18,8 +18,8 @@ Scans are copied into output folders. The sources are never modified.
 `rename_alep.py` writes `lotrlcg-alep/`.
 
 `rename_nightmare.py` and `rename_alep.py` both load `rename.py` for the helpers they share (`log`,
-`fetch_json`, `clean_for_match`, `normalize_title`, `load_catalog`, `find_orphaned_backs`), so
-neither is standalone.
+`set_log_file`, `fetch_json`, `clean_for_match`, `normalize_title`, `load_catalog`,
+`find_orphaned_backs`), so neither is standalone.
 
 ## Getting the scans
 
@@ -103,7 +103,7 @@ uv run rename_nightmare.py "~/Downloads/LOTR LCG Nightmare Cards - Remastered" -
 uv run rename_nightmare.py "~/Downloads/LOTR LCG Nightmare Cards - Remastered" -o ~/Pictures/lotr
 
 uv run rename_alep.py ~/Downloads/GenericPNG --dry-run
-uv run rename_alep.py ~/Downloads/GenericPNG -o ~/Pictures/lotr/lotrlcg-alep
+uv run rename_alep.py ~/Downloads/GenericPNG -o ~/Pictures/lotr
 ```
 
 The first argument is the source folder, `-o` is where the output folder is created, defaulting to
@@ -129,8 +129,8 @@ every non-alphanumeric character replaced by `_`. The slug already carries a pac
 **Packs** come from the folder the scan sits in, resolved through a cascade: the folder name, then
 the same name with `Nightmare` appended when `Nightmare` appears anywhere in the path, then the
 parent folder, then the grandparent, then a last-resort Nightmare guess. This looks like defensive
-dead code and is not — the archives disagree about how deeply cards are nested, and each step covers
-a real case. Folder names carry a leading index (`03 - Khazad-dûm`) which is stripped first.
+dead code and is not — the archives nest cards at different depths, and each step covers a real
+case. Folder names carry a leading index (`03 - Khazad-dûm`) which is stripped first.
 `rename_nightmare.py` resolves the scenario folder, then its parent for the sagas, which nest one
 level deeper.
 
@@ -147,16 +147,20 @@ rest. The scoping matters: the same wording is often correct in one pack and wro
 global replace silently loses a card. Both tables map filenames onto Hall of Beorn's spelling, which
 means several entries map a *correctly* spelled filename onto an upstream typo.
 
-**`rename_nightmare.py` matches on position and needs neither.** Each scenario folder's
+**`rename_nightmare.py` needs no typo tables; it matches on position.** Each scenario folder's
 `Card list.txt` lists every card as `Qty | Type | Front | Back`, and the leading number is the one
-printed on the card, which agrees with Hall of Beorn's `Number`. That resolves the cards Hall of
-Beorn stores misspelled — `Writing Tentacle`, `Gobline Trapper`, `Swarming Mosquitos`,
+printed on the card, which matches Hall of Beorn's `Number`. Position therefore resolves the cards
+Hall of Beorn stores misspelled — `Writing Tentacle`, `Gobline Trapper`, `Swarming Mosquitos`,
 `Lost Soul of L≤rien`, `Rob and Bob` — along with the Nightmare Mode cards, whose catalog titles
-carry a ` Nightmare` suffix the manifest omits. Title wins only where it disagrees *and* resolves
-unambiguously, which is what puts Intruders in Chetwood #5 and #6 the right way round: Hall of Beorn
-has those two transposed, and the printed cards read 5 = Outskirts of Archet, 6 = Greenway Path. A
-title that collides inside its pack is dropped from the lookup, so Flight from Moria's three cards
-titled "Search for an Exit" stay on position. Both paths log an `[INFO]` line.
+carry a ` Nightmare` suffix the manifest omits.
+
+Title overrides position only when the two resolve to different cards *and* the title is unique
+within its pack. That is what puts Intruders in Chetwood #5 and #6 in the printed order: Hall of
+Beorn has the two transposed, and the printed cards read 5 = Outskirts of Archet, 6 = Greenway Path.
+A title that collides inside its pack is dropped from the lookup, so Flight from Moria's three cards
+titled "Search for an Exit" stay on position. A title override that displaces a matching position
+logs an `[INFO]` line; where position and title resolve differently but the title is ambiguous or
+absent, position is kept and nothing is logged.
 
 **Back faces come from the manifest** in `rename_nightmare.py`, not from the filename: `Back` is
 either `encounter back`, meaning single-sided, or the file to write as `~back`. Where that file is
