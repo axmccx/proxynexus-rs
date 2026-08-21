@@ -132,7 +132,7 @@ enum GenerateType {
         #[arg(
             long,
             default_value = "edge-to-edge",
-            help = "edge-to-edge, gap, small-margin, large-margin, or bleed"
+            help = "edge-to-edge, gap, margin, or bleed"
         )]
         print_layout: String,
 
@@ -622,12 +622,11 @@ fn parse_cut_lines(cut_lines: Option<&str>) -> anyhow::Result<CutLines> {
 fn parse_print_layout(layout: &str) -> anyhow::Result<proxynexus_core::pdf::PrintLayout> {
     match layout {
         "edge-to-edge" => Ok(proxynexus_core::pdf::PrintLayout::EdgeToEdge),
-        "small-margin" => Ok(proxynexus_core::pdf::PrintLayout::SmallMargin),
-        "large-margin" => Ok(proxynexus_core::pdf::PrintLayout::LargeMargin),
+        "margin" => Ok(proxynexus_core::pdf::PrintLayout::Margin),
         "gap" => Ok(proxynexus_core::pdf::PrintLayout::Gap),
         "bleed" => Ok(proxynexus_core::pdf::PrintLayout::Bleed),
         _ => Err(anyhow!(
-            "Unsupported print layout: '{}'. Options are 'edge-to-edge', 'small-margin', 'large-margin', 'gap', 'bleed'",
+            "Unsupported print layout: '{}'. Options are 'edge-to-edge', 'margin', 'gap', 'bleed'",
             layout
         )),
     }

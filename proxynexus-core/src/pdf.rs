@@ -65,8 +65,7 @@ pub enum PrintLayout {
     #[default]
     EdgeToEdge,
     Gap,
-    SmallMargin,
-    LargeMargin,
+    Margin,
     Bleed,
 }
 
@@ -80,8 +79,7 @@ impl PrintLayout {
 
     fn inset_points(&self) -> f32 {
         match self {
-            PrintLayout::SmallMargin => 1.0 * MM_TO_POINTS,
-            PrintLayout::LargeMargin => 2.0 * MM_TO_POINTS,
+            PrintLayout::Margin => 1.0 * MM_TO_POINTS,
             _ => 0.0,
         }
     }
@@ -638,8 +636,7 @@ mod tests {
         for layout in [
             PrintLayout::EdgeToEdge,
             PrintLayout::Gap,
-            PrintLayout::SmallMargin,
-            PrintLayout::LargeMargin,
+            PrintLayout::Margin,
         ] {
             let o = opts(CutLines::Margins, layout, DEFAULT_CUT_LINE_THICKNESS, false);
             assert_eq!(o.bleed_pt(), 0.0, "{:?} should not bleed", layout);
@@ -857,8 +854,7 @@ mod tests {
         for layout in [
             PrintLayout::EdgeToEdge,
             PrintLayout::Gap,
-            PrintLayout::SmallMargin,
-            PrintLayout::LargeMargin,
+            PrintLayout::Margin,
         ] {
             let o = opts(CutLines::Margins, layout, DEFAULT_CUT_LINE_THICKNESS, false);
             let (pos_x, pos_y) = calculate_card_position(0, &o);

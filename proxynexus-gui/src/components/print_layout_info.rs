@@ -42,12 +42,12 @@ pub fn PrintLayoutInfo(props: PrintLayoutInfoProps) -> Element {
                         p { class: "text-gray-600", "Adds a 1/8\" (0.125\") gap between cards, while preserving their original size." }
                     }
                     div {
-                        h4 { class: "font-semibold", "S Margin (Small Margin)" }
+                        h4 { class: "font-semibold", "Margin" }
                         p { class: "text-gray-600", "Adds a 1mm white border around each card, scaling down the card proportionally." }
                     }
                     div {
-                        h4 { class: "font-semibold", "L Margin (Large Margin)" }
-                        p { class: "text-gray-600", "Adds a 2mm white border around each card, scaling down the card proportionally." }
+                        h4 { class: "font-semibold", "Bleed" }
+                        p { class: "text-gray-600", "Adds a bleed border around each card, up to 1mm, while preserving their original size." }
                     }
                 }
             }

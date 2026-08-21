@@ -340,8 +340,8 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                         options: vec![
                             (PrintLayout::EdgeToEdge, "Edge"),
                             (PrintLayout::Gap, "Gap"),
-                            (PrintLayout::SmallMargin, "S Margin"),
-                            (PrintLayout::LargeMargin, "L Margin"),
+                            (PrintLayout::Margin, "Margin"),
+                            (PrintLayout::Bleed, "Bleed"),
                         ],
                         on_change: move |v| print_layout.set(v)
                     }
