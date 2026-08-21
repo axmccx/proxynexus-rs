@@ -218,9 +218,18 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                             set_name.set(evt.value());
                             source_state.set(ActiveSource::SetName(evt.value()));
                         },
-                        option { value: "", disabled: true, "Select a set..." }
+                        option {
+                            value: "",
+                            disabled: true,
+                            selected: set_name().is_empty(),
+                            "Select a set..."
+                        }
                         for (name, _code, _meta) in sorted_sets() {
-                            option { value: "{name}", "{name}" }
+                            option {
+                                value: "{name}",
+                                selected: name == set_name(),
+                                "{name}"
+                            }
                         }
                     }
                 },
