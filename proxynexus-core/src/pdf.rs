@@ -28,6 +28,9 @@ const CARD_HEIGHT: f32 = 249.09; // 8.788 cm in points
 
 const MINIMUM_MARGIN: f32 = 0.25 * POINTS_PER_INCH;
 
+const LAYOUT_GAP: f32 = 0.125 * POINTS_PER_INCH; // Gap layout, 9 points
+const LAYOUT_INSET: f32 = 1.0 * MM_TO_POINTS; // Margin layout, ~2.83 points
+
 pub const MIN_CUT_LINE_THICKNESS: f32 = 0.1;
 pub const MAX_CUT_LINE_THICKNESS: f32 = 10.0;
 pub const DEFAULT_CUT_LINE_THICKNESS: f32 = 0.5;
@@ -69,22 +72,6 @@ pub enum PrintLayout {
     Bleed,
 }
 
-impl PrintLayout {
-    fn gap_points(&self) -> f32 {
-        match self {
-            PrintLayout::Gap => 0.125 * POINTS_PER_INCH,
-            _ => 0.0,
-        }
-    }
-
-    fn inset_points(&self) -> f32 {
-        match self {
-            PrintLayout::Margin => 1.0 * MM_TO_POINTS,
-            _ => 0.0,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct PdfOptions {
     pub page_size: PageSize,
@@ -108,10 +95,10 @@ impl Default for PdfOptions {
 
 impl PdfOptions {
     fn effective_gap(&self) -> f32 {
-        // TODO can we clean this up later?
         let base = match self.print_layout {
+            PrintLayout::Gap => LAYOUT_GAP,
             PrintLayout::Bleed => 2.0 * self.bleed_pt(),
-            layout => layout.gap_points(),
+            PrintLayout::EdgeToEdge | PrintLayout::Margin => 0.0,
         };
         match self.cut_lines {
             CutLines::FullPage => base.max(self.cut_line_thickness),
@@ -346,7 +333,10 @@ fn calculate_card_position(card_index: usize, options: &PdfOptions) -> (f32, f32
 
 fn calculate_draw_rect(card_index: usize, options: &PdfOptions) -> (f32, f32, f32, f32) {
     let (pos_x, pos_y) = calculate_card_position(card_index, options);
-    let inset = options.print_layout.inset_points();
+    let inset = match options.print_layout {
+        PrintLayout::Margin => LAYOUT_INSET,
+        PrintLayout::EdgeToEdge | PrintLayout::Gap | PrintLayout::Bleed => 0.0,
+    };
     let bleed = options.bleed_pt();
 
     (
@@ -525,7 +515,7 @@ mod tests {
 
     #[test]
     fn effective_gap_ignores_thickness_for_none_and_margins() {
-        let base = PrintLayout::EdgeToEdge.gap_points();
+        let base = 0.0;
         assert_eq!(
             opts(
                 CutLines::None,
@@ -557,7 +547,7 @@ mod tests {
     #[test]
     fn effective_gap_preserves_base_for_full_page_when_base_exceeds_thickness() {
         // Gap layout reserves 0.125in (9pt) between cards; a 0.5pt stroke shouldn't shrink it.
-        let base = PrintLayout::Gap.gap_points();
+        let base = LAYOUT_GAP;
         assert!(base > DEFAULT_CUT_LINE_THICKNESS);
         assert_eq!(
             opts(
@@ -851,14 +841,13 @@ mod tests {
     #[test]
     fn non_bleed_layouts_draw_the_card_rect_unchanged() {
         // Nothing about the existing layouts moves.
-        for layout in [
-            PrintLayout::EdgeToEdge,
-            PrintLayout::Gap,
-            PrintLayout::Margin,
+        for (layout, inset) in [
+            (PrintLayout::EdgeToEdge, 0.0),
+            (PrintLayout::Gap, 0.0),
+            (PrintLayout::Margin, LAYOUT_INSET),
         ] {
             let o = opts(CutLines::Margins, layout, DEFAULT_CUT_LINE_THICKNESS, false);
             let (pos_x, pos_y) = calculate_card_position(0, &o);
-            let inset = layout.inset_points();
             let (x, y, w, h) = calculate_draw_rect(0, &o);
 
             assert_eq!((x, y), (pos_x + inset, pos_y + inset), "{:?}", layout);
