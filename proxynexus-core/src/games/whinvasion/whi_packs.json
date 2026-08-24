@@ -1,0 +1,338 @@
+[
+  {
+    "code": "core-set",
+    "name": "Core Set",
+    "position": 1,
+    "total_cards": 219,
+    "total_unique": 131,
+    "available": "2009-09-01"
+  },
+  {
+    "code": "the-skavenblight-threat",
+    "name": "The Skavenblight Threat",
+    "position": 2,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2009-11-01"
+  },
+  {
+    "code": "path-of-the-zealot",
+    "name": "Path of the Zealot",
+    "position": 3,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2009-12-01"
+  },
+  {
+    "code": "tooth-and-claw",
+    "name": "Tooth and Claw",
+    "position": 4,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2010-02-01"
+  },
+  {
+    "code": "assault-on-ulthuan",
+    "name": "Assault on Ulthuan",
+    "position": 5,
+    "total_cards": 108,
+    "total_unique": 58,
+    "available": "2010-03-01"
+  },
+  {
+    "code": "the-deathmaster-s-dance",
+    "name": "The Deathmaster's Dance",
+    "position": 6,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2010-03-01"
+  },
+  {
+    "code": "warpstone-chronicles",
+    "name": "Warpstone Chronicles",
+    "position": 7,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2010-04-01"
+  },
+  {
+    "code": "arcane-fire",
+    "name": "Arcane Fire",
+    "position": 8,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2010-05-01"
+  },
+  {
+    "code": "the-burning-of-derricksburg",
+    "name": "The Burning of Derricksburg",
+    "position": 9,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-06-01"
+  },
+  {
+    "code": "the-fall-of-karak-grimaz",
+    "name": "The Fall of Karak Grimaz",
+    "position": 10,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-07-01"
+  },
+  {
+    "code": "the-silent-forge",
+    "name": "The Silent Forge",
+    "position": 11,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-09-01"
+  },
+  {
+    "code": "redemption-of-a-mage",
+    "name": "Redemption of a Mage",
+    "position": 12,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-10-01"
+  },
+  {
+    "code": "march-of-the-damned",
+    "name": "March of the Damned",
+    "position": 13,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2010-10-01"
+  },
+  {
+    "code": "the-fourth-waystone",
+    "name": "The Fourth Waystone",
+    "position": 14,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-11-01"
+  },
+  {
+    "code": "bleeding-sun",
+    "name": "Bleeding Sun",
+    "position": 15,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-12-01"
+  },
+  {
+    "code": "omens-of-ruin",
+    "name": "Omens of Ruin",
+    "position": 16,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-03-01"
+  },
+  {
+    "code": "chaos-moon",
+    "name": "Chaos Moon",
+    "position": 17,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-03-01"
+  },
+  {
+    "code": "the-twin-tailed-comet",
+    "name": "The Twin Tailed Comet",
+    "position": 18,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-04-01"
+  },
+  {
+    "code": "signs-in-the-stars",
+    "name": "Signs in the Stars",
+    "position": 19,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-06-01"
+  },
+  {
+    "code": "legends",
+    "name": "Legends",
+    "position": 20,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2011-06-01"
+  },
+  {
+    "code": "the-eclipse-of-hope",
+    "name": "The Eclipse of Hope",
+    "position": 21,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-07-01"
+  },
+  {
+    "code": "fiery-dawn",
+    "name": "Fiery Dawn",
+    "position": 22,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-08-01"
+  },
+  {
+    "code": "the-inevitable-city",
+    "name": "The Inevitable City",
+    "position": 23,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-09-01"
+  },
+  {
+    "code": "realm-of-the-phoenix-king",
+    "name": "Realm of the Phoenix King",
+    "position": 24,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-11-01"
+  },
+  {
+    "code": "the-iron-rock",
+    "name": "The Iron Rock",
+    "position": 25,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-11-01"
+  },
+  {
+    "code": "karaz-a-karak",
+    "name": "Karaz a Karak",
+    "position": 26,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-12-01"
+  },
+  {
+    "code": "city-of-winter",
+    "name": "City of Winter",
+    "position": 27,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-01-01"
+  },
+  {
+    "code": "the-imperial-throne",
+    "name": "The Imperial Throne",
+    "position": 28,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-02-01"
+  },
+  {
+    "code": "rising-dawn",
+    "name": "Rising Dawn",
+    "position": 29,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-04-01"
+  },
+  {
+    "code": "fragments-of-power",
+    "name": "Fragments of Power",
+    "position": 30,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-06-01"
+  },
+  {
+    "code": "the-accursed-dead",
+    "name": "The Accursed Dead",
+    "position": 31,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-06-01"
+  },
+  {
+    "code": "vessel-of-the-winds",
+    "name": "Vessel of the Winds",
+    "position": 32,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-08-01"
+  },
+  {
+    "code": "portent-of-doom",
+    "name": "Portent of Doom",
+    "position": 33,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-09-01"
+  },
+  {
+    "code": "shield-of-the-gods",
+    "name": "Shield of the Gods",
+    "position": 34,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-10-01"
+  },
+  {
+    "code": "days-of-blood",
+    "name": "Days of Blood",
+    "position": 35,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-11-01"
+  },
+  {
+    "code": "oaths-of-vengeance",
+    "name": "Oaths of Vengeance",
+    "position": 36,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-12-01"
+  },
+  {
+    "code": "battle-for-the-old-world",
+    "name": "Battle for the Old World",
+    "position": 37,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-01-01"
+  },
+  {
+    "code": "glory-of-days-past",
+    "name": "Glory of Days Past",
+    "position": 38,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-02-01"
+  },
+  {
+    "code": "the-ruinous-hordes",
+    "name": "The Ruinous Hordes",
+    "position": 39,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-03-01"
+  },
+  {
+    "code": "faith-and-steel",
+    "name": "Faith and Steel",
+    "position": 40,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-04-01"
+  },
+  {
+    "code": "cataclysm",
+    "name": "Cataclysm",
+    "position": 41,
+    "total_cards": 165,
+    "total_unique": 59,
+    "available": "2013-07-09"
+  },
+  {
+    "code": "hidden-kingdoms",
+    "name": "Hidden Kingdoms",
+    "position": 42,
+    "total_cards": 168,
+    "total_unique": 55,
+    "available": "2013-11-26"
+  }
+]
