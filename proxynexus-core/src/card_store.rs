@@ -655,8 +655,6 @@ impl<'a> CardStore<'a> {
         Ok(resolved_printings)
     }
 
-    /// Collapses a part's rows into one part. A part has at most two: the
-    /// scan with a bleed border and the scan without.
     fn assemble_part(name: &str, rows: Vec<AvailablePrintingRow>) -> PrintingPart {
         let mut part = PrintingPart {
             name: name.to_string(),
@@ -699,8 +697,6 @@ impl<'a> CardStore<'a> {
             let side = first_row.side.clone();
             let date_release = first_row.date_release.clone();
 
-            // One row per image file, so a part scanned both with and without a
-            // bleed border arrives as two rows.
             let mut by_part: HashMap<String, Vec<AvailablePrintingRow>> = HashMap::new();
             for row in rows {
                 by_part.entry(row.part.clone()).or_default().push(row);

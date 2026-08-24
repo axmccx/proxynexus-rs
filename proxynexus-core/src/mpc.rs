@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::image_provider::ImageProvider;
-use crate::models::Printing;
+use crate::models::{BleedPreference, Printing};
 use crate::print_prep;
 use async_trait::async_trait;
 use image::ImageFormat;
@@ -114,7 +114,7 @@ async fn process_side<W: Write + Seek>(
 
         let parts = printing.parts.clone();
 
-        if let Some((image_key, has_bleed)) = printing.front.mpc_image() {
+        if let Some((image_key, has_bleed)) = printing.front.image(BleedPreference::Bleed) {
             requests.push(ImageRequest {
                 printing: printing.clone(),
                 part_name: "front".to_string(),
@@ -125,7 +125,7 @@ async fn process_side<W: Write + Seek>(
         }
 
         for part in parts {
-            if let Some((image_key, has_bleed)) = part.mpc_image() {
+            if let Some((image_key, has_bleed)) = part.image(BleedPreference::Bleed) {
                 requests.push(ImageRequest {
                     printing: printing.clone(),
                     part_name: part.name,

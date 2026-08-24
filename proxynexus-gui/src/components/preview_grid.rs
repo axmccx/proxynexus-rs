@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use proxynexus_core::models::Printing;
+use proxynexus_core::models::{BleedPreference, Printing};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -96,7 +96,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                             div {
                                 class: "relative w-full h-full shadow-lg bg-gray-400 overflow-hidden flex items-center justify-center",
                                 {
-                                    match printing.front.pdf_image() {
+                                    match printing.front.image(BleedPreference::NoBleed) {
                                         Some((image_key, is_bleed)) => {
                                             let style = if is_bleed {
                                                 "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
@@ -131,7 +131,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                 div {
                                     class: "relative w-full h-full overflow-hidden shadow-lg bg-gray-400 flex items-center justify-center",
                                     {
-                                        match part.pdf_image() {
+                                        match part.image(BleedPreference::NoBleed) {
                                             Some((image_key, is_bleed)) => {
                                                 let style = if is_bleed {
                                                     "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"

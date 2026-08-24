@@ -1,6 +1,6 @@
 use crate::error::{ProxyNexusError, Result};
 use crate::image_provider::ImageProvider;
-use crate::models::Printing;
+use crate::models::{BleedPreference, Printing};
 use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
@@ -197,11 +197,19 @@ pub async fn generate_pdf(
     let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
     let mut processed_images: usize = 0;
 
+    let bleed_ratio = options.bleed_ratio();
+
+    let preferred = if bleed_ratio > 0.0 {
+        BleedPreference::Bleed
+    } else {
+        BleedPreference::NoBleed
+    };
+
     let mut image_requests: Vec<(String, bool)> = Vec::with_capacity(total_images);
     for p in &printings {
-        image_requests.extend(p.front.pdf_image());
+        image_requests.extend(p.front.image(preferred));
         for part in &p.parts {
-            image_requests.extend(part.pdf_image());
+            image_requests.extend(part.image(preferred));
         }
     }
 
@@ -211,7 +219,6 @@ pub async fn generate_pdf(
 
     let (max_rows, max_cols) = options.capacity();
     let max_cards_per_page = max_rows * max_cols;
-    let bleed_ratio = options.bleed_ratio();
 
     if bleed_ratio > 0.0 {
         info!(

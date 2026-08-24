@@ -10,6 +10,12 @@ pub struct Manifest {
     pub generated_date: String,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum BleedPreference {
+    Bleed,
+    NoBleed,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintingPart {
     pub name: String,
@@ -33,18 +39,14 @@ pub struct Printing {
 }
 
 impl PrintingPart {
-    pub fn mpc_image(&self) -> Option<(String, bool)> {
-        self.bleed_image_key
-            .clone()
-            .map(|key| (key, true))
-            .or_else(|| self.image_key.clone().map(|key| (key, false)))
-    }
+    pub fn image(&self, preferred: BleedPreference) -> Option<(String, bool)> {
+        let bleed = || self.bleed_image_key.clone().map(|key| (key, true));
+        let no_bleed = || self.image_key.clone().map(|key| (key, false));
 
-    pub fn pdf_image(&self) -> Option<(String, bool)> {
-        self.image_key
-            .clone()
-            .map(|key| (key, false))
-            .or_else(|| self.bleed_image_key.clone().map(|key| (key, true)))
+        match preferred {
+            BleedPreference::Bleed => bleed().or_else(no_bleed),
+            BleedPreference::NoBleed => no_bleed().or_else(bleed),
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use proxynexus_core::models::Printing;
+use proxynexus_core::models::{BleedPreference, Printing};
 use std::collections::HashSet;
 
 use super::build_image_url;
@@ -96,7 +96,7 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     }
                                 },
                                 {
-                                    let image = v.front.pdf_image();
+                                    let image = v.front.image(BleedPreference::NoBleed);
                                     let style = if matches!(image, Some((_, true))) {
                                         "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
                                     } else {
