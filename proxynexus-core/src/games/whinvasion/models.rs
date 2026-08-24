@@ -21,13 +21,9 @@ pub struct WhiPack {
     pub available: Option<String>,
 }
 
-/// A card from `whi_full.json` -- a single bulk file covering every card in
-/// every pack (unlike ArkhamDB/MarvelCDB's per-pack REST APIs), fetched once
-/// rather than per-pack. There isn't a "double-sided" concept here: unlike
-/// AHLCG/Marvel Champions, Warhammer Invasion has no investigator-style
-/// flip cards and no hero/alter-ego pairs -- confirmed against the actual
-/// collection (1133 cards, 1133 images, zero `~back` files), so each
-/// `WhiCard` maps 1:1 to one physical card with one generic back.
+/// A card from `whi_full.json` -- a single bulk file covering
+/// every card in every pack, fetched once rather than per-pack.
+/// Each `WhiCard` maps 1:1 to one physical card with one generic back.
 ///
 /// Example:
 /// ```json
@@ -80,6 +76,3 @@ where
         Some(s) => s.parse::<i64>().map(Some).map_err(serde::de::Error::custom),
     }
 }
-
-// There isn't currently a decklist source for Warhammer Invasion, so no
-// WhiDecklist type exists yet -- see api.rs's fetch_decklist_from_url.
