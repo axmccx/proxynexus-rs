@@ -199,9 +199,9 @@ pub async fn generate_pdf(
 
     let mut image_requests: Vec<(String, bool)> = Vec::with_capacity(total_images);
     for p in &printings {
-        image_requests.push(p.pdf_image());
+        image_requests.extend(p.front.pdf_image());
         for part in &p.parts {
-            image_requests.push(part.pdf_image());
+            image_requests.extend(part.pdf_image());
         }
     }
 

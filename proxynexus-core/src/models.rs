@@ -13,7 +13,7 @@ pub struct Manifest {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintingPart {
     pub name: String,
-    pub image_key: String,
+    pub image_key: Option<String>,
     pub bleed_image_key: Option<String>,
 }
 
@@ -23,8 +23,7 @@ pub struct Printing {
     pub card_title: String,
     pub is_official: bool,
     pub variant: Option<String>,
-    pub image_key: String,
-    pub bleed_image_key: Option<String>,
+    pub front: PrintingPart,
     pub parts: Vec<PrintingPart>,
     pub collection: String,
     pub side: String,
@@ -34,42 +33,22 @@ pub struct Printing {
 }
 
 impl PrintingPart {
-    pub fn mpc_image(&self) -> (String, bool) {
+    pub fn mpc_image(&self) -> Option<(String, bool)> {
         self.bleed_image_key
             .clone()
-            .map(|k| (k, true))
-            .unwrap_or_else(|| (self.image_key.clone(), false))
+            .map(|key| (key, true))
+            .or_else(|| self.image_key.clone().map(|key| (key, false)))
     }
 
-    pub fn pdf_image(&self) -> (String, bool) {
-        if !self.image_key.is_empty() {
-            (self.image_key.clone(), false)
-        } else if let Some(bleed) = &self.bleed_image_key {
-            (bleed.clone(), true)
-        } else {
-            (String::new(), false)
-        }
+    pub fn pdf_image(&self) -> Option<(String, bool)> {
+        self.image_key
+            .clone()
+            .map(|key| (key, false))
+            .or_else(|| self.bleed_image_key.clone().map(|key| (key, true)))
     }
 }
 
 impl Printing {
-    pub fn mpc_image(&self) -> (String, bool) {
-        self.bleed_image_key
-            .clone()
-            .map(|k| (k, true))
-            .unwrap_or_else(|| (self.image_key.clone(), false))
-    }
-
-    pub fn pdf_image(&self) -> (String, bool) {
-        if !self.image_key.is_empty() {
-            (self.image_key.clone(), false)
-        } else if let Some(bleed) = &self.bleed_image_key {
-            (bleed.clone(), true)
-        } else {
-            (String::new(), false)
-        }
-    }
-
     pub fn variant_key(&self) -> String {
         let display = self
             .pack_id
@@ -126,8 +105,11 @@ mod tests {
             card_title: "Gandalf".into(),
             is_official: true,
             variant: variant.map(|v| v.to_string()),
-            image_key: String::new(),
-            bleed_image_key: None,
+            front: PrintingPart {
+                name: "front".into(),
+                image_key: None,
+                bleed_image_key: None,
+            },
             parts: Vec::new(),
             collection: "enhanced".into(),
             side: "player".into(),

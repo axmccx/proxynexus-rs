@@ -96,8 +96,8 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     }
                                 },
                                 {
-                                    let (image_key, is_bleed) = v.pdf_image();
-                                    let style = if is_bleed {
+                                    let image = v.front.pdf_image();
+                                    let style = if matches!(image, Some((_, true))) {
                                         "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
                                     } else {
                                         "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
@@ -105,11 +105,13 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     rsx! {
                                         div {
                                             class: "w-full aspect-[2.5/3.5] overflow-hidden flex items-center justify-center",
-                                            img {
-                                                src: "{build_image_url(&image_key)}",
-                                                crossorigin: "anonymous",
-                                                style: "{style}",
-                                                alt: "{variant_label}",
+                                            if let Some((image_key, _)) = image {
+                                                img {
+                                                    src: "{build_image_url(&image_key)}",
+                                                    crossorigin: "anonymous",
+                                                    style: "{style}",
+                                                    alt: "{variant_label}",
+                                                }
                                             }
                                         }
                                     }

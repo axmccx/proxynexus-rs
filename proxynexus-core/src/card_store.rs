@@ -655,6 +655,26 @@ impl<'a> CardStore<'a> {
         Ok(resolved_printings)
     }
 
+    /// Collapses a part's rows into one part. A part has at most two: the
+    /// scan with a bleed border and the scan without.
+    fn assemble_part(name: &str, rows: Vec<AvailablePrintingRow>) -> PrintingPart {
+        let mut part = PrintingPart {
+            name: name.to_string(),
+            image_key: None,
+            bleed_image_key: None,
+        };
+
+        for row in rows {
+            if row.has_bleed {
+                part.bleed_image_key = Some(row.file_path);
+            } else {
+                part.image_key = Some(row.file_path);
+            }
+        }
+
+        part
+    }
+
     fn assemble_printings(rows: Vec<AvailablePrintingRow>) -> HashMap<String, Vec<Printing>> {
         let mut resolved_printings: HashMap<String, Vec<Printing>> = HashMap::new();
         let mut groups: HashMap<PrintingGroupKey, Vec<AvailablePrintingRow>> = HashMap::new();
@@ -673,48 +693,39 @@ impl<'a> CardStore<'a> {
         }
 
         for (key, rows) in groups {
-            let mut image_key = String::new();
-            let mut bleed_image_key = None;
-            let mut parts_map: HashMap<String, PrintingPart> = HashMap::new();
-
             let first_row = &rows[0];
             let card_title = first_row.title.clone();
             let is_official = first_row.is_official;
             let side = first_row.side.clone();
             let date_release = first_row.date_release.clone();
 
+            // One row per image file, so a part scanned both with and without a
+            // bleed border arrives as two rows.
+            let mut by_part: HashMap<String, Vec<AvailablePrintingRow>> = HashMap::new();
             for row in rows {
-                if row.part == "front" {
-                    if row.has_bleed {
-                        bleed_image_key = Some(row.file_path);
-                    } else {
-                        image_key = row.file_path;
-                    }
-                } else {
-                    let part = parts_map
-                        .entry(row.part.clone())
-                        .or_insert_with(|| PrintingPart {
-                            name: row.part.clone(),
-                            image_key: String::new(),
-                            bleed_image_key: None,
-                        });
-                    if row.has_bleed {
-                        part.bleed_image_key = Some(row.file_path);
-                    } else {
-                        part.image_key = row.file_path;
-                    }
-                }
+                by_part.entry(row.part.clone()).or_default().push(row);
             }
 
-            let parts = parts_map.into_values().collect();
+            let front = by_part
+                .remove("front")
+                .map(|rows| Self::assemble_part("front", rows))
+                .unwrap_or(PrintingPart {
+                    name: "front".to_string(),
+                    image_key: None,
+                    bleed_image_key: None,
+                });
+
+            let parts = by_part
+                .into_iter()
+                .map(|(name, rows)| Self::assemble_part(&name, rows))
+                .collect();
 
             let printing = Printing {
                 card_title,
                 card_id: key.card_id,
                 is_official,
                 variant: key.variant,
-                image_key,
-                bleed_image_key,
+                front,
                 parts,
                 collection: key.collection_name,
                 side,
@@ -838,8 +849,11 @@ mod tests {
             card_id: code.into(),
             is_official,
             variant: variant.map(|s| s.to_string()),
-            image_key: format!("{}.jpg", code),
-            bleed_image_key: None,
+            front: PrintingPart {
+                name: "front".into(),
+                image_key: Some(format!("{}.jpg", code)),
+                bleed_image_key: None,
+            },
             parts: Vec::new(),
             collection: coll.into(),
             side: "runner".into(),
@@ -1101,8 +1115,11 @@ mod tests {
             card_id: "gandalf_core".into(),
             is_official: true,
             variant: None,
-            image_key: "gandalf_1_tples.jpg".into(),
-            bleed_image_key: None,
+            front: PrintingPart {
+                name: "front".into(),
+                image_key: Some("gandalf_1_tples.jpg".into()),
+                bleed_image_key: None,
+            },
             parts: Vec::new(),
             collection: "enhanced".into(),
             side: "player".into(),
@@ -1111,7 +1128,11 @@ mod tests {
             position: Some(4),
         };
         let gandalf_37 = Printing {
-            image_key: "gandalf_2_tples.jpg".into(),
+            front: PrintingPart {
+                name: "front".into(),
+                image_key: Some("gandalf_2_tples.jpg".into()),
+                bleed_image_key: None,
+            },
             position: Some(37),
             ..gandalf_4.clone()
         };
@@ -1127,8 +1148,10 @@ mod tests {
         assert_eq!(
             CardStore::select_printing(&req_37, &available)
                 .unwrap()
-                .image_key,
-            "gandalf_2_tples.jpg"
+                .front
+                .image_key
+                .as_deref(),
+            Some("gandalf_2_tples.jpg")
         );
 
         let req_none = CardRequest {
@@ -1141,8 +1164,10 @@ mod tests {
         assert_eq!(
             CardStore::select_printing(&req_none, &available)
                 .unwrap()
-                .image_key,
-            "gandalf_1_tples.jpg"
+                .front
+                .image_key
+                .as_deref(),
+            Some("gandalf_1_tples.jpg")
         );
     }
 
