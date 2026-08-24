@@ -63,6 +63,7 @@ fn build_cards_and_versions(
             pack_id: card.pack_code,
             quantity: card.card_quantity.unwrap_or(1),
             position: card.card_number,
+            api_id: None,
         });
     }
 
