@@ -16,6 +16,12 @@ pub enum BleedPreference {
     NoBleed,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceImage {
+    pub key: String,
+    pub has_bleed: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintingPart {
     pub name: String,
@@ -39,9 +45,19 @@ pub struct Printing {
 }
 
 impl PrintingPart {
-    pub fn image(&self, preferred: BleedPreference) -> Option<(String, bool)> {
-        let bleed = || self.bleed_image_key.clone().map(|key| (key, true));
-        let no_bleed = || self.image_key.clone().map(|key| (key, false));
+    pub fn image(&self, preferred: BleedPreference) -> Option<SourceImage> {
+        let bleed = || {
+            self.bleed_image_key.clone().map(|key| SourceImage {
+                key,
+                has_bleed: true,
+            })
+        };
+        let no_bleed = || {
+            self.image_key.clone().map(|key| SourceImage {
+                key,
+                has_bleed: false,
+            })
+        };
 
         match preferred {
             BleedPreference::Bleed => bleed().or_else(no_bleed),

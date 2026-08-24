@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing};
+use crate::models::{BleedPreference, Printing, SourceImage};
 use crate::print_prep;
 use async_trait::async_trait;
 use image::ImageFormat;
@@ -94,9 +94,8 @@ async fn process_side<W: Write + Seek>(
     struct ImageRequest {
         printing: Printing,
         part_name: String,
-        image_key: String,
+        source: SourceImage,
         copy_num: u32,
-        has_bleed: bool,
     }
 
     let mut requests: Vec<ImageRequest> = Vec::new();
@@ -114,30 +113,28 @@ async fn process_side<W: Write + Seek>(
 
         let parts = printing.parts.clone();
 
-        if let Some((image_key, has_bleed)) = printing.front.image(BleedPreference::Bleed) {
+        if let Some(source) = printing.front.image(BleedPreference::Bleed) {
             requests.push(ImageRequest {
                 printing: printing.clone(),
                 part_name: "front".to_string(),
-                image_key,
+                source,
                 copy_num: *copy_num,
-                has_bleed,
             });
         }
 
         for part in parts {
-            if let Some((image_key, has_bleed)) = part.image(BleedPreference::Bleed) {
+            if let Some(source) = part.image(BleedPreference::Bleed) {
                 requests.push(ImageRequest {
                     printing: printing.clone(),
                     part_name: part.name,
-                    image_key,
+                    source,
                     copy_num: *copy_num,
-                    has_bleed,
                 });
             }
         }
     }
 
-    requests.sort_by(|a, b| a.image_key.cmp(&b.image_key));
+    requests.sort_by(|a, b| a.source.key.cmp(&b.source.key));
 
     struct CachedImage {
         key: String,
@@ -150,7 +147,7 @@ async fn process_side<W: Write + Seek>(
     for req in requests {
         let printing = req.printing;
         let part_name = req.part_name;
-        let current_image_key = req.image_key;
+        let current_image_key = req.source.key;
         let copy_num = req.copy_num;
 
         uniqueness_counter += 1;
@@ -168,7 +165,7 @@ async fn process_side<W: Write + Seek>(
 
             let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
             let img = image::load_from_memory(&image_data)?;
-            let bleed_image = if req.has_bleed {
+            let bleed_image = if req.source.has_bleed {
                 img.to_rgb8()
             } else {
                 print_prep::add_mpc_bleed_border(&img)

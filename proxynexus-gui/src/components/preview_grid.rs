@@ -97,15 +97,15 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                 class: "relative w-full h-full shadow-lg bg-gray-400 overflow-hidden flex items-center justify-center",
                                 {
                                     match printing.front.image(BleedPreference::NoBleed) {
-                                        Some((image_key, is_bleed)) => {
-                                            let style = if is_bleed {
+                                        Some(source) => {
+                                            let style = if source.has_bleed {
                                                 "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
                                             } else {
                                                 "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
                                             };
                                             rsx! {
                                                 img {
-                                                    src: "{build_image_url(&image_key)}",
+                                                    src: "{build_image_url(&source.key)}",
                                                     crossorigin: "anonymous",
                                                     style: "{style}",
                                                     alt: "{printing.card_title}",
@@ -132,15 +132,15 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                     class: "relative w-full h-full overflow-hidden shadow-lg bg-gray-400 flex items-center justify-center",
                                     {
                                         match part.image(BleedPreference::NoBleed) {
-                                            Some((image_key, is_bleed)) => {
-                                                let style = if is_bleed {
+                                            Some(source) => {
+                                                let style = if source.has_bleed {
                                                     "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
                                                 } else {
                                                     "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
                                                 };
                                                 rsx! {
                                 img {
-                                    src: "{build_image_url(&image_key)}",
+                                    src: "{build_image_url(&source.key)}",
                                     crossorigin: "anonymous",
                                     style: "{style}",
                                     alt: "{printing.card_title} ({part.name})",

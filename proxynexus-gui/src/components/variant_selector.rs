@@ -96,8 +96,8 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     }
                                 },
                                 {
-                                    let image = v.front.image(BleedPreference::NoBleed);
-                                    let style = if matches!(image, Some((_, true))) {
+                                    let source = v.front.image(BleedPreference::NoBleed);
+                                    let style = if source.as_ref().is_some_and(|s| s.has_bleed) {
                                         "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
                                     } else {
                                         "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
@@ -105,9 +105,9 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                                     rsx! {
                                         div {
                                             class: "w-full aspect-[2.5/3.5] overflow-hidden flex items-center justify-center",
-                                            if let Some((image_key, _)) = image {
+                                            if let Some(source) = source {
                                                 img {
-                                                    src: "{build_image_url(&image_key)}",
+                                                    src: "{build_image_url(&source.key)}",
                                                     crossorigin: "anonymous",
                                                     style: "{style}",
                                                     alt: "{variant_label}",

@@ -1,6 +1,6 @@
 use crate::error::{ProxyNexusError, Result};
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing};
+use crate::models::{BleedPreference, Printing, SourceImage};
 use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
@@ -205,11 +205,11 @@ pub async fn generate_pdf(
         BleedPreference::NoBleed
     };
 
-    let mut image_requests: Vec<(String, bool)> = Vec::with_capacity(total_images);
+    let mut sources: Vec<SourceImage> = Vec::with_capacity(total_images);
     for p in &printings {
-        image_requests.extend(p.front.image(preferred));
+        sources.extend(p.front.image(preferred));
         for part in &p.parts {
-            image_requests.extend(part.image(preferred));
+            sources.extend(part.image(preferred));
         }
     }
 
@@ -230,22 +230,22 @@ pub async fn generate_pdf(
         );
     }
 
-    for chunk in image_requests.chunks(max_cards_per_page) {
+    for chunk in sources.chunks(max_cards_per_page) {
         let page_settings = PageSettings::from_wh(page_width, page_height).unwrap();
         let mut page = document.start_page_with(page_settings);
         let mut surface = page.surface();
 
-        for (index, (image_key, source_has_bleed)) in chunk.iter().enumerate() {
+        for (index, source) in chunk.iter().enumerate() {
             let start = Instant::now();
 
-            if !image_cache.contains_key(image_key) {
-                let mut image_data = image_provider.get_image_bytes(image_key).await?;
+            if !image_cache.contains_key(&source.key) {
+                let mut image_data = image_provider.get_image_bytes(&source.key).await?;
 
                 if options.upscale {
                     image_data = crate::upscale_image(&image_data).await?
                 }
 
-                if *source_has_bleed {
+                if source.has_bleed {
                     let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
                     let img = image::load_from_memory(&image_data)?;
                     let cropped = crate::print_prep::crop_bleed_border(&img, bleed_ratio).to_rgb8();
@@ -267,12 +267,12 @@ pub async fn generate_pdf(
                         .map_err(|e| ProxyNexusError::Internal(e.to_string()))?
                 };
 
-                image_cache.insert(image_key.clone(), image);
+                image_cache.insert(source.key.clone(), image);
             } else {
-                info!("cache hit for {}", image_key);
+                info!("cache hit for {}", source.key);
             }
 
-            let image = image_cache.get(image_key).unwrap().clone();
+            let image = image_cache.get(&source.key).unwrap().clone();
             let (draw_x, draw_y, draw_width, draw_height) = calculate_draw_rect(index, &options);
 
             let size = Size::from_wh(draw_width, draw_height).unwrap();
@@ -293,7 +293,7 @@ pub async fn generate_pdf(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(0).await;
 
-            info!("Runtime for image {}: {:?}", image_key, start.elapsed());
+            info!("Runtime for image {}: {:?}", source.key, start.elapsed());
         }
 
         surface.set_stroke(Some(Stroke {
