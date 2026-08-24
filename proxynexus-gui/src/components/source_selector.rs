@@ -19,6 +19,12 @@ impl Default for ActiveSource {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum SetSortMode {
+    ReleaseDate,
+    Alphabetical,
+}
+
 #[derive(Props, Clone, PartialEq)]
 pub struct SourceSelectorProps {
     pub active_game_id: Signal<Option<String>>,
@@ -50,6 +56,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     });
     let mut set_name = use_signal(String::new);
     let mut decklist_url = use_signal(String::new);
+    let mut set_sort_mode = use_signal(|| SetSortMode::ReleaseDate);
 
     let supports_decklists =
         use_memo(move || active_game_id().is_some_and(|id| get_decklist_adapter(&id).is_some()));
@@ -94,6 +101,20 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
             }
             Err(_) => Vec::new(),
         }
+    });
+
+    // Re-sorts the already-fetched pack list in the GUI layer when the
+    // radio buttons change, rather than re-querying the DB -- the list is
+    // small (at most a few hundred packs) and already in memory.
+    // get_available_packs() already returns newest-first, so the
+    // ReleaseDate mode needs no reordering; only Alphabetical does.
+    let sorted_sets = use_memo(move || {
+        let mut sets: Vec<(String, String, String)> =
+            available_sets.read().as_ref().cloned().unwrap_or_default();
+        if set_sort_mode() == SetSortMode::Alphabetical {
+            sets.sort_by_key(|a| a.0.to_lowercase());
+        }
+        sets
     });
 
     let all_cards = use_resource(move || async move {
@@ -168,6 +189,26 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                     }
                 },
                 "set" => rsx! {
+                    div { class: "flex items-center gap-4 mb-2 text-sm text-gray-600",
+                        label { class: "flex items-center gap-1.5 cursor-pointer",
+                            input {
+                                r#type: "radio",
+                                name: "set-sort-mode",
+                                checked: set_sort_mode() == SetSortMode::ReleaseDate,
+                                onchange: move |_| set_sort_mode.set(SetSortMode::ReleaseDate),
+                            }
+                            "Release date"
+                        }
+                        label { class: "flex items-center gap-1.5 cursor-pointer",
+                            input {
+                                r#type: "radio",
+                                name: "set-sort-mode",
+                                checked: set_sort_mode() == SetSortMode::Alphabetical,
+                                onchange: move |_| set_sort_mode.set(SetSortMode::Alphabetical),
+                            }
+                            "Alphabetical"
+                        }
+                    }
                     select {
                         class: "w-full p-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-400 bg-white text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed",
                         disabled: is_disabled(),
@@ -177,10 +218,17 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                             set_name.set(evt.value());
                             source_state.set(ActiveSource::SetName(evt.value()));
                         },
-                        option { value: "", disabled: true, "Select a set..." }
-                        if let Some(sets) = available_sets.read().as_ref() {
-                            for (name, _code, _meta) in sets.iter() {
-                                option { value: "{name}", "{name}" }
+                        option {
+                            value: "",
+                            disabled: true,
+                            selected: set_name().is_empty(),
+                            "Select a set..."
+                        }
+                        for (name, _code, _meta) in sorted_sets() {
+                            option {
+                                value: "{name}",
+                                selected: name == set_name(),
+                                "{name}"
                             }
                         }
                     }

@@ -74,6 +74,7 @@ impl CatalogProvider for NetrunnerAdapter {
                 pack_id: printing.attributes.card_set_id,
                 quantity: printing.attributes.quantity,
                 position: printing.attributes.position,
+                api_id: None,
             })
             .collect();
 

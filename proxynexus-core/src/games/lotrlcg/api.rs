@@ -35,10 +35,7 @@ pub async fn fetch_decklist_from_ringsdb(url: &str) -> Result<Decklist> {
         }
 
         if let Some(card) = code_to_card.get(lookup_code) {
-            let clean_pack_name = card
-                .pack_name
-                .replace("ALeP - ", "")
-                .replace(".English", "");
+            let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&card.pack_name);
 
             let card_id = crate::card_store::normalize_title(&card.name);
             let pack_id = Some(crate::card_store::normalize_title(&clean_pack_name));
@@ -47,6 +44,7 @@ pub async fn fetch_decklist_from_ringsdb(url: &str) -> Result<Decklist> {
                 card_id,
                 pack_id,
                 quantity: quantity as u32,
+                position: card.position.map(|p| p as i64),
             });
         }
     }

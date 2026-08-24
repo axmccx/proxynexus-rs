@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use proxynexus_core::models::Printing;
+use std::collections::HashSet;
 
 use super::build_image_url;
 
@@ -22,13 +23,20 @@ pub struct VariantSelectorProps {
 pub fn VariantSelector(props: VariantSelectorProps) -> Element {
     let mut selected_variant_str = use_signal(|| None::<String>);
     let variants = props.variants.clone();
-    let current_p_display = props
-        .printing
-        .pack_id
-        .as_deref()
-        .or(props.printing.variant.as_deref())
-        .unwrap_or("");
-    let current_variant_str = format!("{}:{}", current_p_display, props.printing.collection);
+    let current_variant_str = props.printing.variant_key();
+
+    // When two options share a pack and collection, append the position tells them apart.
+    let duplicated_pack_and_collection: HashSet<(Option<String>, String)> = {
+        let mut seen = HashSet::new();
+        let mut duplicated = HashSet::new();
+        for v in &variants {
+            let pack_and_collection = (v.pack_id.clone(), v.collection.clone());
+            if !seen.insert(pack_and_collection.clone()) {
+                duplicated.insert(pack_and_collection);
+            }
+        }
+        duplicated
+    };
 
     rsx! {
         div {
@@ -59,10 +67,16 @@ pub fn VariantSelector(props: VariantSelectorProps) -> Element {
                 class: "flex flex-wrap gap-2 max-w-[280px] md:max-w-[650px]",
                 for v in variants.into_iter() {
                     {
-                        let p_display = v.pack_id.as_deref().or(v.variant.as_deref()).unwrap_or("");
-                        let v_str = format!("{}:{}", p_display, v.collection);
+                        let v_str = v.variant_key();
                         let is_selected = current_variant_str == v_str;
-                        let variant_label = v.variant.clone().unwrap_or_else(|| "Official".to_string());
+                        let mut variant_label =
+                            v.variant.clone().unwrap_or_else(|| "Official".to_string());
+                        if let Some(pos) = v.position
+                            && duplicated_pack_and_collection
+                                .contains(&(v.pack_id.clone(), v.collection.clone()))
+                        {
+                            variant_label = format!("{} #{}", variant_label, pos);
+                        }
 
                         rsx! {
                             button {

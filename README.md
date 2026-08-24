@@ -147,6 +147,11 @@ Only PNG and JPEG files are supported.
 *   **Orphans:** If a part file doesn't have an associated front file, it is ignored.
 *   **Exact API IDs:** For official printings, the `{card_id}` and `{printing}` (pack ID) **must** exactly match the 
 string IDs used by the game's respective database API.
+*   **What `{card_id}` names varies by game:** For most games it names the abstract card, shared by every printing of
+it. lotrlcg is the exception: its catalog collapses reprints into a single card while still needing to tell individual
+scans apart, so lotrlcg file names use `{card_id}` to name the specific printing instead (its Hall of Beorn slug, e.g.
+`aragorn_revcore@revised_core_set.jpg`). See [lotrlcg/CARD_IDENTITY.md](proxynexus-core/src/games/lotrlcg/CARD_IDENTITY.md)
+for why.
 
 ---
 
@@ -154,13 +159,19 @@ string IDs used by the game's respective database API.
 
 #### Printing Notation in Card Lists
 
-When generating from a card list, you can request a specific printing (an official pack or custom variant label), or collection using the following notation.
-`Quantity CardName [printing:collection]`
+When generating from a card list, you can request a specific printing (an official pack or custom variant label), a
+position within that printing, or a collection using the following notation.
+`Quantity CardName [printing]`, `[printing:position]`, or `[printing:position:collection]`
+
+The segments are always positional: the second segment, when present, is always a position, never a collection. To
+name a collection without pinning a position, leave the position segment empty (`printing::collection`).
 
 Examples:
 *   **Requesting a specific printing:** `3x Sure Gamble [alt1]`
-*   **Requesting a specific collection:** `3x Sure Gamble [:ffg-en]`
-*   **Requesting a specific printing from a specific collection:** `3x Snare! [alt1:extras]`
+*   **Requesting a specific position within a printing** (only needed when one pack prints the same card twice):
+    `3x Gandalf [two_player_limited_edition_starter:37]`
+*   **Requesting a specific collection:** `3x Sure Gamble [::ffg-en]`
+*   **Requesting a specific printing from a specific collection:** `3x Snare! [alt1::extras]`
 *   **Requesting a specific official pack:** `3x Hedge Fund [revised_core_set]`
 
 The printing notation is optional.
@@ -188,10 +199,10 @@ The following lists the printings and the collection they're in for each card in
 
 Query Results:
 
-1x Noise: Hacker Extraordinaire [core:ffg-en]  # also: [alt1:ffg-en], [alt1:extras]
-2x Déjà Vu [core:ffg-en]                       # also: [alt1:ffg-en]
-3x Demolition Run [core:ffg-en]
-3x Stimhack [core:ffg-en]                      # also: [alt1:ffg-en]
+1x Noise: Hacker Extraordinaire [core::ffg-en]  # also: [alt1::ffg-en], [alt1::extras]
+2x Déjà Vu [core::ffg-en]                       # also: [alt1::ffg-en]
+3x Demolition Run [core::ffg-en]
+3x Stimhack [core::ffg-en]                      # also: [alt1::ffg-en]
 ...
 ```
 The quantity comes from the pack's metadata from the game's API. The output of this query is a valid card list.
@@ -212,7 +223,7 @@ This URL format can also be contructed externally, so that Proxy Nexus can load 
 
 **Example:**
 ```
-https://proxynexus.net/?v=1&game=netrunner&list=3x+Sure+Gamble+%5Bcore%3Affg-en%5D%0A1x+Hedge+Fund
+https://proxynexus.net/?v=1&game=netrunner&list=3x+Sure+Gamble+%5Bcore%3A%3Affg-en%5D%0A1x+Hedge+Fund
 ```
 
 #### Card Request Resolution
@@ -224,7 +235,8 @@ Each Card Request in the list is then used to find the best available Printing, 
 using the following priority hierarchy:
 1.  Match the requested printing. If no printing is specified, prefer official printings over custom variants.
 2.  Match the exact collection, if provided.
-3.  Use the oldest chronological printing available.
+3.  Match the exact position, if provided (only relevant when a pack prints the same card at two positions).
+4.  Use the oldest chronological printing available.
 
 ---
 

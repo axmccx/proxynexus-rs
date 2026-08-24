@@ -10,6 +10,8 @@ use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::fetch_json;
 use crate::games::lotrlcg::api::fetch_decklist_from_ringsdb;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::games::lotrlcg::side_from_type_code;
 use crate::models::Decklist;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
@@ -72,10 +74,19 @@ impl CatalogProvider for LotrLcgAdapter {
         // Build a mapping of normalized pack name to release date from RingsDB.
         let mut pack_dates = HashMap::new();
         for rp in crate::games::lotrlcg::api::fetch_ringsdb_packs().await? {
-            let clean_pack_name = rp.name.replace("ALeP - ", "").replace(".English", "");
+            let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&rp.name);
             let clean_pack_id = normalize_title(&clean_pack_name);
             pack_dates.insert(clean_pack_id, rp.available);
         }
+
+        let card_ids =
+            crate::games::lotrlcg::identity::printing_card_ids(&all_hob_cards, &pack_dates);
+        let card_titles = crate::games::lotrlcg::identity::card_titles(&all_hob_cards, &card_ids);
+        tracing::debug!(
+            "lotrlcg: {} Hall of Beorn printings resolve to {} distinct cards",
+            card_ids.len(),
+            card_titles.len()
+        );
 
         for c in &all_hob_cards {
             let clean_pack_id = normalize_title(&c.card_set);
@@ -95,10 +106,14 @@ impl CatalogProvider for LotrLcgAdapter {
         let mut provided_pack_positions = HashSet::new();
 
         for c in all_hob_cards {
-            let base_normalized = normalize_title(&c.title);
             let clean_pack_id = normalize_title(&c.card_set);
-            let normalized_id = normalize_title(&c.slug);
-            let title = c.title.clone();
+            let slug = normalize_title(&c.slug);
+            let card_id = card_ids.get(&slug).cloned().unwrap_or_else(|| slug.clone());
+            let title = card_titles
+                .get(&card_id)
+                .cloned()
+                .unwrap_or_else(|| c.title.clone());
+            let base_normalized = normalize_title(&title);
 
             let side = match c.card_type.as_str() {
                 "Ally" | "Attachment" | "Contract" | "Event" | "Hero" | "Player_Side_Quest"
@@ -107,22 +122,23 @@ impl CatalogProvider for LotrLcgAdapter {
                 _ => "encounter", // Encounter_Side_Quest, Enemy, Location, Objective, Objective_Ally, Objective_Hero, Objective_Location, Ship_Enemy, Ship_Objective, Treachery, etc.
             };
 
-            if seen_cards.insert(normalized_id.clone()) {
+            if seen_cards.insert(card_id.clone()) {
                 cards.push(Card {
-                    id: normalized_id.clone(),
+                    id: card_id.clone(),
                     title,
                     title_normalized: base_normalized,
                     side: Some(side.to_string()),
                 });
             }
 
-            if seen_versions.insert((normalized_id.clone(), clean_pack_id.clone())) {
+            if seen_versions.insert((slug.clone(), clean_pack_id.clone())) {
                 provided_pack_positions.insert((clean_pack_id.clone(), c.number));
                 card_versions.push(CardVersion {
-                    card_id: normalized_id,
+                    card_id,
                     pack_id: clean_pack_id,
                     quantity: c.quantity.unwrap_or(3),
                     position: Some(c.number),
+                    api_id: Some(slug),
                 });
             }
         }
@@ -134,7 +150,7 @@ impl CatalogProvider for LotrLcgAdapter {
             }
 
             let base_normalized = normalize_title(&rc.name);
-            let clean_pack_name = rc.pack_name.replace("ALeP - ", "").replace(".English", "");
+            let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&rc.pack_name);
             let display_name = format!("ALeP - {}", clean_pack_name);
             let clean_pack_id = normalize_title(&clean_pack_name);
             let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
@@ -152,19 +168,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 pack.name = display_name;
             }
 
-            let side = match rc.type_code.as_deref() {
-                Some("hero")
-                | Some("ally")
-                | Some("attachment")
-                | Some("event")
-                | Some("player-side-quest")
-                | Some("contract")
-                | Some("treasure") => "player",
-                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                    "quest"
-                }
-                _ => "encounter",
-            };
+            let side = side_from_type_code(rc.type_code.as_deref());
 
             if seen_cards.insert(normalized_id.clone()) {
                 cards.push(Card {
@@ -184,6 +188,7 @@ impl CatalogProvider for LotrLcgAdapter {
                     pack_id: clean_pack_id,
                     quantity: rc.quantity.unwrap_or(3) as i64,
                     position: rc.position.map(|p| p as i64),
+                    api_id: None,
                 });
             }
         }
@@ -192,11 +197,8 @@ impl CatalogProvider for LotrLcgAdapter {
         for rc in ringsdb_cards {
             let base_normalized = normalize_title(&rc.name);
 
-            let mut clean_pack_name = rc.pack_name.replace(".English", "");
-            let is_alep = clean_pack_name.starts_with("ALeP - ");
-            if is_alep {
-                clean_pack_name = clean_pack_name.replace("ALeP - ", "");
-            }
+            let is_alep = rc.pack_name.replace(".English", "").starts_with("ALeP - ");
+            let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&rc.pack_name);
 
             let display_name = if is_alep {
                 format!("ALeP - {}", clean_pack_name)
@@ -222,19 +224,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 }
             }
 
-            let side = match rc.type_code.as_deref() {
-                Some("hero")
-                | Some("ally")
-                | Some("attachment")
-                | Some("event")
-                | Some("player-side-quest")
-                | Some("contract")
-                | Some("treasure") => "player",
-                Some("quest") | Some("campaign") | Some("nightmare-setup") | Some("setup") => {
-                    "quest"
-                }
-                _ => "encounter",
-            };
+            let side = side_from_type_code(rc.type_code.as_deref());
 
             if rc.position.is_some_and(|pos| {
                 provided_pack_positions.contains(&(clean_pack_id.clone(), pos as i64))
@@ -260,6 +250,7 @@ impl CatalogProvider for LotrLcgAdapter {
                     pack_id: clean_pack_id,
                     quantity: rc.quantity.unwrap_or(3) as i64,
                     position: rc.position.map(|p| p as i64),
+                    api_id: None,
                 });
             }
         }

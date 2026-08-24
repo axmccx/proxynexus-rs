@@ -63,6 +63,7 @@ pub async fn fetch_decklist_from_nrdb(url: &str) -> Result<Decklist> {
                 card_id: printing.attributes.card_id,
                 pack_id: Some(printing.attributes.card_set_id),
                 quantity,
+                position: None,
             });
         }
     }

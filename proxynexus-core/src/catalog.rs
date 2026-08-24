@@ -35,6 +35,7 @@ pub struct CardVersion {
     pub pack_id: String,
     pub quantity: i64,
     pub position: Option<i64>,
+    pub api_id: Option<String>,
 }
 
 pub struct Catalog {
@@ -171,17 +172,25 @@ impl<'a> CatalogManager<'a> {
         for card_version in &catalog.card_versions {
             let db_card_id = format!("{}_{}", catalog.game_id, card_version.card_id);
             let db_pack_id = format!("{}_{}", catalog.game_id, card_version.pack_id);
-            let db_id = format!("{}_{}", db_card_id, db_pack_id);
+            let db_id = match &card_version.api_id {
+                Some(api_id) => format!("{}_{}", catalog.game_id, api_id),
+                None => format!("{}_{}", db_card_id, db_pack_id),
+            };
             let position_val = card_version
                 .position
                 .map_or("NULL".to_string(), |p| p.to_string());
+            let api_id_val = card_version
+                .api_id
+                .as_ref()
+                .map_or("NULL".to_string(), |a| quote_sql_string(a));
             let q = format!(
-                "INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ({}, {}, {}, {}, {})",
+                "INSERT INTO card_versions (id, card_id, pack_id, quantity, position, api_id) VALUES ({}, {}, {}, {}, {}, {})",
                 quote_sql_string(&db_id),
                 quote_sql_string(&db_card_id),
                 quote_sql_string(&db_pack_id),
                 card_version.quantity,
-                position_val
+                position_val,
+                api_id_val
             );
             self.db.execute(&q).await?;
         }

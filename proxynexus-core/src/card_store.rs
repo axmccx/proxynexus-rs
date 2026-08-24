@@ -23,6 +23,7 @@ struct CardNameRow {
     title: String,
     pack_id: String,
     title_normalized: String,
+    position: Option<i64>,
 }
 
 #[derive(FromGlueRow)]
@@ -31,6 +32,7 @@ struct CardRequestRow {
     title: String,
     quantity: i64,
     pack_id: String,
+    position: Option<i64>,
 }
 
 #[derive(FromGlueRow)]
@@ -51,6 +53,7 @@ struct AvailablePrintingRow {
     pack_id: Option<String>,
     has_bleed: bool,
     date_release: Option<String>,
+    position: Option<i64>,
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -60,6 +63,7 @@ struct PrintingGroupKey {
     variant: Option<String>,
     collection_name: String,
     pack_id: Option<String>,
+    position: Option<i64>,
 }
 
 pub fn normalize_title(title: &str) -> String {
@@ -108,7 +112,7 @@ pub struct CardStore<'a> {
     pub active_game_id: String,
 }
 
-type CardOverride<'a> = (&'a str, Option<String>, Option<String>);
+type CardOverride<'a> = (&'a str, Option<String>, Option<i64>, Option<String>);
 
 impl<'a> CardStore<'a> {
     pub fn new(db: &'a mut DbStorage, active_game_id: String) -> Result<Self> {
@@ -142,7 +146,7 @@ impl<'a> CardStore<'a> {
         &mut self,
         text: &str,
     ) -> Result<ResolvedCardRequests> {
-        type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<String>);
+        type CardlistEntry<'a> = (&'a str, u32, Option<String>, Option<i64>, Option<String>);
         let mut entries: Vec<CardlistEntry> = Vec::new();
 
         for line in text.lines() {
@@ -152,10 +156,11 @@ impl<'a> CardStore<'a> {
             }
 
             let (qty, rest) = Self::parse_quantity(line);
-            let (name, printing_pref, collection_pref) = Self::parse_overrides(rest)?;
+            let (name, printing_pref, position_pref, collection_pref) =
+                Self::parse_overrides(rest)?;
 
             let name = clean_card_name(name);
-            entries.push((name, qty, printing_pref, collection_pref));
+            entries.push((name, qty, printing_pref, position_pref, collection_pref));
         }
 
         if entries.is_empty() {
@@ -167,7 +172,7 @@ impl<'a> CardStore<'a> {
 
         let mut requests = Vec::new();
 
-        for (name, qty, printing, collection) in entries {
+        for (name, qty, printing, position, collection) in entries {
             if let Some((code, title, resolved_pack_code)) = resolved_cards.get(name) {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
@@ -177,6 +182,7 @@ impl<'a> CardStore<'a> {
                             .clone()
                             .or_else(|| Some(resolved_pack_code.clone())),
                         collection: collection.clone(),
+                        position,
                     },
                     qty as usize,
                 ));
@@ -232,12 +238,29 @@ impl<'a> CardStore<'a> {
                 })
                 .collect();
 
-            let printing = parts.first().cloned().flatten();
-            let collection = parts.get(1).cloned().flatten();
+            let (printing, position, collection) = match parts.as_slice() {
+                [printing] => (printing.clone(), None, None),
+                [printing, position] => (
+                    printing.clone(),
+                    position.as_deref().and_then(|p| p.parse::<i64>().ok()),
+                    None,
+                ),
+                [printing, position, collection] => (
+                    printing.clone(),
+                    position.as_deref().and_then(|p| p.parse::<i64>().ok()),
+                    collection.clone(),
+                ),
+                _ => {
+                    return Err(ProxyNexusError::Internal(format!(
+                        "Card override '{}' has too many ':'-separated parts",
+                        inner
+                    )));
+                }
+            };
 
-            Ok((name, printing, collection))
+            Ok((name, printing, position, collection))
         } else {
-            Ok((text.trim(), None, None))
+            Ok((text.trim(), None, None, None))
         }
     }
 
@@ -259,11 +282,12 @@ impl<'a> CardStore<'a> {
         let in_clause = build_in_clause(unique_normalized_name);
 
         let query = format!(
-            "SELECT 
-                c.api_id as id, 
-                c.title, 
-                p.api_id as pack_id, 
-                c.title_normalized
+            "SELECT
+                c.api_id as id,
+                c.title,
+                p.api_id as pack_id,
+                c.title_normalized,
+                v.position
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
@@ -271,7 +295,8 @@ impl<'a> CardStore<'a> {
                AND c.game_id = {}
              ORDER BY
                  CASE WHEN p.date_release IS NULL THEN 1 ELSE 0 END,
-                 p.date_release DESC",
+                 p.date_release DESC,
+                 c.api_id",
             in_clause,
             quote_sql_string(&self.active_game_id)
         );
@@ -391,7 +416,7 @@ impl<'a> CardStore<'a> {
         set_name: &str,
     ) -> Result<Vec<CardRequest>> {
         let query = format!(
-            "SELECT c.api_id as id, c.title, v.quantity, p.api_id as pack_id
+            "SELECT c.api_id as id, c.title, v.quantity, p.api_id as pack_id, v.position
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
@@ -415,6 +440,7 @@ impl<'a> CardStore<'a> {
                         id: row.id,
                         printing: Some(row.pack_id),
                         collection: None,
+                        position: row.position,
                     },
                     row.quantity as usize,
                 ));
@@ -440,59 +466,109 @@ impl<'a> CardStore<'a> {
         }
 
         let card_ids: HashSet<&String> = decklist.cards.iter().map(|e| &e.card_id).collect();
+        let packs: HashSet<&String> = decklist
+            .cards
+            .iter()
+            .filter_map(|e| e.pack_id.as_ref())
+            .collect();
         let in_clause = build_in_clause(card_ids);
+        let pack_clause = if packs.is_empty() {
+            String::new()
+        } else {
+            format!(" OR p.api_id IN ({})", build_in_clause(packs))
+        };
 
         let query = format!(
-            "SELECT 
-                c.api_id as id, 
-                c.title, 
-                p.api_id as pack_id, 
-                c.title_normalized
+            "SELECT
+                c.api_id as id,
+                c.title,
+                p.api_id as pack_id,
+                c.title_normalized,
+                v.position
              FROM cards c
              JOIN card_versions v ON c.id = v.card_id
              JOIN packs p ON v.pack_id = p.id
-             WHERE (c.api_id IN ({0}) OR c.title_normalized IN ({0}))
-               AND c.game_id = {1}",
+             WHERE (c.api_id IN ({0}) OR c.title_normalized IN ({0}){1})
+               AND c.game_id = {2}
+             ORDER BY c.api_id",
             in_clause,
+            pack_clause,
             quote_sql_string(&self.active_game_id)
         );
 
         let payloads = self.db.execute(&query).await?;
         let mut resolved_by_id = HashMap::new();
-        let mut resolved_by_norm_pack = HashMap::new();
+        let mut resolved_by_pack_position = HashMap::new();
+        let mut rows_by_pack: HashMap<String, Vec<(String, String, String)>> = HashMap::new();
         let mut resolved_by_norm = HashMap::new();
 
         if let Some(payload) = payloads.into_iter().next() {
-            let card_rows = payload.rows_as::<CardNameRow>()?;
-            for row in card_rows {
-                resolved_by_id.insert(row.id.clone(), (row.id.clone(), row.title.clone()));
-                resolved_by_norm_pack.insert(
-                    (row.title_normalized.clone(), row.pack_id.clone()),
-                    (row.id.clone(), row.title.clone()),
-                );
-                resolved_by_norm.insert(row.title_normalized.clone(), (row.id, row.title));
+            for row in payload.rows_as::<CardNameRow>()? {
+                let card = (row.id.clone(), row.title.clone());
+                resolved_by_id.entry(row.id.clone()).or_insert(card.clone());
+                if let Some(pos) = row.position {
+                    resolved_by_pack_position
+                        .entry((row.pack_id.clone(), pos))
+                        .or_insert(card.clone());
+                }
+                rows_by_pack.entry(row.pack_id.clone()).or_default().push((
+                    row.id.clone(),
+                    row.title.clone(),
+                    row.title_normalized.clone(),
+                ));
+                resolved_by_norm
+                    .entry(row.title_normalized.clone())
+                    .or_insert(card);
             }
         }
+
+        // Matches a deck's plain name against stored titles, handling the unique suffix.
+        // More than one match falls back to position.
+        let name_in_pack = |pack: &String, name: &str| -> Option<(String, String)> {
+            let boundary = format!("{}__", name);
+            let mut matched: Option<(String, String)> = None;
+            for (id, title, title_normalized) in rows_by_pack.get(pack)? {
+                if title_normalized == name || title_normalized.starts_with(&boundary) {
+                    match &matched {
+                        Some((prev_id, _)) if prev_id != id => return None,
+                        _ => matched = Some((id.clone(), title.clone())),
+                    }
+                }
+            }
+            matched
+        };
 
         let mut requests = Vec::new();
         let mut not_found = Vec::new();
         for entry in &decklist.cards {
-            let matched = resolved_by_id
-                .get(&entry.card_id)
-                .or_else(|| {
-                    entry.pack_id.as_ref().and_then(|pack| {
-                        resolved_by_norm_pack.get(&(entry.card_id.clone(), pack.clone()))
-                    })
-                })
-                .or_else(|| resolved_by_norm.get(&entry.card_id));
+            let by_exact_id = resolved_by_id.get(&entry.card_id).cloned();
+            let by_unique_name_in_pack = entry
+                .pack_id
+                .as_ref()
+                .and_then(|pack| name_in_pack(pack, &entry.card_id));
+            let by_pack_and_position =
+                entry
+                    .pack_id
+                    .as_ref()
+                    .zip(entry.position)
+                    .and_then(|(pack, pos)| {
+                        resolved_by_pack_position.get(&(pack.clone(), pos)).cloned()
+                    });
+            let by_normalized_title = resolved_by_norm.get(&entry.card_id).cloned();
+
+            let matched = by_exact_id
+                .or(by_unique_name_in_pack)
+                .or(by_pack_and_position)
+                .or(by_normalized_title);
 
             if let Some((real_id, title)) = matched {
                 requests.extend(std::iter::repeat_n(
                     CardRequest {
-                        title: title.clone(),
-                        id: real_id.clone(),
+                        title,
+                        id: real_id,
                         printing: entry.pack_id.clone(),
                         collection: None,
+                        position: entry.position,
                     },
                     entry.quantity as usize,
                 ));
@@ -538,7 +614,8 @@ impl<'a> CardStore<'a> {
                 c.side,
                 pks.api_id as pack_id,
                 p.has_bleed,
-                pks.date_release
+                pks.date_release,
+                v.position
              FROM printings p
              JOIN cards c ON p.card_id = c.id
              JOIN collections col ON p.collection_id = col.id
@@ -590,6 +667,7 @@ impl<'a> CardStore<'a> {
                 variant: row.variant.clone(),
                 collection_name: row.name.clone(),
                 pack_id: row.pack_id.clone(),
+                position: row.position,
             };
             groups.entry(key).or_default().push(row);
         }
@@ -642,6 +720,7 @@ impl<'a> CardStore<'a> {
                 side,
                 pack_id: key.pack_id,
                 date_release,
+                position: key.position,
             };
 
             resolved_printings
@@ -650,17 +729,17 @@ impl<'a> CardStore<'a> {
                 .push(printing);
         }
 
-        // Groups come out of a HashMap, so date alone leaves the order varying
-        // between runs -- and with it which printing select_printing falls back
-        // to and how the variant picker lists them. card_id separates same-title
-        // cards sharing a pack (lotrlcg quest stages); variant separates alt arts
-        // of one card, which every other game relies on.
+        // Sorted so the earliest printing is the default choice, with ties
+        // broken deterministically: card_id separates same-title cards
+        // sharing a pack, position separates two printings of one card in
+        // one pack, variant separates alt arts of one card.
         for printings in resolved_printings.values_mut() {
             printings.sort_by_key(|p| {
                 (
                     p.date_release.is_none(),
                     p.date_release.clone(),
                     p.card_id.clone(),
+                    p.position,
                     p.variant.clone(),
                 )
             });
@@ -712,24 +791,19 @@ impl<'a> CardStore<'a> {
             let collection_miss =
                 request.collection.is_some() && request.collection.as_ref() != Some(&p.collection);
 
-            // Candidates are looked up by normalized title, so a pack that prints
-            // several cards under one title (LotR quest stages, "Search for an Exit"
-            // x7 in Khazad-dum) hands us every one of them. Without this the rest
-            // of the key ties, the stable sort keeps index 0, and every copy
-            // renders as the same card.
-            //
-            // Ranked below the explicit pack and collection requests on purpose.
-            // Only lotrlcg gives each pack's printing its own card id; the other
-            // adapters share one id across every pack, so this ties for them and
-            // changes nothing. But a lotrlcg decklist can carry an id resolved
-            // from one pack alongside a pack_id naming another -- see the
-            // resolved_by_norm fallback in resolve_decklist_to_requests -- and
-            // there the pack the caller asked for has to win.
+            // Only relevant when a pack prints one card twice.
+            let position_miss = request.position.is_some() && request.position != p.position;
+
+            // Printings are looked up by title, which isn't always unique per
+            // card. Ranked below pack/collection because
+            // resolve_decklist_to_requests can pair a resolved id with a
+            // pack_id from elsewhere, and that pack must still win.
             let id_miss = p.card_id != request.id;
 
             (
                 printing_miss,
                 collection_miss,
+                position_miss,
                 id_miss,
                 !p.is_official,
                 p.date_release.is_none(),
@@ -771,6 +845,7 @@ mod tests {
             side: "runner".into(),
             pack_id: pack.map(|p| p.to_string()),
             date_release: date.map(|s| s.to_string()),
+            position: None,
         }
     }
 
@@ -814,6 +889,7 @@ mod tests {
                 id: want.into(),
                 printing: Some("the_nin_in_eilph".into()),
                 collection: None,
+                position: None,
             };
             assert_eq!(
                 CardStore::select_printing(&req, &available)
@@ -855,6 +931,7 @@ mod tests {
             id: "faramir_tples".into(),
             printing: Some("core_set".into()),
             collection: None,
+            position: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -908,6 +985,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: Some("alt1".into()),
             collection: None,
+            position: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -922,6 +1000,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: None,
             collection: Some("nsg-en".into()),
+            position: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -936,6 +1015,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: Some("system_gateway".to_string()),
             collection: None,
+            position: None,
         };
         assert_eq!(
             CardStore::select_printing(&req, &available)
@@ -950,6 +1030,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: Some("missing_variant".into()),
             collection: None,
+            position: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.variant, None);
@@ -961,6 +1042,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: None,
             collection: None,
+            position: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.variant, None);
@@ -972,6 +1054,7 @@ mod tests {
             id: "sure_gamble".into(),
             printing: Some("core".into()),
             collection: Some("nsg-en".into()),
+            position: None,
         };
         let result = CardStore::select_printing(&req, &available).unwrap();
         assert_eq!(result.collection, "ffg-en");
@@ -991,6 +1074,7 @@ mod tests {
             id: "1".into(),
             printing: Some("missing_variant".into()),
             collection: None,
+            position: None,
         };
         let result1 = CardStore::select_printing(&req1, &available).unwrap();
         assert!(result1.is_official);
@@ -1004,9 +1088,62 @@ mod tests {
             id: "1".into(),
             printing: None,
             collection: Some("c2".into()),
+            position: None,
         };
         let result3 = CardStore::select_printing(&req3, &available2).unwrap();
         assert_eq!(result3.collection, "c2");
+    }
+
+    #[test]
+    fn test_select_printing_by_position() {
+        let gandalf_4 = Printing {
+            card_title: "Gandalf".into(),
+            card_id: "gandalf_core".into(),
+            is_official: true,
+            variant: None,
+            image_key: "gandalf_1_tples.jpg".into(),
+            bleed_image_key: None,
+            parts: Vec::new(),
+            collection: "enhanced".into(),
+            side: "player".into(),
+            pack_id: Some("two_player_limited_edition_starter".into()),
+            date_release: Some("2013-01-01".into()),
+            position: Some(4),
+        };
+        let gandalf_37 = Printing {
+            image_key: "gandalf_2_tples.jpg".into(),
+            position: Some(37),
+            ..gandalf_4.clone()
+        };
+        let available = vec![gandalf_4.clone(), gandalf_37.clone()];
+
+        let req_37 = CardRequest {
+            title: "Gandalf".into(),
+            id: "gandalf_core".into(),
+            printing: Some("two_player_limited_edition_starter".into()),
+            collection: None,
+            position: Some(37),
+        };
+        assert_eq!(
+            CardStore::select_printing(&req_37, &available)
+                .unwrap()
+                .image_key,
+            "gandalf_2_tples.jpg"
+        );
+
+        let req_none = CardRequest {
+            title: "Gandalf".into(),
+            id: "gandalf_core".into(),
+            printing: Some("two_player_limited_edition_starter".into()),
+            collection: None,
+            position: None,
+        };
+        assert_eq!(
+            CardStore::select_printing(&req_none, &available)
+                .unwrap()
+                .image_key,
+            "gandalf_1_tples.jpg"
+        );
     }
 
     #[test]
@@ -1055,25 +1192,71 @@ mod tests {
 
     #[test]
     fn test_parse_overrides() {
-        // Full override
-        let (name, p, c) = CardStore::parse_overrides("Sure Gamble [alt:ffg-en]").unwrap();
+        // Printing only
+        let (name, p, pos, c) = CardStore::parse_overrides("Sure Gamble [alt]").unwrap();
         assert_eq!(name, "Sure Gamble");
         assert_eq!(p, Some("alt".into()));
-        assert_eq!(c, Some("ffg-en".into()));
-
-        // Partial, printing only
-        let (_, p, c) = CardStore::parse_overrides("Sure Gamble [alt]").unwrap();
-        assert_eq!(p, Some("alt".into()));
+        assert_eq!(pos, None);
         assert_eq!(c, None);
 
-        // Partial, skipped slots
-        let (_, p, c) = CardStore::parse_overrides("Sure Gamble [:std]").unwrap();
-        assert_eq!(p, None);
-        assert_eq!(c, Some("std".into()));
+        // Two segments: the second slot is always position, never collection.
+        let (_, p, pos, c) = CardStore::parse_overrides("Gandalf [tples:37]").unwrap();
+        assert_eq!(p, Some("tples".into()));
+        assert_eq!(pos, Some(37));
+        assert_eq!(c, None);
+
+        // A non-numeric second segment is still read as position (so it
+        // parses to None); it is never reinterpreted as a collection.
+        let (_, p, pos, c) = CardStore::parse_overrides("Sure Gamble [alt:ffg-en]").unwrap();
+        assert_eq!(p, Some("alt".into()));
+        assert_eq!(pos, None);
+        assert_eq!(c, None);
+
+        // Three segments: printing, position, collection.
+        let (_, p, pos, c) = CardStore::parse_overrides("Gandalf [tples:37:enhanced]").unwrap();
+        assert_eq!(p, Some("tples".into()));
+        assert_eq!(pos, Some(37));
+        assert_eq!(c, Some("enhanced".into()));
+
+        // Naming a collection without pinning a position needs the empty
+        // middle slot.
+        let (_, p, pos, c) =
+            CardStore::parse_overrides("Sure Gamble [core_set::enhanced]").unwrap();
+        assert_eq!(p, Some("core_set".into()));
+        assert_eq!(pos, None);
+        assert_eq!(c, Some("enhanced".into()));
 
         // Case normalization in overrides
-        let (_, p, _) = CardStore::parse_overrides("Card [ALT]").unwrap();
+        let (_, p, _, _) = CardStore::parse_overrides("Card [ALT]").unwrap();
         assert_eq!(p, Some("alt".into()));
+    }
+
+    #[test]
+    fn test_parse_overrides_rejects_too_many_segments() {
+        assert!(CardStore::parse_overrides("Card [a:b:c:d]").is_err());
+    }
+
+    #[tokio::test]
+    async fn cardlist_position_override_resolves_through_the_full_pipeline() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        db.initialize_schema().await.unwrap();
+        db.execute("INSERT INTO packs (id, api_id, name, game_id) VALUES ('pack_tples', 'tples', 'Two-Player Limited Edition Starter', 'lotrlcg')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_gandalf_core', 'gandalf_core', 'lotrlcg', 'Gandalf', 'gandalf')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_gandalf_4', 'lotrlcg_gandalf_core', 'pack_tples', 1, 4)").await.unwrap();
+
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        // The trailing "# comment" must not swallow the position segment --
+        // position uses ":" now, so it no longer collides with "#" comments.
+        let result = store
+            .parse_cardlist_into_card_requests("1x Gandalf [tples:37:enhanced] # my copy")
+            .await
+            .unwrap();
+
+        assert_eq!(result.requests.len(), 1);
+        assert_eq!(result.requests[0].printing, Some("tples".to_string()));
+        assert_eq!(result.requests[0].position, Some(37));
     }
 
     #[test]
@@ -1098,6 +1281,7 @@ mod tests {
             pack_id: Some("core".into()),
             date_release: Some("2017-10-05".into()),
             has_bleed: false,
+            position: None,
         };
         let row2 = AvailablePrintingRow {
             title: "Fine Katana".into(),
@@ -1111,6 +1295,7 @@ mod tests {
             pack_id: Some("emerald-core-set".into()),
             date_release: Some("2021-10-21".into()),
             has_bleed: false,
+            position: None,
         };
 
         let result = CardStore::assemble_printings(vec![row1, row2]);
@@ -1123,6 +1308,47 @@ mod tests {
             .collect();
         assert!(pack_ids.contains(&"core"));
         assert!(pack_ids.contains(&"emerald-core-set"));
+    }
+
+    #[test]
+    fn test_assemble_printings_distinguishes_positions_in_one_pack() {
+        // The Two-Player Limited Edition Starter prints Gandalf twice: same
+        // title, id, pack, and collection, different scans at positions 4 and 37.
+        let row_4 = AvailablePrintingRow {
+            title: "Gandalf".into(),
+            id: "gandalf_core".into(),
+            is_official: true,
+            variant: None,
+            file_path: "lotrlcg/enhanced/gandalf_1_tples@tples.jpg".into(),
+            part: "front".into(),
+            name: "enhanced".into(),
+            side: "player".into(),
+            pack_id: Some("two_player_limited_edition_starter".into()),
+            date_release: Some("2013-01-01".into()),
+            has_bleed: false,
+            position: Some(4),
+        };
+        let row_37 = AvailablePrintingRow {
+            title: "Gandalf".into(),
+            id: "gandalf_core".into(),
+            is_official: true,
+            variant: None,
+            file_path: "lotrlcg/enhanced/gandalf_2_tples@tples.jpg".into(),
+            part: "front".into(),
+            name: "enhanced".into(),
+            side: "player".into(),
+            pack_id: Some("two_player_limited_edition_starter".into()),
+            date_release: Some("2013-01-01".into()),
+            has_bleed: false,
+            position: Some(37),
+        };
+
+        let result = CardStore::assemble_printings(vec![row_4, row_37]);
+        let printings = result.get("gandalf").unwrap();
+
+        assert_eq!(printings.len(), 2);
+        let positions: Vec<_> = printings.iter().map(|p| p.position).collect();
+        assert_eq!(positions, vec![Some(4), Some(37)]);
     }
 
     fn get_mock_available_printings() -> HashMap<String, Vec<Printing>> {
@@ -1187,18 +1413,21 @@ mod tests {
             id: "sure_gamble".into(),
             printing: None,
             collection: None,
+            position: None,
         };
         let req2 = CardRequest {
             title: "Missing Card".into(),
             id: "missing_card".into(),
             printing: None,
             collection: None,
+            position: None,
         };
         let req3 = CardRequest {
             title: "Snare!".into(),
             id: "snare_".into(),
             printing: None,
             collection: None,
+            position: None,
         };
 
         let result = store
@@ -1235,11 +1464,13 @@ mod tests {
                     card_id: "sure_gamble".to_string(),
                     pack_id: Some("core".to_string()),
                     quantity: 3,
+                    position: None,
                 },
                 crate::models::DecklistEntry {
                     card_id: "snare_".to_string(),
                     pack_id: None,
                     quantity: 1,
+                    position: None,
                 },
             ],
         };
@@ -1260,5 +1491,123 @@ mod tests {
         assert_eq!(snare_reqs.len(), 1);
         assert_eq!(snare_reqs[0].printing, None);
         assert_eq!(snare_reqs[0].title, "Snare!");
+    }
+
+    async fn seed_lotrlcg_db(db: &mut DbStorage) {
+        db.initialize_schema().await.unwrap();
+        db.execute("INSERT INTO packs (id, api_id, name, game_id) VALUES ('pack_voi', 'voi', 'The Voice of Isengard', 'lotrlcg')").await.unwrap();
+
+        // Two cards sharing the plain title "Gríma" -- titles aren't
+        // disambiguated yet, that lands in a later commit.
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_grima_hero_voi', 'grima_hero_voi', 'lotrlcg', 'Gríma', 'grima')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_grima_objective_ally_voi', 'grima_objective_ally_voi', 'lotrlcg', 'Gríma', 'grima')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_grima_hero', 'lotrlcg_grima_hero_voi', 'pack_voi', 3, 2)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_grima_ally', 'lotrlcg_grima_objective_ally_voi', 'pack_voi', 3, 16)").await.unwrap();
+
+        // Thorin Stonehelm (actual position 36) and Aragorn (position 1) in
+        // the same pack -- RingsDB code 22001 names Thorin but claims #1.
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_thorin_stonehelm', 'thorin_stonehelm', 'lotrlcg', 'Thorin Stonehelm', 'thorin_stonehelm')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_aragorn_tples', 'aragorn_tples', 'lotrlcg', 'Aragorn', 'aragorn')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_thorin', 'lotrlcg_thorin_stonehelm', 'pack_voi', 3, 36)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_aragorn', 'lotrlcg_aragorn_tples', 'pack_voi', 1, 1)").await.unwrap();
+
+        // Gildor Inglorion, already stored under its disambiguated title, and
+        // Eyes in the Dark at the position RingsDB code 22081 lies about
+        // (#81, an encounter treachery).
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_gildor_inglorion_tples', 'gildor_inglorion_tples', 'lotrlcg', 'Gildor Inglorion (TPLES)', 'gildor_inglorion__tples_')").await.unwrap();
+        db.execute("INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_eyes_in_the_dark', 'eyes_in_the_dark', 'lotrlcg', 'Eyes in the Dark', 'eyes_in_the_dark')").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_gildor', 'lotrlcg_gildor_inglorion_tples', 'pack_voi', 1, 5)").await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_eyes', 'lotrlcg_eyes_in_the_dark', 'pack_voi', 1, 81)").await.unwrap();
+    }
+
+    fn grima_entry(position: Option<i64>) -> Decklist {
+        Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "grima".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position,
+            }],
+        }
+    }
+
+    #[tokio::test]
+    async fn two_cards_sharing_a_title_resolve_by_position() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let hero = store
+            .resolve_decklist_to_requests(&grima_entry(Some(2)))
+            .await
+            .unwrap();
+        assert_eq!(hero.requests[0].id, "grima_hero_voi");
+
+        let ally = store
+            .resolve_decklist_to_requests(&grima_entry(Some(16)))
+            .await
+            .unwrap();
+        assert_eq!(ally.requests[0].id, "grima_objective_ally_voi");
+    }
+
+    #[tokio::test]
+    async fn a_shared_title_with_no_position_still_resolves_deterministically() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let result = store
+            .resolve_decklist_to_requests(&grima_entry(None))
+            .await
+            .unwrap();
+        assert_eq!(result.requests[0].id, "grima_hero_voi");
+    }
+
+    #[tokio::test]
+    async fn a_lying_position_does_not_override_a_unique_name_match_in_the_pack() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        // RingsDB code 22001: names Thorin Stonehelm, but claims position 1,
+        // which in this pack actually belongs to Aragorn.
+        let decklist = Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "thorin_stonehelm".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position: Some(1),
+            }],
+        };
+
+        let result = store.resolve_decklist_to_requests(&decklist).await.unwrap();
+        assert_eq!(result.requests[0].id, "thorin_stonehelm");
+    }
+
+    #[tokio::test]
+    async fn a_lying_position_does_not_override_a_disambiguated_title_match() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        seed_lotrlcg_db(&mut db).await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        // RingsDB code 22081: names Gildor Inglorion, but claims position 81,
+        // which in this pack belongs to Eyes in the Dark, an encounter card.
+        // The stored title is disambiguated ("Gildor Inglorion (TPLES)"), so
+        // the deck's plain name only matches its disambiguating suffix.
+        let decklist = Decklist {
+            cards: vec![crate::models::DecklistEntry {
+                card_id: "gildor_inglorion".to_string(),
+                pack_id: Some("voi".to_string()),
+                quantity: 1,
+                position: Some(81),
+            }],
+        };
+
+        let result = store.resolve_decklist_to_requests(&decklist).await.unwrap();
+        assert_eq!(result.requests[0].id, "gildor_inglorion_tples");
     }
 }

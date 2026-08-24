@@ -235,12 +235,12 @@ def parse_alep_filename(filename):
 def main():
     parser = argparse.ArgumentParser(description="Migrate ALeP LotR LCG images.")
     parser.add_argument("input", help="GenericPNG folder holding the ALeP pack directories")
-    parser.add_argument("-o", "--output", default="lotrlcg-alep", help="Destination folder")
+    parser.add_argument("-o", "--output", default=".", help="Where to create lotrlcg-alep/")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without converting")
     args = parser.parse_args()
 
     input_dir = args.input
-    output_dir = os.path.abspath(args.output)
+    output_dir = os.path.abspath(os.path.join(args.output, "lotrlcg-alep"))
     os.makedirs(output_dir, exist_ok=True)
 
     log_path = os.path.join(output_dir, "migrate_alep.log")

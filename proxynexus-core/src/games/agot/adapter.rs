@@ -89,6 +89,7 @@ impl CatalogProvider for AgotAdapter {
                 pack_id: c.pack_code,
                 quantity: c.quantity,
                 position: c.position,
+                api_id: None,
             });
         }
 
