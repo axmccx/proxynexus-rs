@@ -40,7 +40,8 @@ pub fn AboutModal(props: AboutModalProps) -> Element {
 
                 h5 { class: "text-sm font-bold mb-2 text-center", "with contributions from:" }
                 p { class: "text-center mb-2", "Fatih Inan" }
-                p { class: "text-center mb-8", "Dimitri" }
+                p { class: "text-center mb-2", "Dimitri" }
+                p { class: "text-center mb-8", "mcwookie" }
 
                 div { class: "flex flex-col gap-4 text-blue-600 items-center font-medium",
                     a { href: instructions_href, target: "_blank", class: "hover:underline", "Instructions"}
