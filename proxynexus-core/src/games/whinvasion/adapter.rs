@@ -55,7 +55,7 @@ fn build_cards_and_versions(
             id: card.unique_id.clone(),
             title: card.name.clone(),
             title_normalized: normalize_title(&card.name),
-            side: Some(card.race),
+            back_group: Some(card.race),
         });
 
         card_versions.push(CardVersion {
@@ -170,7 +170,7 @@ mod tests {
         assert_eq!(versions.len(), 1);
         assert_eq!(cards[0].id, "10013");
         assert_eq!(cards[0].title, "Card 10013");
-        assert_eq!(cards[0].side.as_deref(), Some("Orc"));
+        assert_eq!(cards[0].back_group.as_deref(), Some("Orc"));
         assert_eq!(versions[0].card_id, "10013");
         assert_eq!(versions[0].pack_id, "core-set");
     }

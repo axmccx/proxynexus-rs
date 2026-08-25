@@ -200,7 +200,7 @@ mod tests {
             },
             parts: Vec::new(),
             collection: coll.into(),
-            side: "runner".into(),
+            back_group: "runner".into(),
             pack_id: pack.map(|p| p.to_string()),
             date_release: None,
             position: None,

@@ -71,7 +71,7 @@ impl CatalogProvider for NetrunnerRebootAdapter {
                 id: card_id.clone(),
                 title: c.title.clone(),
                 title_normalized: card_id.clone(),
-                side: Some(c.side_code),
+                back_group: Some(c.side_code),
             });
 
             versions.push(CardVersion {

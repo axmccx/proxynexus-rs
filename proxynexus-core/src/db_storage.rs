@@ -42,7 +42,7 @@ struct CardDbRow {
     game_id: String,
     title: String,
     title_normalized: String,
-    side: Option<String>,
+    back_group: Option<String>,
 }
 
 #[derive(FromGlueRow)]
@@ -170,7 +170,7 @@ impl DbStorage {
                 game_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 title_normalized TEXT NOT NULL,
-                side TEXT
+                back_group TEXT
             );
 
             CREATE TABLE IF NOT EXISTS card_versions (
@@ -254,13 +254,13 @@ impl DbStorage {
             let rows: Vec<CardDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
                 sql.push_str(
-                    "INSERT INTO cards (id, api_id, game_id, title, title_normalized, side) VALUES ",
+                    "INSERT INTO cards (id, api_id, game_id, title, title_normalized, back_group) VALUES ",
                 );
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
-                        let side = row
-                            .side
+                        let back_group = row
+                            .back_group
                             .as_ref()
                             .map_or("NULL".to_string(), |s| quote_sql_string(s));
                         format!(
@@ -270,7 +270,7 @@ impl DbStorage {
                             quote_sql_string(&row.game_id),
                             quote_sql_string(&row.title),
                             quote_sql_string(&row.title_normalized),
-                            side
+                            back_group
                         )
                     })
                     .collect();

@@ -49,7 +49,7 @@ struct AvailablePrintingRow {
     file_path: String,
     part: String,
     name: String,
-    side: String,
+    back_group: String,
     pack_id: Option<String>,
     has_bleed: bool,
     date_release: Option<String>,
@@ -611,7 +611,7 @@ impl<'a> CardStore<'a> {
                 p.file_path,
                 p.part,
                 col.name,
-                c.side,
+                c.back_group,
                 pks.api_id as pack_id,
                 p.has_bleed,
                 pks.date_release,
@@ -694,7 +694,7 @@ impl<'a> CardStore<'a> {
             let first_row = &rows[0];
             let card_title = first_row.title.clone();
             let is_official = first_row.is_official;
-            let side = first_row.side.clone();
+            let back_group = first_row.back_group.clone();
             let date_release = first_row.date_release.clone();
 
             let mut by_part: HashMap<String, Vec<AvailablePrintingRow>> = HashMap::new();
@@ -724,7 +724,7 @@ impl<'a> CardStore<'a> {
                 front,
                 parts,
                 collection: key.collection_name,
-                side,
+                back_group,
                 pack_id: key.pack_id,
                 date_release,
                 position: key.position,
@@ -852,7 +852,7 @@ mod tests {
             },
             parts: Vec::new(),
             collection: coll.into(),
-            side: "runner".into(),
+            back_group: "runner".into(),
             pack_id: pack.map(|p| p.to_string()),
             date_release: date.map(|s| s.to_string()),
             position: None,
@@ -1118,7 +1118,7 @@ mod tests {
             },
             parts: Vec::new(),
             collection: "enhanced".into(),
-            side: "player".into(),
+            back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
             date_release: Some("2013-01-01".into()),
             position: Some(4),
@@ -1298,7 +1298,7 @@ mod tests {
             file_path: "l5r/collection/fine-katana@core.jpg".into(),
             part: "front".into(),
             name: "collection".into(),
-            side: "test".into(),
+            back_group: "test".into(),
             pack_id: Some("core".into()),
             date_release: Some("2017-10-05".into()),
             has_bleed: false,
@@ -1312,7 +1312,7 @@ mod tests {
             file_path: "l5r/collection/fine-katana@emerald-core-set.jpg".into(),
             part: "front".into(),
             name: "collection".into(),
-            side: "test".into(),
+            back_group: "test".into(),
             pack_id: Some("emerald-core-set".into()),
             date_release: Some("2021-10-21".into()),
             has_bleed: false,
@@ -1343,7 +1343,7 @@ mod tests {
             file_path: "lotrlcg/enhanced/gandalf_1_tples@tples.jpg".into(),
             part: "front".into(),
             name: "enhanced".into(),
-            side: "player".into(),
+            back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
             date_release: Some("2013-01-01".into()),
             has_bleed: false,
@@ -1357,7 +1357,7 @@ mod tests {
             file_path: "lotrlcg/enhanced/gandalf_2_tples@tples.jpg".into(),
             part: "front".into(),
             name: "enhanced".into(),
-            side: "player".into(),
+            back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
             date_release: Some("2013-01-01".into()),
             has_bleed: false,

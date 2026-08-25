@@ -4,7 +4,7 @@ pub mod api;
 pub mod identity;
 pub mod models;
 
-pub fn side_from_type_code(type_code: Option<&str>) -> &'static str {
+pub fn back_group_from_type_code(type_code: Option<&str>) -> &'static str {
     match type_code {
         Some("hero")
         | Some("ally")
@@ -29,25 +29,28 @@ pub fn canonical_pack_name(ringsdb_name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{canonical_pack_name, side_from_type_code};
+    use super::{back_group_from_type_code, canonical_pack_name};
 
     #[test]
-    fn player_type_codes_map_to_player_side() {
-        assert_eq!(side_from_type_code(Some("hero")), "player");
-        assert_eq!(side_from_type_code(Some("treasure")), "player");
-        assert_eq!(side_from_type_code(Some("player-objective")), "player");
+    fn player_type_codes_map_to_player_back_group() {
+        assert_eq!(back_group_from_type_code(Some("hero")), "player");
+        assert_eq!(back_group_from_type_code(Some("treasure")), "player");
+        assert_eq!(
+            back_group_from_type_code(Some("player-objective")),
+            "player"
+        );
     }
 
     #[test]
-    fn quest_type_codes_map_to_quest_side() {
-        assert_eq!(side_from_type_code(Some("quest")), "quest");
-        assert_eq!(side_from_type_code(Some("nightmare-setup")), "quest");
+    fn quest_type_codes_map_to_quest_back_group() {
+        assert_eq!(back_group_from_type_code(Some("quest")), "quest");
+        assert_eq!(back_group_from_type_code(Some("nightmare-setup")), "quest");
     }
 
     #[test]
-    fn unknown_or_absent_type_codes_map_to_encounter_side() {
-        assert_eq!(side_from_type_code(Some("enemy")), "encounter");
-        assert_eq!(side_from_type_code(None), "encounter");
+    fn unknown_or_absent_type_codes_map_to_encounter_back_group() {
+        assert_eq!(back_group_from_type_code(Some("enemy")), "encounter");
+        assert_eq!(back_group_from_type_code(None), "encounter");
     }
 
     #[test]

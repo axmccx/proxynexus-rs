@@ -33,10 +33,10 @@ pub async fn generate_mpc_zip(
     let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
     let mut processed_images = 0;
 
-    let mut sides: HashMap<String, Vec<Printing>> = HashMap::new();
+    let mut back_groups: HashMap<String, Vec<Printing>> = HashMap::new();
     for printing in printings {
-        sides
-            .entry(printing.side.clone())
+        back_groups
+            .entry(printing.back_group.clone())
             .or_default()
             .push(printing);
     }
@@ -44,17 +44,17 @@ pub async fn generate_mpc_zip(
     let mut zip_buffer = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(&mut zip_buffer);
 
-    let single_side = sides.len() == 1;
+    let single_group = back_groups.len() == 1;
 
-    for (side_name, side_printings) in sides {
-        let folder_name = if single_side {
+    for (group_name, group_printings) in back_groups {
+        let folder_name = if single_group {
             "card-images".to_string()
         } else {
-            format!("{}-images", side_name)
+            format!("{}-images", group_name)
         };
 
-        process_side(
-            side_printings,
+        process_back_group(
+            group_printings,
             image_provider,
             options,
             &mut zip,
@@ -78,7 +78,7 @@ pub async fn generate_mpc_zip(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn process_side<W: Write + Seek>(
+async fn process_back_group<W: Write + Seek>(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     options: MpcOptions,

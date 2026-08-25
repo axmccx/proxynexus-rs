@@ -118,6 +118,7 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 *   **Printing:** A specific print of a card, directly associated to an image file. Can be an official or unofficial Version.
 *   **Variant:** A label assigned to unofficial Printing. Can be an alt-art prize card or a custom card design. 
 *   **Part:** Some printings have more than one image. Most cards just have a "front" part, but double-sided cards have a "back" part as well.
+*   **Back Group:** The cards of a game that share one back side design. 
 *   **Collection:** A set of card image files and metadata. Can be packaged into a `.pnx` file by the CLI, and added to a local Proxy Nexus instance.
 *   **Pack and Set:** A retail expansion of cards. Both mean the same thing and are used interchangeably. 
 *   **Card Request:** The user's intent when asking to generate a proxy. It specifies the card title and code and optional printing or collection overrides.

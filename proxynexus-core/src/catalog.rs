@@ -27,7 +27,7 @@ pub struct Card {
     pub id: String,
     pub title: String,
     pub title_normalized: String,
-    pub side: Option<String>,
+    pub back_group: Option<String>,
 }
 
 pub struct CardVersion {
@@ -152,19 +152,19 @@ impl<'a> CatalogManager<'a> {
         }
 
         for card in &catalog.cards {
-            let side = card
-                .side
+            let back_group = card
+                .back_group
                 .as_ref()
                 .map_or("NULL".to_string(), |s| quote_sql_string(s));
             let db_card_id = format!("{}_{}", catalog.game_id, card.id);
             let q = format!(
-                "INSERT INTO cards (id, api_id, game_id, title, title_normalized, side) VALUES ({}, {}, {}, {}, {}, {})",
+                "INSERT INTO cards (id, api_id, game_id, title, title_normalized, back_group) VALUES ({}, {}, {}, {}, {}, {})",
                 quote_sql_string(&db_card_id),
                 quote_sql_string(&card.id),
                 quote_sql_string(&catalog.game_id),
                 quote_sql_string(&card.title),
                 quote_sql_string(&card.title_normalized),
-                side
+                back_group
             );
             self.db.execute(&q).await?;
         }

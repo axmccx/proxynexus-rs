@@ -11,7 +11,7 @@ use crate::games::GameAdapterInfo;
 use crate::games::fetch_json;
 use crate::games::lotrlcg::api::fetch_decklist_from_ringsdb;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::games::lotrlcg::side_from_type_code;
+use crate::games::lotrlcg::back_group_from_type_code;
 use crate::models::Decklist;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
@@ -115,7 +115,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 .unwrap_or_else(|| c.title.clone());
             let base_normalized = normalize_title(&title);
 
-            let side = match c.card_type.as_str() {
+            let back_group = match c.card_type.as_str() {
                 "Ally" | "Attachment" | "Contract" | "Event" | "Hero" | "Player_Side_Quest"
                 | "Treasure" => "player",
                 "Quest" | "Campaign" | "GenCon_Setup" | "Nightmare_Setup" => "quest",
@@ -127,7 +127,7 @@ impl CatalogProvider for LotrLcgAdapter {
                     id: card_id.clone(),
                     title,
                     title_normalized: base_normalized,
-                    side: Some(side.to_string()),
+                    back_group: Some(back_group.to_string()),
                 });
             }
 
@@ -168,14 +168,14 @@ impl CatalogProvider for LotrLcgAdapter {
                 pack.name = display_name;
             }
 
-            let side = side_from_type_code(rc.type_code.as_deref());
+            let back_group = back_group_from_type_code(rc.type_code.as_deref());
 
             if seen_cards.insert(normalized_id.clone()) {
                 cards.push(Card {
                     id: normalized_id.clone(),
                     title: rc.name,
                     title_normalized: base_normalized,
-                    side: Some(side.to_string()),
+                    back_group: Some(back_group.to_string()),
                 });
             }
 
@@ -224,7 +224,7 @@ impl CatalogProvider for LotrLcgAdapter {
                 }
             }
 
-            let side = side_from_type_code(rc.type_code.as_deref());
+            let back_group = back_group_from_type_code(rc.type_code.as_deref());
 
             if rc.position.is_some_and(|pos| {
                 provided_pack_positions.contains(&(clean_pack_id.clone(), pos as i64))
@@ -237,7 +237,7 @@ impl CatalogProvider for LotrLcgAdapter {
                     id: normalized_id.clone(),
                     title: rc.name,
                     title_normalized: base_normalized,
-                    side: Some(side.to_string()),
+                    back_group: Some(back_group.to_string()),
                 });
             }
 
