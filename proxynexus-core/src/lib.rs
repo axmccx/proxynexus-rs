@@ -8,6 +8,7 @@ pub mod collection_builder;
 pub mod collection_manager;
 pub mod db_storage;
 pub mod error;
+pub mod file_naming;
 pub mod games;
 pub mod image_provider;
 pub mod models;

@@ -1,7 +1,8 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
 use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
-use crate::models::{CardRequest, CardSide, Decklist, Printing, ResolvedCardRequests, back_index};
+use crate::file_naming::back_index;
+use crate::models::{CardRequest, CardSide, Decklist, Printing, ResolvedCardRequests};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
 use std::collections::{BTreeMap, HashMap, HashSet};

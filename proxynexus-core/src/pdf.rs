@@ -1,6 +1,6 @@
 use crate::error::{ProxyNexusError, Result};
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing, SourceImage};
+use crate::models::{BleedPreference, Printing, SourceImage, expand_to_cards};
 use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
@@ -194,9 +194,6 @@ pub async fn generate_pdf(
     options: PdfOptions,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
-    let total_images: usize = printings.iter().map(|p| 1 + p.backs.len()).sum();
-    let mut processed_images: usize = 0;
-
     let bleed_ratio = options.bleed_ratio();
 
     let preferred = if bleed_ratio > 0.0 {
@@ -205,13 +202,17 @@ pub async fn generate_pdf(
         BleedPreference::NoBleed
     };
 
-    let mut sources: Vec<SourceImage> = Vec::with_capacity(total_images);
-    for p in &printings {
-        sources.extend(p.front.image(preferred));
-        for back in &p.backs {
-            sources.extend(back.image(preferred));
-        }
-    }
+    let sources: Vec<SourceImage> = expand_to_cards(&printings)
+        .iter()
+        .flat_map(|card| {
+            card.front
+                .image(preferred)
+                .into_iter()
+                .chain(card.back.and_then(|back| back.image(preferred)))
+        })
+        .collect();
+    let total_images = sources.len();
+    let mut processed_images: usize = 0;
 
     let mut image_cache: HashMap<String, Image> = HashMap::new();
     let mut document = Document::new();

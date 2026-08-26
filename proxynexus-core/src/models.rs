@@ -28,22 +28,6 @@ pub struct CardSide {
     pub bleed_image_key: Option<String>,
 }
 
-pub fn back_index(label: &str) -> Option<u32> {
-    let rest = label.strip_prefix("back")?;
-    if rest.is_empty() {
-        return Some(1);
-    }
-    rest.parse::<u32>().ok().filter(|index| *index >= 1)
-}
-
-pub fn back_label(index: u32) -> String {
-    if index == 1 {
-        "back".to_string()
-    } else {
-        format!("back{}", index)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Printing {
     pub card_id: String,
@@ -91,6 +75,46 @@ impl Printing {
         let position = self.position.map_or(String::new(), |pos| pos.to_string());
         format!("{}:{}:{}", display, position, self.collection)
     }
+
+    fn cards(&self) -> Vec<PrintedCard<'_>> {
+        if self.backs.is_empty() {
+            return vec![PrintedCard {
+                printing: self,
+                front: &self.front,
+                back: None,
+            }];
+        }
+
+        self.backs
+            .iter()
+            .map(|back| PrintedCard {
+                printing: self,
+                front: &self.front,
+                back: Some(back),
+            })
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PrintedCard<'a> {
+    pub printing: &'a Printing,
+    pub front: &'a CardSide,
+    pub back: Option<&'a CardSide>,
+}
+
+pub fn expand_to_cards(printings: &[Printing]) -> Vec<PrintedCard<'_>> {
+    printings
+        .chunk_by(|a, b| a == b)
+        .flat_map(|copies| {
+            // printing has more than one back, provide one set of PrintedCards regardless of how many are requested
+            if copies[0].backs.len() > 1 {
+                copies[0].cards()
+            } else {
+                copies.iter().flat_map(|p| p.cards()).collect()
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -188,26 +212,185 @@ mod tests {
             gandalf_37.variant_key(),
             "two_player_limited_edition_starter:37:enhanced"
         );
-        assert_ne!(gandalf_4.variant_key(), gandalf_37.variant_key());
     }
 
-    #[test]
-    fn back_labels_carry_a_one_based_index() {
-        assert_eq!(back_index("back"), Some(1));
-        assert_eq!(back_index("back2"), Some(2));
-        assert_eq!(back_index("back10"), Some(10));
+    fn side(key: &str) -> CardSide {
+        CardSide {
+            image_key: Some(key.to_string()),
+            bleed_image_key: None,
+        }
     }
 
-    #[test]
-    fn labels_that_name_no_back_have_no_index() {
-        for label in ["front", "front2", "back0", "backside", "face2", "insert"] {
-            assert_eq!(back_index(label), None, "label: {}", label);
+    fn card(card_id: &str, backs: &[&str]) -> Printing {
+        let mut printing = printing(Some("core"), None, None);
+        printing.card_id = card_id.to_string();
+        printing.front = side(&format!("{}_front", card_id));
+        printing.backs = backs.iter().map(|key| side(key)).collect();
+        printing
+    }
+
+    fn back_keys<'a>(cards: &[PrintedCard<'a>]) -> Vec<Option<&'a str>> {
+        cards
+            .iter()
+            .map(|c| c.back.and_then(|b| b.image_key.as_deref()))
+            .collect()
+    }
+
+    fn both_scans() -> CardSide {
+        CardSide {
+            image_key: Some("plain.jpg".into()),
+            bleed_image_key: Some("bled.jpg".into()),
         }
     }
 
     #[test]
-    fn the_first_back_is_spelled_without_its_number() {
-        assert_eq!(back_label(1), "back");
-        assert_eq!(back_label(2), "back2");
+    fn the_preferred_scan_is_used_when_both_are_present() {
+        let side = both_scans();
+
+        assert_eq!(
+            side.image(BleedPreference::Bleed),
+            Some(SourceImage {
+                key: "bled.jpg".into(),
+                has_bleed: true
+            })
+        );
+        assert_eq!(
+            side.image(BleedPreference::NoBleed),
+            Some(SourceImage {
+                key: "plain.jpg".into(),
+                has_bleed: false
+            })
+        );
+    }
+
+    #[test]
+    fn a_side_with_only_a_bled_scan_falls_back_to_it() {
+        // Every lotrlcg image is bled, so this is the path that whole
+        // catalogue takes through the PDF layout.
+        let mut side = both_scans();
+        side.image_key = None;
+
+        assert_eq!(
+            side.image(BleedPreference::NoBleed),
+            Some(SourceImage {
+                key: "bled.jpg".into(),
+                has_bleed: true
+            })
+        );
+    }
+
+    #[test]
+    fn a_side_with_only_a_plain_scan_falls_back_to_it() {
+        let mut side = both_scans();
+        side.bleed_image_key = None;
+
+        assert_eq!(
+            side.image(BleedPreference::Bleed),
+            Some(SourceImage {
+                key: "plain.jpg".into(),
+                has_bleed: false
+            })
+        );
+    }
+
+    #[test]
+    fn a_side_with_no_scan_has_no_image() {
+        let side = CardSide::default();
+
+        assert_eq!(side.image(BleedPreference::Bleed), None);
+        assert_eq!(side.image(BleedPreference::NoBleed), None);
+    }
+
+    #[test]
+    fn a_printing_with_no_backs_is_one_single_sided_card() {
+        let printing = card("hedge_fund", &[]);
+        let cards = printing.cards();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(
+            cards[0].front.image_key.as_deref(),
+            Some("hedge_fund_front")
+        );
+        assert!(cards[0].back.is_none());
+    }
+
+    #[test]
+    fn a_printing_with_one_back_is_one_double_sided_card() {
+        let printing = card("sync", &["sync_back"]);
+        let cards = printing.cards();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(back_keys(&cards), vec![Some("sync_back")]);
+    }
+
+    #[test]
+    fn several_backs_are_several_cards_sharing_one_front() {
+        let printing = card("jinteki", &["b1", "b2", "b3"]);
+        let cards = printing.cards();
+
+        assert_eq!(cards.len(), 3);
+        assert_eq!(back_keys(&cards), vec![Some("b1"), Some("b2"), Some("b3")]);
+        for c in &cards {
+            assert_eq!(c.front.image_key.as_deref(), Some("jinteki_front"));
+        }
+    }
+
+    #[test]
+    fn any_number_of_copies_of_a_multi_back_card_prints_one_of_each() {
+        for copies in [1, 2, 3, 4, 10] {
+            let printings = vec![card("jinteki", &["b1", "b2", "b3"]); copies];
+
+            assert_eq!(
+                back_keys(&expand_to_cards(&printings)),
+                vec![Some("b1"), Some("b2"), Some("b3")],
+                "copies: {}",
+                copies
+            );
+        }
+    }
+
+    #[test]
+    fn an_ordinary_card_prints_the_number_of_copies_asked_for() {
+        for copies in [1, 2, 3] {
+            let printings = vec![card("hedge_fund", &[]); copies];
+            let cards = expand_to_cards(&printings);
+
+            assert_eq!(cards.len(), copies, "copies: {}", copies);
+            for c in &cards {
+                assert_eq!(c.front.image_key.as_deref(), Some("hedge_fund_front"));
+                assert!(c.back.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn a_double_sided_card_is_one_card_printed_as_many_times_as_asked() {
+        let printings = vec![card("sync", &["sync_back"]); 3];
+
+        assert_eq!(
+            back_keys(&expand_to_cards(&printings)),
+            vec![Some("sync_back"), Some("sync_back"), Some("sync_back")]
+        );
+    }
+
+    #[test]
+    fn two_printings_of_one_card_in_one_pack_are_not_copies_of_each_other() {
+        let mut first = card("gandalf", &[]);
+        first.position = Some(4);
+        let mut second = card("gandalf", &[]);
+        second.position = Some(37);
+
+        assert_eq!(expand_to_cards(&[first, second]).len(), 2);
+    }
+
+    #[test]
+    fn different_cards_are_never_collapsed() {
+        let printings = vec![
+            card("jinteki", &["b1", "b2", "b3"]),
+            card("hedge_fund", &[]),
+            card("jinteki", &["b1", "b2", "b3"]),
+        ];
+
+        assert_eq!(expand_to_cards(&printings).len(), 7);
     }
 }

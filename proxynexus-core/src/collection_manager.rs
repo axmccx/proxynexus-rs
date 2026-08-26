@@ -1,6 +1,7 @@
 use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
-use crate::models::{Manifest, back_index, back_label};
+use crate::file_naming::{back_index, back_label, parse_filename};
+use crate::models::Manifest;
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
 use std::collections::{HashMap, HashSet};
@@ -183,7 +184,7 @@ impl<'a> CollectionManager<'a> {
         for entry in fs::read_dir(&src_images)? {
             let entry = entry?;
             let path = entry.path();
-            if let Some(parsed) = Self::parse_filename(&path) {
+            if let Some(parsed) = parse_filename(&path) {
                 parsed_files.push((path, parsed));
             }
         }
@@ -299,34 +300,6 @@ impl<'a> CollectionManager<'a> {
         info!("Collection '{}' added successfully!", collection_name);
 
         Ok(())
-    }
-
-    fn parse_filename(path: &Path) -> Option<(String, String, String, bool)> {
-        let mut stem = path.file_stem()?.to_str()?;
-
-        let has_bleed = if let Some(stripped) = stem.strip_suffix(".bleed") {
-            stem = stripped;
-            true
-        } else {
-            false
-        };
-
-        let (card_id, rest) = stem.split_once('@')?;
-
-        if rest.contains('@') {
-            return None;
-        }
-
-        let (printing, side) = if let Some((pr, pt)) = rest.split_once('~') {
-            if pt.contains('~') {
-                return None;
-            }
-            (pr.to_string(), pt.to_string())
-        } else {
-            (rest.to_string(), "front".to_string())
-        };
-
-        Some((card_id.to_string(), printing, side, has_bleed))
     }
 
     pub async fn get_collections(&mut self) -> Result<Vec<(String, String, String)>> {
@@ -465,77 +438,6 @@ fn resolve_card_and_version(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
-
-    #[test]
-    fn test_parse_filename_variants() {
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("hedge_fund@system_gateway.jpg")),
-            Some((
-                "hedge_fund".to_string(),
-                "system_gateway".to_string(),
-                "front".to_string(),
-                false
-            ))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("a-legion-of-one@emerald-core-set.jpg")),
-            Some((
-                "a-legion-of-one".to_string(),
-                "emerald-core-set".to_string(),
-                "front".to_string(),
-                false
-            ))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new(
-                "sync_everything_everywhere@data_and_destiny~back.png"
-            )),
-            Some((
-                "sync_everything_everywhere".to_string(),
-                "data_and_destiny".to_string(),
-                "back".to_string(),
-                false
-            ))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new(
-                "hedge_fund@system_gateway~front.bleed.jpg"
-            )),
-            Some((
-                "hedge_fund".to_string(),
-                "system_gateway".to_string(),
-                "front".to_string(),
-                true
-            ))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("hedge_fund@system_gateway.bleed.png")),
-            Some((
-                "hedge_fund".to_string(),
-                "system_gateway".to_string(),
-                "front".to_string(),
-                true
-            ))
-        );
-
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("hedge_fund~front.jpg")),
-            None
-        );
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("hedge_fund@multiple@ats.jpg")),
-            None
-        );
-        assert_eq!(
-            CollectionManager::parse_filename(Path::new("hedge_fund@dark-theme~back~extra.png")),
-            None
-        );
-    }
 
     fn printing_id_map(entries: &[(&str, &str, &str, &str)]) -> HashMap<String, PrintingMatch> {
         entries

@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
-use proxynexus_core::models::{BleedPreference, Printing, back_label};
+use proxynexus_core::file_naming::back_label;
+use proxynexus_core::models::{BleedPreference, Printing};
 use std::collections::HashMap;
 use std::rc::Rc;
 

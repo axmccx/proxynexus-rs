@@ -1,6 +1,7 @@
 use crate::error::Result;
+use crate::file_naming::back_label;
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing, SourceImage, back_label};
+use crate::models::{BleedPreference, Printing, SourceImage};
 use crate::print_prep;
 use async_trait::async_trait;
 use image::ImageFormat;
