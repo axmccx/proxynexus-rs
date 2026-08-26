@@ -93,7 +93,7 @@ async fn process_back_group<W: Write + Seek>(
 
     struct ImageRequest {
         printing: Printing,
-        part_name: String,
+        side_name: String,
         source: SourceImage,
         copy_num: u32,
     }
@@ -116,7 +116,7 @@ async fn process_back_group<W: Write + Seek>(
         if let Some(source) = printing.front.image(BleedPreference::Bleed) {
             requests.push(ImageRequest {
                 printing: printing.clone(),
-                part_name: "front".to_string(),
+                side_name: "front".to_string(),
                 source,
                 copy_num: *copy_num,
             });
@@ -126,7 +126,7 @@ async fn process_back_group<W: Write + Seek>(
             if let Some(source) = back.image(BleedPreference::Bleed) {
                 requests.push(ImageRequest {
                     printing: printing.clone(),
-                    part_name: back_label(offset as u32 + 1),
+                    side_name: back_label(offset as u32 + 1),
                     source,
                     copy_num: *copy_num,
                 });
@@ -146,7 +146,7 @@ async fn process_back_group<W: Write + Seek>(
 
     for req in requests {
         let printing = req.printing;
-        let part_name = req.part_name;
+        let side_name = req.side_name;
         let current_image_key = req.source.key;
         let copy_num = req.copy_num;
 
@@ -191,7 +191,7 @@ async fn process_back_group<W: Write + Seek>(
 
         let variant_label = printing.variant.as_deref().unwrap_or("official");
 
-        let filename = if part_name == "front" {
+        let filename = if side_name == "front" {
             format!(
                 "{}/{}-{}-{}-{}.{}",
                 folder_name, printing.card_id, variant_label, printing.collection, copy_num, ext
@@ -204,7 +204,7 @@ async fn process_back_group<W: Write + Seek>(
                 variant_label,
                 printing.collection,
                 copy_num,
-                part_name,
+                side_name,
                 ext
             )
         };

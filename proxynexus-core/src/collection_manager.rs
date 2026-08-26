@@ -191,24 +191,24 @@ impl<'a> CollectionManager<'a> {
         let mut has_front: HashMap<(String, String), bool> = HashMap::new();
         let mut backs: HashMap<(String, String), HashSet<u32>> = HashMap::new();
 
-        for (path, (card_id, printing, part, _)) in &parsed_files {
-            if part != "front" && back_index(part).is_none() {
+        for (path, (card_id, printing, side, _)) in &parsed_files {
+            if side != "front" && back_index(side).is_none() {
                 return Err(ProxyNexusError::Internal(format!(
-                    "Validation error: '{}' names the part '{}'. A printing is one 'front' and any number of 'back', 'back2', ... parts. See the naming convention in README.md.",
+                    "Validation error: '{}' names the side '{}'. A printing is one 'front' and any number of 'back', 'back2', ... sides. See the naming convention in README.md.",
                     path.file_name().unwrap_or_default().to_string_lossy(),
-                    part
+                    side
                 )));
             }
 
             let key = (card_id.clone(), printing.clone());
 
-            if part == "front" {
+            if side == "front" {
                 has_front.insert(key, true);
                 continue;
             }
 
             has_front.entry(key.clone()).or_insert(false);
-            if let Some(index) = back_index(part) {
+            if let Some(index) = back_index(side) {
                 backs.entry(key).or_default().insert(index);
             }
         }
@@ -233,7 +233,7 @@ impl<'a> CollectionManager<'a> {
         for ((card_id, printing), front_exists) in has_front {
             if !front_exists {
                 return Err(ProxyNexusError::Internal(format!(
-                    "Validation error: Card '{}' ({}) has auxiliary parts but no 'front' image.",
+                    "Validation error: Card '{}' ({}) has other sides but no 'front' image.",
                     card_id, printing
                 )));
             }
@@ -245,7 +245,7 @@ impl<'a> CollectionManager<'a> {
 
         let tx_result: Result<i32> = async {
             let mut printings_added = 0;
-            for (path, (card_id, parsed_printing, part, has_bleed)) in parsed_files {
+            for (path, (card_id, parsed_printing, side, has_bleed)) in parsed_files {
 
                 let file_name = path.file_name().unwrap().to_string_lossy();
                 let file_path = format!("{}/{}/{}", manifest.game, collection_name, file_name);
@@ -261,14 +261,14 @@ impl<'a> CollectionManager<'a> {
                 let db_card_id = format!("{}_{}", manifest.game, card_api_id);
 
                 let insert_print_q = format!(
-                    "INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, part, has_bleed) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
+                    "INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, side, has_bleed) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
                     next_print_id,
                     collection_id,
                     quote_sql_string(&db_card_id),
                     version_id_sql,
                     variant_sql,
                     quote_sql_string(&file_path),
-                    quote_sql_string(&part),
+                    quote_sql_string(&side),
                     if has_bleed { "TRUE" } else { "FALSE" }
                 );
 
@@ -317,7 +317,7 @@ impl<'a> CollectionManager<'a> {
             return None;
         }
 
-        let (printing, part) = if let Some((pr, pt)) = rest.split_once('~') {
+        let (printing, side) = if let Some((pr, pt)) = rest.split_once('~') {
             if pt.contains('~') {
                 return None;
             }
@@ -326,7 +326,7 @@ impl<'a> CollectionManager<'a> {
             (rest.to_string(), "front".to_string())
         };
 
-        Some((card_id.to_string(), printing, part, has_bleed))
+        Some((card_id.to_string(), printing, side, has_bleed))
     }
 
     pub async fn get_collections(&mut self) -> Result<Vec<(String, String, String)>> {

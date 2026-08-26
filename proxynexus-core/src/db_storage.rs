@@ -63,7 +63,7 @@ struct PrintingDbRow {
     version_id: Option<String>,
     variant: Option<String>,
     file_path: String,
-    part: String,
+    side: String,
     has_bleed: bool,
 }
 
@@ -189,7 +189,7 @@ impl DbStorage {
                 version_id TEXT,
                 variant TEXT,
                 file_path TEXT NOT NULL,
-                part TEXT NOT NULL,
+                side TEXT NOT NULL,
                 has_bleed BOOLEAN DEFAULT FALSE
             );
             ",
@@ -352,7 +352,7 @@ impl DbStorage {
         if let Some(payload) = print_payloads.into_iter().next() {
             let rows: Vec<PrintingDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, part, has_bleed) VALUES ");
+                sql.push_str("INSERT INTO printings (id, collection_id, card_id, version_id, variant, file_path, side, has_bleed) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -372,7 +372,7 @@ impl DbStorage {
                             version_id,
                             variant,
                             quote_sql_string(&row.file_path),
-                            quote_sql_string(&row.part),
+                            quote_sql_string(&row.side),
                             if row.has_bleed { "TRUE" } else { "FALSE" }
                         )
                     })

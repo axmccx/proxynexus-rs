@@ -117,7 +117,7 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 *   **Version:** An official retail release of a card.
 *   **Printing:** A specific print of a card, directly associated to an image file. Can be an official or unofficial Version.
 *   **Variant:** A label assigned to unofficial Printing. Can be an alt-art prize card or a custom card design. 
-*   **Part:** Some printings have more than one image. Most cards just have a "front" part, but double-sided cards have a "back" part as well.
+*   **Side:** Some printings have more than one side. Identifies the front or back of a double-sided card.
 *   **Back Group:** The cards of a game that share one back side design. 
 *   **Collection:** A set of card image files and metadata. Can be packaged into a `.pnx` file by the CLI, and added to a local Proxy Nexus instance.
 *   **Pack and Set:** A retail expansion of cards. Both mean the same thing and are used interchangeably. 
@@ -127,25 +127,27 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 
 ## Image File Naming Convention
 
-Each image file represents a single printing and part. The collection builder relies solely on the file name to identify it.
+Each image file represents a single side of a single printing. The collection builder relies solely on the file name to identify it.
 The general syntax is:
-`{card_id}@{printing}[~{part}][.bleed].{extension}`
+`{card_id}@{printing}[~{side}][.bleed].{extension}`
 
-The Card ID and Printing sections are required. The part section is optional and defaults to "front" if omitted.
+The Card ID and Printing sections are required. The side section is optional and defaults to "front" if omitted.
 The optional `.bleed` suffix indicates the image already has a bleed border.
-`printing` must be `pack_id` for official cards and can be any free-form label for unofficial art-art/custom 
+`printing` must be the `pack_id` for official cards, and can be any free-form label for unofficial alt-art or custom cards.
 Only PNG and JPEG files are supported.
 
 #### File name scenarios:
-*   **Standard Cards:** The majority of card image files. (e.g., `hedge_fund@core_set.jpg` -> ID: hedge_fund, Printing: core_set, Part: front).
-*   **Alternate Art:** The printing must be an official pack or a custom label for alt-arts. (e.g., `hedge_fund@alt1.jpg` -> ID: hedge_fund, Printing: alt1, Part: front).
-*   **Parts (Multiple Sides):** Contains a tilde `~` followed by the part name. 
-(e.g., `sync_everything_everywhere@data_and_destiny~back` -> ID: sync_everything_everywhere, Printing: data_and_destiny, Part: back).
+*   **Standard Cards:** The majority of card image files. (e.g., `hedge_fund@core_set.jpg` -> ID: hedge_fund, Printing: core_set, Side: front).
+*   **Alternate Art:** The printing must be an official pack or a custom label for alt-arts. (e.g., `hedge_fund@alt1.jpg` -> ID: hedge_fund, Printing: alt1, Side: front).
+*   **Sides:** Contains a tilde `~` followed by the side name.
+(e.g., `sync_everything_everywhere@data_and_destiny~back` -> ID: sync_everything_everywhere, Printing: data_and_destiny, Side: back).
+The only accepted side names are `front` and `back`, `back2`, `back3`, ... A file with no `~side` is the front.
+Backs are numbered from one with no gaps, and back N is the reverse of the printing's Nth card.
 *   **Bleed Images:** Contains a `.bleed` suffix before the extension. This indicates the image already has a bleed border and shouldn't be processed to add one during MPC generation.
-(e.g., `hedge_fund@system_gateway~front.bleed.jpg` -> ID: hedge_fund, Printing: system_gateway, Part: front, Has Bleed: true).
+(e.g., `hedge_fund@system_gateway.bleed.jpg` -> ID: hedge_fund, Printing: system_gateway, Side: front, Has Bleed: true).
 
 **Strict Rules:**
-*   **Orphans:** If a part file doesn't have an associated front file, it is ignored.
+*   **Orphans:** A back file with no matching front file fails the import.
 *   **Exact API IDs:** For official printings, the `{card_id}` and `{printing}` (pack ID) **must** exactly match the 
 string IDs used by the game's respective database API.
 *   **What `{card_id}` names varies by game:** For most games it names the abstract card, shared by every printing of

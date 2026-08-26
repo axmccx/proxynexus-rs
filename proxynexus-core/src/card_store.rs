@@ -47,7 +47,7 @@ struct AvailablePrintingRow {
     is_official: bool,
     variant: Option<String>,
     file_path: String,
-    part: String,
+    side: String,
     name: String,
     back_group: String,
     pack_id: Option<String>,
@@ -609,7 +609,7 @@ impl<'a> CardStore<'a> {
                 (p.version_id IS NOT NULL) AS is_official,
                 p.variant,
                 p.file_path,
-                p.part,
+                p.side,
                 col.name,
                 c.back_group,
                 pks.api_id as pack_id,
@@ -693,17 +693,17 @@ impl<'a> CardStore<'a> {
             let back_group = first_row.back_group.clone();
             let date_release = first_row.date_release.clone();
 
-            let mut by_part: HashMap<String, Vec<AvailablePrintingRow>> = HashMap::new();
+            let mut by_side: HashMap<String, Vec<AvailablePrintingRow>> = HashMap::new();
             for row in rows {
-                by_part.entry(row.part.clone()).or_default().push(row);
+                by_side.entry(row.side.clone()).or_default().push(row);
             }
 
-            let front = by_part
+            let front = by_side
                 .remove("front")
                 .map(Self::assemble_side)
                 .unwrap_or_default();
 
-            let backs: Vec<CardSide> = by_part
+            let backs: Vec<CardSide> = by_side
                 .into_iter()
                 .filter_map(|(label, rows)| back_index(&label).map(|index| (index, rows)))
                 .collect::<BTreeMap<_, _>>()
@@ -827,14 +827,14 @@ mod tests {
     use super::*;
     use crate::models::Printing;
 
-    fn row(part: &str, file_path: &str) -> AvailablePrintingRow {
+    fn row(side: &str, file_path: &str) -> AvailablePrintingRow {
         AvailablePrintingRow {
             title: "Jinteki Biotech".into(),
             id: "jinteki_biotech".into(),
             is_official: true,
             variant: None,
             file_path: file_path.into(),
-            part: part.into(),
+            side: side.into(),
             name: "nr-ffg".into(),
             back_group: "corp".into(),
             pack_id: Some("the_valley".into()),
@@ -1354,7 +1354,7 @@ mod tests {
             is_official: true,
             variant: None,
             file_path: "l5r/collection/fine-katana@core.jpg".into(),
-            part: "front".into(),
+            side: "front".into(),
             name: "collection".into(),
             back_group: "test".into(),
             pack_id: Some("core".into()),
@@ -1368,7 +1368,7 @@ mod tests {
             is_official: true,
             variant: None,
             file_path: "l5r/collection/fine-katana@emerald-core-set.jpg".into(),
-            part: "front".into(),
+            side: "front".into(),
             name: "collection".into(),
             back_group: "test".into(),
             pack_id: Some("emerald-core-set".into()),
@@ -1399,7 +1399,7 @@ mod tests {
             is_official: true,
             variant: None,
             file_path: "lotrlcg/enhanced/gandalf_1_tples@tples.jpg".into(),
-            part: "front".into(),
+            side: "front".into(),
             name: "enhanced".into(),
             back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
@@ -1413,7 +1413,7 @@ mod tests {
             is_official: true,
             variant: None,
             file_path: "lotrlcg/enhanced/gandalf_2_tples@tples.jpg".into(),
-            part: "front".into(),
+            side: "front".into(),
             name: "enhanced".into(),
             back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
