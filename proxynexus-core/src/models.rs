@@ -22,11 +22,26 @@ pub struct SourceImage {
     pub has_bleed: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct PrintingPart {
-    pub name: String,
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CardSide {
     pub image_key: Option<String>,
     pub bleed_image_key: Option<String>,
+}
+
+pub fn back_index(label: &str) -> Option<u32> {
+    let rest = label.strip_prefix("back")?;
+    if rest.is_empty() {
+        return Some(1);
+    }
+    rest.parse::<u32>().ok().filter(|index| *index >= 1)
+}
+
+pub fn back_label(index: u32) -> String {
+    if index == 1 {
+        "back".to_string()
+    } else {
+        format!("back{}", index)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -35,8 +50,8 @@ pub struct Printing {
     pub card_title: String,
     pub is_official: bool,
     pub variant: Option<String>,
-    pub front: PrintingPart,
-    pub parts: Vec<PrintingPart>,
+    pub front: CardSide,
+    pub backs: Vec<CardSide>,
     pub collection: String,
     pub back_group: String,
     pub pack_id: Option<String>,
@@ -44,7 +59,7 @@ pub struct Printing {
     pub position: Option<i64>,
 }
 
-impl PrintingPart {
+impl CardSide {
     pub fn image(&self, preferred: BleedPreference) -> Option<SourceImage> {
         let bleed = || {
             self.bleed_image_key.clone().map(|key| SourceImage {
@@ -123,12 +138,11 @@ mod tests {
             card_title: "Gandalf".into(),
             is_official: true,
             variant: variant.map(|v| v.to_string()),
-            front: PrintingPart {
-                name: "front".into(),
+            front: CardSide {
                 image_key: None,
                 bleed_image_key: None,
             },
-            parts: Vec::new(),
+            backs: Vec::new(),
             collection: "enhanced".into(),
             back_group: "player".into(),
             pack_id: pack_id.map(|p| p.to_string()),
@@ -175,5 +189,25 @@ mod tests {
             "two_player_limited_edition_starter:37:enhanced"
         );
         assert_ne!(gandalf_4.variant_key(), gandalf_37.variant_key());
+    }
+
+    #[test]
+    fn back_labels_carry_a_one_based_index() {
+        assert_eq!(back_index("back"), Some(1));
+        assert_eq!(back_index("back2"), Some(2));
+        assert_eq!(back_index("back10"), Some(10));
+    }
+
+    #[test]
+    fn labels_that_name_no_back_have_no_index() {
+        for label in ["front", "front2", "back0", "backside", "face2", "insert"] {
+            assert_eq!(back_index(label), None, "label: {}", label);
+        }
+    }
+
+    #[test]
+    fn the_first_back_is_spelled_without_its_number() {
+        assert_eq!(back_label(1), "back");
+        assert_eq!(back_label(2), "back2");
     }
 }

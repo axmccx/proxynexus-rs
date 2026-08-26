@@ -1,9 +1,9 @@
 use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
-use crate::models::Manifest;
+use crate::models::{Manifest, back_index, back_label};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -188,24 +188,45 @@ impl<'a> CollectionManager<'a> {
             }
         }
 
-        let mut parts_map: HashMap<(String, String, String), (bool, bool)> = HashMap::new();
         let mut has_front: HashMap<(String, String), bool> = HashMap::new();
+        let mut backs: HashMap<(String, String), HashSet<u32>> = HashMap::new();
 
-        for (_, (card_id, printing, part, has_bleed)) in &parsed_files {
-            let key = (card_id.clone(), printing.clone(), part.clone());
-            let entry = parts_map.entry(key).or_insert((false, false));
-            if *has_bleed {
-                entry.1 = true;
-            } else {
-                entry.0 = true;
+        for (path, (card_id, printing, part, _)) in &parsed_files {
+            if part != "front" && back_index(part).is_none() {
+                return Err(ProxyNexusError::Internal(format!(
+                    "Validation error: '{}' names the part '{}'. A printing is one 'front' and any number of 'back', 'back2', ... parts. See the naming convention in README.md.",
+                    path.file_name().unwrap_or_default().to_string_lossy(),
+                    part
+                )));
             }
 
+            let key = (card_id.clone(), printing.clone());
+
             if part == "front" {
-                has_front.insert((card_id.clone(), printing.clone()), true);
-            } else {
-                has_front
-                    .entry((card_id.clone(), printing.clone()))
-                    .or_insert(false);
+                has_front.insert(key, true);
+                continue;
+            }
+
+            has_front.entry(key.clone()).or_insert(false);
+            if let Some(index) = back_index(part) {
+                backs.entry(key).or_default().insert(index);
+            }
+        }
+
+        for ((card_id, printing), indices) in &backs {
+            let highest = indices.iter().copied().max().unwrap_or(0);
+            let missing: Vec<String> = (1..=highest)
+                .filter(|index| !indices.contains(index))
+                .map(back_label)
+                .collect();
+
+            if !missing.is_empty() {
+                return Err(ProxyNexusError::Internal(format!(
+                    "Validation error: Card '{}' ({}) is missing {}. Backs are numbered from one with no gaps.",
+                    card_id,
+                    printing,
+                    missing.join(", ")
+                )));
             }
         }
 

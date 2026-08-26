@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use proxynexus_core::models::{BleedPreference, Printing};
+use proxynexus_core::models::{BleedPreference, Printing, back_label};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -117,9 +117,9 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                 }
                             }
                         }
-                        for (part_index, part) in printing.parts.iter().enumerate() {
+                        for (back_index, back) in printing.backs.iter().enumerate() {
                             div {
-                                key: "{title_normalized}-{occurrence}-{part_index}",
+                                key: "{title_normalized}-{occurrence}-{back_index}",
                                 class: "relative group w-[160px] md:w-[250px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-105 hover:z-20",
 
                                 if has_variants {
@@ -131,7 +131,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                 div {
                                     class: "relative w-full h-full overflow-hidden shadow-lg bg-gray-400 flex items-center justify-center",
                                     {
-                                        match part.image(BleedPreference::NoBleed) {
+                                        match back.image(BleedPreference::NoBleed) {
                                             Some(source) => {
                                                 let style = if source.has_bleed {
                                                     "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
@@ -139,12 +139,12 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                                     "width: 100%; height: 100%; object-fit: cover; image-rendering: auto; -webkit-backface-visibility: hidden; transform: translateZ(0);"
                                                 };
                                                 rsx! {
-                                img {
-                                    src: "{build_image_url(&source.key)}",
-                                    crossorigin: "anonymous",
-                                    style: "{style}",
-                                    alt: "{printing.card_title} ({part.name})",
-                                }
+                                                    img {
+                                                        src: "{build_image_url(&source.key)}",
+                                                        crossorigin: "anonymous",
+                                                        style: "{style}",
+                                                        alt: "{printing.card_title} ({back_label(back_index as u32 + 1)})",
+                                                    }
                                                 }
                                             }
                                             None => rsx! {},

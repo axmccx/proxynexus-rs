@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing, SourceImage};
+use crate::models::{BleedPreference, Printing, SourceImage, back_label};
 use crate::print_prep;
 use async_trait::async_trait;
 use image::ImageFormat;
@@ -30,7 +30,7 @@ pub async fn generate_mpc_zip(
     card_backs: Vec<(String, Vec<u8>)>,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
-    let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
+    let total_images: usize = printings.iter().map(|p| 1 + p.backs.len()).sum();
     let mut processed_images = 0;
 
     let mut back_groups: HashMap<String, Vec<Printing>> = HashMap::new();
@@ -111,7 +111,7 @@ async fn process_back_group<W: Write + Seek>(
             .and_modify(|n| *n += 1)
             .or_insert(1);
 
-        let parts = printing.parts.clone();
+        let backs = printing.backs.clone();
 
         if let Some(source) = printing.front.image(BleedPreference::Bleed) {
             requests.push(ImageRequest {
@@ -122,11 +122,11 @@ async fn process_back_group<W: Write + Seek>(
             });
         }
 
-        for part in parts {
-            if let Some(source) = part.image(BleedPreference::Bleed) {
+        for (offset, back) in backs.iter().enumerate() {
+            if let Some(source) = back.image(BleedPreference::Bleed) {
                 requests.push(ImageRequest {
                     printing: printing.clone(),
-                    part_name: part.name,
+                    part_name: back_label(offset as u32 + 1),
                     source,
                     copy_num: *copy_num,
                 });

@@ -194,7 +194,7 @@ pub async fn generate_pdf(
     options: PdfOptions,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
-    let total_images: usize = printings.iter().map(|p| 1 + p.parts.len()).sum();
+    let total_images: usize = printings.iter().map(|p| 1 + p.backs.len()).sum();
     let mut processed_images: usize = 0;
 
     let bleed_ratio = options.bleed_ratio();
@@ -208,8 +208,8 @@ pub async fn generate_pdf(
     let mut sources: Vec<SourceImage> = Vec::with_capacity(total_images);
     for p in &printings {
         sources.extend(p.front.image(preferred));
-        for part in &p.parts {
-            sources.extend(part.image(preferred));
+        for back in &p.backs {
+            sources.extend(back.image(preferred));
         }
     }
 

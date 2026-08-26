@@ -178,7 +178,7 @@ fn format_query_output(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Printing, PrintingPart};
+    use crate::models::{CardSide, Printing};
     use std::collections::HashMap;
 
     fn mock_printing(
@@ -193,12 +193,11 @@ mod tests {
             card_id: code.into(),
             is_official,
             variant: variant.map(|v| v.to_string()),
-            front: PrintingPart {
-                name: "front".into(),
+            front: CardSide {
                 image_key: Some(format!("{}.jpg", code)),
                 bleed_image_key: None,
             },
-            parts: Vec::new(),
+            backs: Vec::new(),
             collection: coll.into(),
             back_group: "runner".into(),
             pack_id: pack.map(|p| p.to_string()),

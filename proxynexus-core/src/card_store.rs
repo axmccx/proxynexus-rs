@@ -1,10 +1,10 @@
 use crate::card_source::{CardSource, Cardlist, SetName};
 use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
-use crate::models::{CardRequest, Decklist, Printing, PrintingPart, ResolvedCardRequests};
+use crate::models::{CardRequest, CardSide, Decklist, Printing, ResolvedCardRequests, back_index};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::string::String;
 use tracing::warn;
 
@@ -655,22 +655,18 @@ impl<'a> CardStore<'a> {
         Ok(resolved_printings)
     }
 
-    fn assemble_part(name: &str, rows: Vec<AvailablePrintingRow>) -> PrintingPart {
-        let mut part = PrintingPart {
-            name: name.to_string(),
-            image_key: None,
-            bleed_image_key: None,
-        };
+    fn assemble_side(rows: Vec<AvailablePrintingRow>) -> CardSide {
+        let mut side = CardSide::default();
 
         for row in rows {
             if row.has_bleed {
-                part.bleed_image_key = Some(row.file_path);
+                side.bleed_image_key = Some(row.file_path);
             } else {
-                part.image_key = Some(row.file_path);
+                side.image_key = Some(row.file_path);
             }
         }
 
-        part
+        side
     }
 
     fn assemble_printings(rows: Vec<AvailablePrintingRow>) -> HashMap<String, Vec<Printing>> {
@@ -704,16 +700,15 @@ impl<'a> CardStore<'a> {
 
             let front = by_part
                 .remove("front")
-                .map(|rows| Self::assemble_part("front", rows))
-                .unwrap_or(PrintingPart {
-                    name: "front".to_string(),
-                    image_key: None,
-                    bleed_image_key: None,
-                });
+                .map(Self::assemble_side)
+                .unwrap_or_default();
 
-            let parts = by_part
+            let backs: Vec<CardSide> = by_part
                 .into_iter()
-                .map(|(name, rows)| Self::assemble_part(&name, rows))
+                .filter_map(|(label, rows)| back_index(&label).map(|index| (index, rows)))
+                .collect::<BTreeMap<_, _>>()
+                .into_values()
+                .map(Self::assemble_side)
                 .collect();
 
             let printing = Printing {
@@ -722,7 +717,7 @@ impl<'a> CardStore<'a> {
                 is_official,
                 variant: key.variant,
                 front,
-                parts,
+                backs,
                 collection: key.collection_name,
                 back_group,
                 pack_id: key.pack_id,
@@ -832,6 +827,72 @@ mod tests {
     use super::*;
     use crate::models::Printing;
 
+    fn row(part: &str, file_path: &str) -> AvailablePrintingRow {
+        AvailablePrintingRow {
+            title: "Jinteki Biotech".into(),
+            id: "jinteki_biotech".into(),
+            is_official: true,
+            variant: None,
+            file_path: file_path.into(),
+            part: part.into(),
+            name: "nr-ffg".into(),
+            back_group: "corp".into(),
+            pack_id: Some("the_valley".into()),
+            has_bleed: false,
+            date_release: None,
+            position: None,
+        }
+    }
+
+    fn only_printing(rows: Vec<AvailablePrintingRow>) -> Printing {
+        let mut assembled = CardStore::assemble_printings(rows);
+        assert_eq!(assembled.len(), 1);
+        let mut printings = assembled.drain().next().unwrap().1;
+        assert_eq!(printings.len(), 1);
+        printings.remove(0)
+    }
+
+    #[test]
+    fn backs_are_ordered_by_index_not_by_the_order_rows_arrive() {
+        let printing = only_printing(vec![
+            row("back3", "c.jpg"),
+            row("front", "f.jpg"),
+            row("back", "a.jpg"),
+            row("back2", "b.jpg"),
+        ]);
+
+        assert_eq!(printing.front.image_key.as_deref(), Some("f.jpg"));
+        assert_eq!(
+            printing
+                .backs
+                .iter()
+                .map(|back| back.image_key.as_deref().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["a.jpg", "b.jpg", "c.jpg"]
+        );
+    }
+
+    #[test]
+    fn a_printing_with_no_back_rows_has_no_backs() {
+        let printing = only_printing(vec![row("front", "f.jpg")]);
+
+        assert_eq!(printing.front.image_key.as_deref(), Some("f.jpg"));
+        assert!(printing.backs.is_empty());
+    }
+
+    #[test]
+    fn the_bled_and_unbled_scans_of_one_side_land_on_the_same_side() {
+        let mut bled = row("front", "f.bleed.jpg");
+        bled.has_bleed = true;
+        let printing = only_printing(vec![row("front", "f.jpg"), bled]);
+
+        assert_eq!(printing.front.image_key.as_deref(), Some("f.jpg"));
+        assert_eq!(
+            printing.front.bleed_image_key.as_deref(),
+            Some("f.bleed.jpg")
+        );
+    }
+
     fn mock_printing(
         code: &str,
         is_official: bool,
@@ -845,12 +906,11 @@ mod tests {
             card_id: code.into(),
             is_official,
             variant: variant.map(|s| s.to_string()),
-            front: PrintingPart {
-                name: "front".into(),
+            front: CardSide {
                 image_key: Some(format!("{}.jpg", code)),
                 bleed_image_key: None,
             },
-            parts: Vec::new(),
+            backs: Vec::new(),
             collection: coll.into(),
             back_group: "runner".into(),
             pack_id: pack.map(|p| p.to_string()),
@@ -1111,12 +1171,11 @@ mod tests {
             card_id: "gandalf_core".into(),
             is_official: true,
             variant: None,
-            front: PrintingPart {
-                name: "front".into(),
+            front: CardSide {
                 image_key: Some("gandalf_1_tples.jpg".into()),
                 bleed_image_key: None,
             },
-            parts: Vec::new(),
+            backs: Vec::new(),
             collection: "enhanced".into(),
             back_group: "player".into(),
             pack_id: Some("two_player_limited_edition_starter".into()),
@@ -1124,8 +1183,7 @@ mod tests {
             position: Some(4),
         };
         let gandalf_37 = Printing {
-            front: PrintingPart {
-                name: "front".into(),
+            front: CardSide {
                 image_key: Some("gandalf_2_tples.jpg".into()),
                 bleed_image_key: None,
             },
