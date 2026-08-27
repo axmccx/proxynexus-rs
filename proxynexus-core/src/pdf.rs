@@ -274,7 +274,11 @@ pub async fn generate_pdf(
         );
     }
 
-    let cards = expand_to_cards(&printings);
+    let cards: Vec<PrintedCard> = expand_to_cards(&printings)
+        .into_iter()
+        .map(|(_, card)| card)
+        .collect();
+
     let pages = build_pages(
         &cards,
         &options,
@@ -1084,8 +1088,12 @@ mod tests {
 
     fn pages_in(printings: &[Printing], options: &PdfOptions, game_id: &str) -> Vec<Page> {
         let (rows, cols) = options.capacity();
+        let cards: Vec<PrintedCard> = expand_to_cards(printings)
+            .into_iter()
+            .map(|(_, card)| card)
+            .collect();
         build_pages(
-            &expand_to_cards(printings),
+            &cards,
             options,
             game_id,
             BleedPreference::NoBleed,

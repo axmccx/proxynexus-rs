@@ -103,18 +103,30 @@ pub struct PrintedCard<'a> {
     pub back: Option<&'a CardSide>,
 }
 
-pub fn expand_to_cards(printings: &[Printing]) -> Vec<PrintedCard<'_>> {
-    printings
-        .chunk_by(|a, b| a == b)
-        .flat_map(|copies| {
-            // printing has more than one back, provide one set of PrintedCards regardless of how many are requested
-            if copies[0].backs.len() > 1 {
-                copies[0].cards()
-            } else {
-                copies.iter().flat_map(|p| p.cards()).collect()
+/// The cards to print, each with the index of the printing it came from.
+pub fn expand_to_cards(printings: &[Printing]) -> Vec<(usize, PrintedCard<'_>)> {
+    let mut cards = Vec::new();
+    let mut first = 0;
+
+    for copies in printings.chunk_by(|a, b| a == b) {
+        // printing has more than one back, provide one set of PrintedCards regardless of how many are requested
+        if copies[0].backs.len() > 1 {
+            cards.extend(copies[0].cards().into_iter().map(|card| (first, card)));
+        } else {
+            for (offset, printing) in copies.iter().enumerate() {
+                cards.extend(
+                    printing
+                        .cards()
+                        .into_iter()
+                        .map(|card| (first + offset, card)),
+                );
             }
-        })
-        .collect()
+        }
+
+        first += copies.len();
+    }
+
+    cards
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -236,6 +248,13 @@ mod tests {
             .collect()
     }
 
+    fn printed(printings: &[Printing]) -> Vec<PrintedCard<'_>> {
+        expand_to_cards(printings)
+            .into_iter()
+            .map(|(_, card)| card)
+            .collect()
+    }
+
     fn both_scans() -> CardSide {
         CardSide {
             image_key: Some("plain.jpg".into()),
@@ -341,7 +360,7 @@ mod tests {
             let printings = vec![card("jinteki", &["b1", "b2", "b3"]); copies];
 
             assert_eq!(
-                back_keys(&expand_to_cards(&printings)),
+                back_keys(&printed(&printings)),
                 vec![Some("b1"), Some("b2"), Some("b3")],
                 "copies: {}",
                 copies
@@ -353,7 +372,7 @@ mod tests {
     fn an_ordinary_card_prints_the_number_of_copies_asked_for() {
         for copies in [1, 2, 3] {
             let printings = vec![card("hedge_fund", &[]); copies];
-            let cards = expand_to_cards(&printings);
+            let cards = printed(&printings);
 
             assert_eq!(cards.len(), copies, "copies: {}", copies);
             for c in &cards {
@@ -368,7 +387,7 @@ mod tests {
         let printings = vec![card("sync", &["sync_back"]); 3];
 
         assert_eq!(
-            back_keys(&expand_to_cards(&printings)),
+            back_keys(&printed(&printings)),
             vec![Some("sync_back"), Some("sync_back"), Some("sync_back")]
         );
     }
@@ -380,7 +399,7 @@ mod tests {
         let mut second = card("gandalf", &[]);
         second.position = Some(37);
 
-        assert_eq!(expand_to_cards(&[first, second]).len(), 2);
+        assert_eq!(printed(&[first, second]).len(), 2);
     }
 
     #[test]
@@ -391,6 +410,6 @@ mod tests {
             card("jinteki", &["b1", "b2", "b3"]),
         ];
 
-        assert_eq!(expand_to_cards(&printings).len(), 7);
+        assert_eq!(printed(&printings).len(), 7);
     }
 }

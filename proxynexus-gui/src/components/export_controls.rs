@@ -1,5 +1,6 @@
 use crate::export::ExportOptions;
 use dioxus::prelude::*;
+use proxynexus_core::card_backs;
 use proxynexus_core::mpc::MpcOptions;
 use proxynexus_core::pdf::{
     CutLines, DEFAULT_CUT_LINE_THICKNESS, MAX_CUT_LINE_THICKNESS, MIN_CUT_LINE_THICKNESS, PageSize,
@@ -82,6 +83,7 @@ pub struct ExportControlsProps {
     pub on_open_info: EventHandler<(f64, f64, f64)>,
     pub on_open_upscale_info: EventHandler<(f64, f64, f64)>,
     pub on_open_sides_info: EventHandler<(f64, f64, f64)>,
+    pub active_game_id: Signal<Option<String>>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -99,6 +101,20 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
     let mut cut_line_thickness = use_signal(|| DEFAULT_CUT_LINE_THICKNESS.to_string());
     let mut print_layout = use_signal(PrintLayout::default);
     let mut sides = use_signal(Sides::default);
+    let mut back_label = use_signal(|| None::<&'static str>);
+
+    let active_game_id = props.active_game_id;
+    let back_labels =
+        use_memo(move || active_game_id().map_or_else(Vec::new, |id| card_backs::back_labels(&id)));
+
+    let default_back_label =
+        use_memo(move || active_game_id().and_then(|id| card_backs::default_label(&id)));
+
+    use_effect(move || {
+        if back_label().is_some_and(|label| !back_labels().contains(&label)) {
+            back_label.set(None);
+        }
+    });
     let mut upscale = use_signal(|| false);
     let mut show_donate = use_signal(|| false);
 
@@ -398,6 +414,25 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                         options: vec![(Sides::Single, "Single"), (Sides::Double, "Double")],
                         on_change: move |v| sides.set(v)
                     }
+
+                    if sides() == Sides::Double && back_labels().len() > 1 {
+                        div { class: "flex items-center gap-2",
+                            label { class: "text-xs md:text-sm text-gray-600 shrink-0", "Back art" }
+                            select {
+                                disabled: is_generating,
+                                class: "w-full p-2 border border-gray-300 rounded-md bg-white outline-none focus:ring-2 focus:ring-blue-400 text-xs md:text-sm",
+                                value: back_label().or(default_back_label()).unwrap_or_default(),
+                                onchange: move |evt| {
+                                    let chosen = evt.value();
+                                    back_label
+                                        .set(back_labels().into_iter().find(|label| *label == chosen));
+                                },
+                                for label in back_labels() {
+                                    option { value: "{label}", "{display_label(label)}" }
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 p { class: "text-xs md:text-sm text-gray-600",
@@ -551,7 +586,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                                         cut_line_thickness: thickness,
                                                         upscale: upscale(),
                                                         double_sided: sides() == Sides::Double,
-                                                        back_label: None,
+                                                        back_label: back_label(),
                                                     })
                                                 }
                                             };
@@ -589,4 +624,18 @@ fn set_has_generated() {
             let _ = local_storage.set_item("proxynexus_has_generated", "true");
         }
     }
+}
+
+fn display_label(label: &str) -> String {
+    label
+        .split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }

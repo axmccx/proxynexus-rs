@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use proxynexus_core::file_naming::back_label;
-use proxynexus_core::models::{BleedPreference, Printing};
+use proxynexus_core::models::{BleedPreference, CardSide, Printing, expand_to_cards};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -29,12 +29,16 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
     rsx! {
         div {
             class: "flex flex-wrap gap-4",
-            for (printing, base_printing) in printings.into_iter().zip(base_printings.into_iter()) {
+            for (printing, base_printing, card_index, front, back) in preview_rows(&printings, &base_printings) {
                 {
                     let title_normalized = proxynexus_core::card_store::normalize_title(&printing.card_title);
                     let occurrence = *occurrence_tracker.entry(title_normalized.clone()).or_insert(0);
                     *occurrence_tracker.get_mut(&title_normalized).unwrap() += 1;
                     let identity = (title_normalized.clone(), occurrence);
+                    // Only the first card of a printing anchors the variant
+                    // picker, so a multi-back card offers one target, not one
+                    // per back.
+                    let anchors_variants = card_index == 0;
 
                     let is_open = if let Some(state) = open_variant_selector.read().as_ref() {
                         state.id == identity
@@ -42,7 +46,8 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                         false
                     };
 
-                    let has_variants = available_variants.get(&title_normalized).is_some_and(|v| v.len() > 1);
+                    let has_variants = anchors_variants
+                        && available_variants.get(&title_normalized).is_some_and(|v| v.len() > 1);
                     let cursor_class = if has_variants { "cursor-pointer" } else { "" };
 
                     let is_overridden = printing.variant != base_printing.variant
@@ -57,7 +62,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
 
                     rsx! {
                         div {
-                            key: "{title_normalized}-{occurrence}-front",
+                            key: "{title_normalized}-{occurrence}-{card_index}-front",
                             class: "relative group w-[160px] md:w-[250px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-105 hover:z-20 {cursor_class}",
                             onmounted: {
                                 let identity = identity.clone();
@@ -97,7 +102,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                             div {
                                 class: "relative w-full h-full shadow-lg bg-gray-400 overflow-hidden flex items-center justify-center",
                                 {
-                                    match printing.front.image(BleedPreference::NoBleed) {
+                                    match front.image(BleedPreference::NoBleed) {
                                         Some(source) => {
                                             let style = if source.has_bleed {
                                                 "width: 109.6774%; height: 106.9364%; max-width: none; flex-shrink: 0; image-rendering: auto; -webkit-backface-visibility: hidden;"
@@ -118,16 +123,10 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                 }
                             }
                         }
-                        for (back_index, back) in printing.backs.iter().enumerate() {
+                        if let Some(back) = back {
                             div {
-                                key: "{title_normalized}-{occurrence}-{back_index}",
+                                key: "{title_normalized}-{occurrence}-{card_index}-back",
                                 class: "relative group w-[160px] md:w-[250px] aspect-[2.5/3.5] shrink-0 transition-transform duration-150 ease-in-out hover:scale-105 hover:z-20",
-
-                                if has_variants {
-                                    div {
-                                        class: "absolute -inset-1 rounded-lg {border_bg_class} animate-border"
-                                    }
-                                }
 
                                 div {
                                     class: "relative w-full h-full overflow-hidden shadow-lg bg-gray-400 flex items-center justify-center",
@@ -144,7 +143,7 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
                                                         src: "{build_image_url(&source.key)}",
                                                         crossorigin: "anonymous",
                                                         style: "{style}",
-                                                        alt: "{printing.card_title} ({back_label(back_index as u32 + 1)})",
+                                                        alt: "{printing.card_title} ({back_label(card_index as u32 + 1)})",
                                                     }
                                                 }
                                             }
@@ -159,4 +158,30 @@ pub fn PreviewGrid(props: PreviewGridProps) -> Element {
             }
         }
     }
+}
+
+/// The cards the export will print, paired with the base printing each was
+/// resolved against, and cloned so the render owns them.
+#[allow(clippy::type_complexity)]
+fn preview_rows(
+    printings: &[Printing],
+    base_printings: &[Printing],
+) -> Vec<(Printing, Printing, usize, CardSide, Option<CardSide>)> {
+    let mut seen = HashMap::<usize, usize>::new();
+
+    expand_to_cards(printings)
+        .into_iter()
+        .map(|(index, card)| {
+            let card_index = seen.entry(index).or_insert(0);
+            let row = (
+                card.printing.clone(),
+                base_printings.get(index).unwrap_or(card.printing).clone(),
+                *card_index,
+                card.front.clone(),
+                card.back.cloned(),
+            );
+            *card_index += 1;
+            row
+        })
+        .collect()
 }
