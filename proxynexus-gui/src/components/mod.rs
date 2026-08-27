@@ -3,6 +3,7 @@ pub mod card_list_input;
 pub mod export_controls;
 pub mod preview_grid;
 pub mod print_layout_info;
+pub mod sides_info;
 pub mod source_selector;
 pub mod upscale_info;
 pub mod variant_selector;

@@ -25,6 +25,13 @@ pub enum CustomUnit {
     Cm,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum Sides {
+    #[default]
+    Single,
+    Double,
+}
+
 #[derive(Props, Clone, PartialEq, Debug)]
 struct SegmentedControlProps<T: PartialEq + Copy + 'static> {
     value: T,
@@ -74,6 +81,7 @@ pub struct ExportControlsProps {
     pub on_generate: EventHandler<ExportOptions>,
     pub on_open_info: EventHandler<(f64, f64, f64)>,
     pub on_open_upscale_info: EventHandler<(f64, f64, f64)>,
+    pub on_open_sides_info: EventHandler<(f64, f64, f64)>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -90,6 +98,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
     let mut cut_lines = use_signal(CutLines::default);
     let mut cut_line_thickness = use_signal(|| DEFAULT_CUT_LINE_THICKNESS.to_string());
     let mut print_layout = use_signal(PrintLayout::default);
+    let mut sides = use_signal(Sides::default);
     let mut upscale = use_signal(|| false);
     let mut show_donate = use_signal(|| false);
 
@@ -346,6 +355,50 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                         on_change: move |v| print_layout.set(v)
                     }
                 }
+
+                div { class: "flex flex-col gap-1 md:gap-2",
+                    div { class: "flex items-center gap-2",
+                        label { class: "text-xs md:text-sm font-medium text-gray-700", "Sides" }
+                        button {
+                            id: "sides-info-btn",
+                            class: "text-gray-400 hover:text-blue-500 transition-colors focus:outline-none",
+                            onclick: move |_| {
+                                spawn(async move {
+                                    let mut eval = dioxus::document::eval(
+                                        "
+                                        let el = document.getElementById('sides-info-btn');
+                                        let rect = el.getBoundingClientRect();
+                                        dioxus.send([rect.x, rect.y, rect.width]);
+                                        ",
+                                    );
+                                    if let Ok((x, y, w)) = eval.recv::<(f64, f64, f64)>().await {
+                                        props.on_open_sides_info.call((x, y, w));
+                                    }
+                                });
+                            },
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg",
+                                width: "18",
+                                height: "18",
+                                view_box: "0 0 24 24",
+                                fill: "none",
+                                stroke: "currentColor",
+                                stroke_width: "2",
+                                stroke_linecap: "round",
+                                stroke_linejoin: "round",
+                                circle { cx: "12", cy: "12", r: "10" }
+                                path { d: "M12 16v-4" }
+                                path { d: "M12 8h.01" }
+                            }
+                        }
+                    }
+                    SegmentedControl {
+                        value: sides(),
+                        disabled: is_generating,
+                        options: vec![(Sides::Single, "Single"), (Sides::Double, "Double")],
+                        on_change: move |v| sides.set(v)
+                    }
+                }
             } else {
                 p { class: "text-xs md:text-sm text-gray-600",
                     "For help on printing, have a look at the "
@@ -497,7 +550,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                                         print_layout: print_layout(),
                                                         cut_line_thickness: thickness,
                                                         upscale: upscale(),
-                                                        double_sided: false,
+                                                        double_sided: sides() == Sides::Double,
                                                         back_label: None,
                                                     })
                                                 }

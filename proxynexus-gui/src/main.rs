@@ -20,6 +20,7 @@ use components::about_modal::AboutModal;
 use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
 use components::print_layout_info::PrintLayoutInfo;
+use components::sides_info::SidesInfo;
 use components::source_selector::{ActiveSource, SourceSelector};
 use components::upscale_info::UpscaleInfo;
 use components::variant_selector::{VariantSelector, VariantSelectorState};
@@ -414,6 +415,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
     let mut is_about_open = use_signal(|| false);
     let mut show_copy_toast = use_signal(|| false);
     let mut print_layout_info_pos = use_signal(|| None::<(f64, f64, f64)>);
+    let mut sides_info_pos = use_signal(|| None::<(f64, f64, f64)>);
     let mut upscale_info_pos = use_signal(|| None::<(f64, f64, f64)>);
 
     use_effect(move || {
@@ -715,6 +717,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                     is_disabled: is_generate_disabled,
                     on_open_info: move |pos| print_layout_info_pos.set(Some(pos)),
                     on_open_upscale_info: move |pos| upscale_info_pos.set(Some(pos)),
+                    on_open_sides_info: move |pos| sides_info_pos.set(Some(pos)),
                     on_generate: move |options: export::ExportOptions| {
                         let source = active_source();
                         if let Some(game_id) = active_game_id() {
@@ -744,6 +747,13 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                 PrintLayoutInfo {
                     pos,
                     on_close: move |_| print_layout_info_pos.set(None),
+                }
+            }
+
+            if let Some(pos) = sides_info_pos() {
+                SidesInfo {
+                    pos,
+                    on_close: move |_| sides_info_pos.set(None),
                 }
             }
 
