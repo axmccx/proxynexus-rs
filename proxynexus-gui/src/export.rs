@@ -6,7 +6,6 @@ use async_lock::Mutex;
 use dioxus::prelude::*;
 use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
-use proxynexus_core::games::get_card_back_adapter;
 use proxynexus_core::mpc::{MpcOptions, generate_mpc_zip};
 use proxynexus_core::pdf::{PdfOptions, generate_pdf};
 use proxynexus_core::query::apply_variant_overrides;
@@ -178,15 +177,9 @@ pub async fn run_export(
                     .context("PDF generation failed")
             }
             ExportOptions::Mpc(mpc_opts) => {
-                let card_backs =
-                    if let Some(card_back_adapter) = get_card_back_adapter(&active_game_id) {
-                        card_back_adapter
-                            .fetch_card_backs()
-                            .await
-                            .unwrap_or_default()
-                    } else {
-                        vec![]
-                    };
+                let card_backs = proxynexus_core::card_backs::fetch_card_backs(&active_game_id)
+                    .await
+                    .unwrap_or_default();
 
                 generate_mpc_zip(
                     printings,

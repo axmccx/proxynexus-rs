@@ -12,7 +12,6 @@ use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use crate::games::whinvasion::adapter::WhiAdapter;
-use crate::mpc::CardBackProvider;
 use serde::de::DeserializeOwned;
 
 pub trait GameAdapterInfo {
@@ -48,16 +47,6 @@ pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> 
         "l5r" => Some(Box::new(L5rAdapter::new())),
         "agot" => Some(Box::new(AgotAdapter::new())),
         "lotrlcg" => Some(Box::new(LotrLcgAdapter::new())),
-        _ => None,
-    }
-}
-
-pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>> {
-    match game_id {
-        "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
-        "netrunner-reboot" => Some(Box::new(NetrunnerRebootAdapter::new())),
-        "l5r" => Some(Box::new(L5rAdapter::new())),
-        "whinvasion" => Some(Box::new(WhiAdapter::new())),
         _ => None,
     }
 }

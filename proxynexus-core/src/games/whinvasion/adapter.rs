@@ -2,12 +2,18 @@
 use crate::card_store::normalize_title;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
+#[cfg(not(target_arch = "wasm32"))]
 use crate::error::Result;
 use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::whinvasion::models::{WhiCard, WhiPack};
-use crate::mpc::CardBackProvider;
+#[cfg(not(target_arch = "wasm32"))]
 use async_trait::async_trait;
+
+/// Every Warhammer Invasion card carries the same back, so the game has one
+/// back group. Race is a card attribute, not a reverse.
+#[cfg(not(target_arch = "wasm32"))]
+const WHI_BACK_GROUP: &str = "card";
 
 pub struct WhiAdapter {}
 
@@ -55,7 +61,7 @@ fn build_cards_and_versions(
             id: card.unique_id.clone(),
             title: card.name.clone(),
             title_normalized: normalize_title(&card.name),
-            back_group: Some(card.race),
+            back_group: Some(WHI_BACK_GROUP.to_string()),
         });
 
         card_versions.push(CardVersion {
@@ -103,48 +109,6 @@ impl CatalogProvider for WhiAdapter {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl CardBackProvider for WhiAdapter {
-    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Ok(vec![(
-                "warhammer_invasion_card_back.png".to_string(),
-                include_bytes!("../../../assets/warhammer_invasion_card_back.png").to_vec(),
-            )])
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            use futures::future::join_all;
-            use gloo_net::http::Request;
-
-            let filenames = ["warhammer_invasion_card_back.png"];
-
-            let fetch_futures = filenames.iter().map(|filename| async move {
-                let url = format!("card_backs/{}", filename);
-                let response = Request::get(&url).send().await?;
-
-                if !response.ok() {
-                    return Err(crate::error::ProxyNexusError::Internal(format!(
-                        "Failed to fetch {}: HTTP {}",
-                        url,
-                        response.status()
-                    )));
-                }
-
-                let bytes = response.binary().await?;
-
-                Ok((filename.to_string(), bytes))
-            });
-
-            let results: Vec<Result<(String, Vec<u8>)>> = join_all(fetch_futures).await;
-            results.into_iter().collect()
-        }
-    }
-}
-
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
@@ -163,14 +127,14 @@ mod tests {
     }
 
     #[test]
-    fn maps_unique_id_pack_code_and_race_onto_card_and_version() {
+    fn maps_unique_id_and_pack_code_onto_card_and_version() {
         let (cards, versions) = build_cards_and_versions(vec![card("10013", "Unit", "Orc")]);
 
         assert_eq!(cards.len(), 1);
         assert_eq!(versions.len(), 1);
         assert_eq!(cards[0].id, "10013");
         assert_eq!(cards[0].title, "Card 10013");
-        assert_eq!(cards[0].back_group.as_deref(), Some("Orc"));
+        assert_eq!(cards[0].back_group.as_deref(), Some("card"));
         assert_eq!(versions[0].card_id, "10013");
         assert_eq!(versions[0].pack_id, "core-set");
     }

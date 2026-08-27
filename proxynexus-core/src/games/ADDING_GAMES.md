@@ -25,7 +25,7 @@ proxynexus-core/src/games/new_game/
 
 ## 2. Implement the Adapter
 Your game needs an adapter struct that implements the base `GameAdapterInfo` trait, 
-as well as `CatalogProvider` and optionally `DecklistProvider` and `CardBackProvider`.
+as well as `CatalogProvider` and optionally `DecklistProvider`.
 
 **WASM Compatibility Tip:** Proxy Nexus compiles to `wasm32-unknown-unknown` for the web interface. 
 Consider using the `crate::games::fetch_json(url)` helper for making API requests,
@@ -103,26 +103,18 @@ When building a `DecklistEntry`, the `card_id` and `quantity` are required.
 However, some deckbuilding APIs may not provide a `pack_id`, so it is an `Option<String>`. 
 If omitted (`None`), Proxy Nexus's will try to find the best available printing in the user's local collection.
 
-### `CardBackProvider` (Optional)
-Found in `proxynexus-core/src/mpc.rs`. It provides the ability to bundle game-specific default card back images directly 
-into the generated MPC zip file. If a game doesn't need to bundle custom back images, you can skip this trait.
+### Card Backs (Optional)
+In order for double-sided PDFs and MPCs zip files to include the standard card backs, include scans of them in
+`proxynexus-core/src/games/new_game/backs/`, named `{back_group}_{label}[.bleed].{ext}`:
 
-```rust
-use async_trait::async_trait;
-use crate::mpc::CardBackProvider;
-use crate::error::Result;
+- **`back_group`**: Must be a value your adapter puts in `Card::back_group`. It cannot contain `_`.
+- **`label`**: Free form label to identify the set of back images. If there are multiple sets of back images, 
+  then the user will see a dropdown allowing them to choose which one they want. Use `proxy` for the set that should be the default.
+- **`.bleed`** means the back image already has a bleed border. Without the suffix a bleed is generated instead.
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl CardBackProvider for NewGameAdapter {
-    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
-        // Return a vector of tuples containing the desired filename and the raw image bytes.
-        // E.g. native: include_bytes!("path/to/back.png").to_vec()
-        // E.g. WASM: fetch using gloo_net::http::Request
-        Ok(vec![])
-    }
-}
-```
+Both `build.rs` scripts scan `src/games/*/backs/`, which automatically pick up the back image files.
+`proxynexus-core/build.rs` generates the lookup table, and embeds the images for native builds.
+`proxynexus-gui/build.rs` copies the same files into `public/card_backs/`, which the web build fetches at runtime.
 
 ## 3. Register the Adapter
 Once your adapter is written, you must register it in two places:
@@ -173,18 +165,6 @@ pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> 
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
         "new_game" => Some(Box::new(NewGameAdapter::new())), // 3. Register your game if supported
         // "unsupported_game" => None, // Just return None!
-        _ => None,
-    }
-}
-```
-
-**D. Register for Card Backs (`proxynexus-core/src/games/mod.rs`)**
-Similar to decklists, register your adapter in `get_card_back_adapter` if your game implements `CardBackProvider`.
-```rust
-pub fn get_card_back_adapter(game_id: &str) -> Option<Box<dyn CardBackProvider>> {
-    match game_id {
-        "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
-        "new_game" => Some(Box::new(NewGameAdapter::new())), // Register your game if supported
         _ => None,
     }
 }

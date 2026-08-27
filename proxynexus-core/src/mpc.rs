@@ -3,7 +3,6 @@ use crate::file_naming::back_label;
 use crate::image_provider::ImageProvider;
 use crate::models::{BleedPreference, Printing, SourceImage};
 use crate::print_prep;
-use async_trait::async_trait;
 use image::ImageFormat;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -12,12 +11,6 @@ use tracing::info;
 use web_time::Instant;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait CardBackProvider {
-    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>>;
-}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 pub struct MpcOptions {

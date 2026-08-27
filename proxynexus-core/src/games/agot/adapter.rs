@@ -64,14 +64,6 @@ impl CatalogProvider for AgotAdapter {
         for c in api_cards {
             let normalized_id = normalize_title(&c.label);
 
-            // Side mapping for MPC grouping
-            let back_group = match c.type_code.as_str() {
-                "plot" => "plot",
-                "agenda" => "agenda",
-                "title" => "title",
-                _ => "draw",
-            };
-
             if !cards_map.contains_key(&normalized_id) {
                 cards_map.insert(
                     normalized_id.clone(),
@@ -79,7 +71,7 @@ impl CatalogProvider for AgotAdapter {
                         id: normalized_id.clone(),
                         title: c.label.clone(), // Use label as title for clarity
                         title_normalized: normalized_id.clone(),
-                        back_group: Some(back_group.to_string()),
+                        back_group: Some("card".to_string()),
                     },
                 );
             }

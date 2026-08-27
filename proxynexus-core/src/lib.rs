@@ -1,3 +1,4 @@
+pub mod card_backs;
 pub mod card_source;
 pub mod card_store;
 #[cfg(not(target_arch = "wasm32"))]

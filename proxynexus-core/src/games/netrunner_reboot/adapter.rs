@@ -5,12 +5,10 @@ use crate::card_store::normalize_title;
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
 use crate::error::Result;
 use crate::games::GameAdapterInfo;
-use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::api::fetch_decklist_from_reteki;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::netrunner_reboot::api::{fetch_all_cards, fetch_all_packs};
 use crate::models::Decklist;
-use crate::mpc::CardBackProvider;
 use async_trait::async_trait;
 
 pub struct NetrunnerRebootAdapter {}
@@ -100,15 +98,6 @@ impl CatalogProvider for NetrunnerRebootAdapter {
 impl DecklistProvider for NetrunnerRebootAdapter {
     async fn fetch(&self, url: &str) -> Result<Decklist> {
         fetch_decklist_from_reteki(url).await
-    }
-}
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl CardBackProvider for NetrunnerRebootAdapter {
-    async fn fetch_card_backs(&self) -> Result<Vec<(String, Vec<u8>)>> {
-        // Reboot reprints FFG-era cards, so the backs are the Netrunner ones.
-        NetrunnerAdapter::new().fetch_card_backs().await
     }
 }
 
