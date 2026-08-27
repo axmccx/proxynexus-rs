@@ -1,6 +1,8 @@
 use crate::error::{ProxyNexusError, Result};
 use crate::image_provider::ImageProvider;
-use crate::models::{BleedPreference, Printing, SourceImage, expand_to_cards};
+use crate::models::{
+    BleedPreference, CardSide, PrintedCard, Printing, SourceImage, expand_to_cards,
+};
 use image::ImageFormat;
 use krilla::Data;
 use krilla::Document;
@@ -11,8 +13,8 @@ use krilla::num::NormalizedF32;
 use krilla::page::PageSettings;
 use krilla::paint::Stroke;
 use serde::Serialize;
-use std::collections::HashMap;
-use tracing::info;
+use std::collections::{HashMap, HashSet};
+use tracing::{info, warn};
 use web_time::Instant;
 
 const POINTS_PER_INCH: f32 = 72.0;
@@ -36,6 +38,10 @@ pub const MAX_CUT_LINE_THICKNESS: f32 = 10.0;
 pub const DEFAULT_CUT_LINE_THICKNESS: f32 = 0.5;
 
 pub const PDF_BLEED_MM: f32 = 1.0;
+
+const CARD_BACK_CACHE_PREFIX: &str = "card-back:";
+
+type Page = Vec<(usize, Slot)>;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize)]
 pub enum PageSize {
@@ -79,6 +85,8 @@ pub struct PdfOptions {
     pub print_layout: PrintLayout,
     pub cut_line_thickness: f32,
     pub upscale: bool,
+    pub double_sided: bool,
+    pub back_label: Option<&'static str>,
 }
 
 impl Default for PdfOptions {
@@ -89,6 +97,8 @@ impl Default for PdfOptions {
             print_layout: PrintLayout::default(),
             cut_line_thickness: DEFAULT_CUT_LINE_THICKNESS,
             upscale: false,
+            double_sided: false,
+            back_label: None,
         }
     }
 }
@@ -188,9 +198,54 @@ impl PdfOptions {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+enum Slot {
+    Collection(SourceImage),
+    CardBack(&'static str, bool),
+    Blank,
+}
+
+impl Slot {
+    fn from_side(side: &CardSide, preferred: BleedPreference) -> Self {
+        match side.image(preferred) {
+            Some(source) => Slot::Collection(source),
+            None => Slot::Blank,
+        }
+    }
+
+    fn cache_key(&self) -> Option<String> {
+        match self {
+            Slot::Collection(source) => Some(source.key.clone()),
+            Slot::CardBack(asset_id, _) => Some(format!("{}{}", CARD_BACK_CACHE_PREFIX, asset_id)),
+            Slot::Blank => None,
+        }
+    }
+
+    fn has_bleed(&self) -> bool {
+        match self {
+            Slot::Collection(source) => source.has_bleed,
+            Slot::CardBack(_, has_bleed) => *has_bleed,
+            Slot::Blank => false,
+        }
+    }
+
+    fn upscalable(&self) -> bool {
+        matches!(self, Slot::Collection(..))
+    }
+
+    async fn load(&self, image_provider: &impl ImageProvider) -> Result<Vec<u8>> {
+        match self {
+            Slot::Collection(source) => image_provider.get_image_bytes(&source.key).await,
+            Slot::CardBack(asset_id, _) => crate::card_backs::load_card_back(asset_id).await,
+            Slot::Blank => Ok(Vec::new()),
+        }
+    }
+}
+
 pub async fn generate_pdf(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
+    game_id: &str,
     options: PdfOptions,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
@@ -201,18 +256,6 @@ pub async fn generate_pdf(
     } else {
         BleedPreference::NoBleed
     };
-
-    let sources: Vec<SourceImage> = expand_to_cards(&printings)
-        .iter()
-        .flat_map(|card| {
-            card.front
-                .image(preferred)
-                .into_iter()
-                .chain(card.back.and_then(|back| back.image(preferred)))
-        })
-        .collect();
-    let total_images = sources.len();
-    let mut processed_images: usize = 0;
 
     let mut image_cache: HashMap<String, Image> = HashMap::new();
     let mut document = Document::new();
@@ -231,22 +274,43 @@ pub async fn generate_pdf(
         );
     }
 
-    for chunk in sources.chunks(max_cards_per_page) {
+    let cards = expand_to_cards(&printings);
+    let pages = build_pages(
+        &cards,
+        &options,
+        game_id,
+        preferred,
+        max_cards_per_page,
+        max_cols,
+    );
+
+    let total_images: usize = pages
+        .iter()
+        .flatten()
+        .filter(|(_, slot)| slot.cache_key().is_some())
+        .count();
+    let mut processed_images: usize = 0;
+
+    for page_slots in &pages {
         let page_settings = PageSettings::from_wh(page_width, page_height).unwrap();
         let mut page = document.start_page_with(page_settings);
         let mut surface = page.surface();
 
-        for (index, source) in chunk.iter().enumerate() {
+        for (index, slot) in page_slots {
             let start = Instant::now();
 
-            if !image_cache.contains_key(&source.key) {
-                let mut image_data = image_provider.get_image_bytes(&source.key).await?;
+            let Some(image_key) = slot.cache_key() else {
+                continue;
+            };
 
-                if options.upscale {
+            if !image_cache.contains_key(&image_key) {
+                let mut image_data = slot.load(image_provider).await?;
+
+                if options.upscale && slot.upscalable() {
                     image_data = crate::upscale_image(&image_data).await?
                 }
 
-                if source.has_bleed {
+                if slot.has_bleed() {
                     let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
                     let img = image::load_from_memory(&image_data)?;
                     let cropped = crate::print_prep::crop_bleed_border(&img, bleed_ratio).to_rgb8();
@@ -268,13 +332,13 @@ pub async fn generate_pdf(
                         .map_err(|e| ProxyNexusError::Internal(e.to_string()))?
                 };
 
-                image_cache.insert(source.key.clone(), image);
+                image_cache.insert(image_key.clone(), image);
             } else {
-                info!("cache hit for {}", source.key);
+                info!("cache hit for {}", image_key);
             }
 
-            let image = image_cache.get(&source.key).unwrap().clone();
-            let (draw_x, draw_y, draw_width, draw_height) = calculate_draw_rect(index, &options);
+            let image = image_cache.get(&image_key).unwrap().clone();
+            let (draw_x, draw_y, draw_width, draw_height) = calculate_draw_rect(*index, &options);
 
             let size = Size::from_wh(draw_width, draw_height).unwrap();
 
@@ -294,7 +358,7 @@ pub async fn generate_pdf(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(0).await;
 
-            info!("Runtime for image {}: {:?}", source.key, start.elapsed());
+            info!("Runtime for image {}: {:?}", image_key, start.elapsed());
         }
 
         surface.set_stroke(Some(Stroke {
@@ -323,6 +387,107 @@ pub async fn generate_pdf(
 
     let pdf = document.finish().unwrap();
     Ok(pdf)
+}
+
+fn build_pages(
+    cards: &[PrintedCard],
+    options: &PdfOptions,
+    game_id: &str,
+    preferred: BleedPreference,
+    per_page: usize,
+    max_cols: usize,
+) -> Vec<Page> {
+    if per_page == 0 {
+        return Vec::new();
+    }
+
+    if !options.double_sided {
+        let mut slots = Vec::new();
+        for card in cards {
+            slots.push(Slot::from_side(card.front, preferred));
+            if let Some(back) = card.back {
+                slots.push(Slot::from_side(back, preferred));
+            }
+        }
+
+        return slots
+            .chunks(per_page)
+            .map(|chunk| chunk.iter().cloned().enumerate().collect())
+            .collect();
+    }
+
+    let mut unbacked_groups = HashSet::new();
+    let mut pages = Vec::new();
+    let (mut own_backs, mut standard_backs, mut blanks) = (0usize, 0usize, 0usize);
+
+    for chunk in cards.chunks(per_page) {
+        pages.push(
+            chunk
+                .iter()
+                .enumerate()
+                .map(|(index, card)| (index, Slot::from_side(card.front, preferred)))
+                .collect(),
+        );
+        pages.push(
+            chunk
+                .iter()
+                .enumerate()
+                .map(|(index, card)| {
+                    let slot = back_slot(
+                        card,
+                        game_id,
+                        options.back_label,
+                        preferred,
+                        &mut unbacked_groups,
+                    );
+                    match slot {
+                        Slot::Collection(..) => own_backs += 1,
+                        Slot::CardBack(..) => standard_backs += 1,
+                        Slot::Blank => blanks += 1,
+                    }
+                    (mirror(index, max_cols), slot)
+                })
+                .collect(),
+        );
+    }
+
+    info!(
+        "double-sided: {} cards print their own back, {} the game's standard back, {} blank",
+        own_backs, standard_backs, blanks
+    );
+
+    pages
+}
+
+fn back_slot(
+    card: &PrintedCard,
+    game_id: &str,
+    label: Option<&'static str>,
+    preferred: BleedPreference,
+    unbacked_groups: &mut HashSet<String>,
+) -> Slot {
+    if let Some(back) = card.back {
+        return Slot::from_side(back, preferred);
+    }
+
+    let group = &card.printing.back_group;
+    if let Some(back) = crate::card_backs::card_back(game_id, group, label) {
+        return Slot::CardBack(back.asset_id, back.has_bleed);
+    }
+
+    if unbacked_groups.insert(group.clone()) {
+        warn!(
+            "No card back for the '{}' back group, so those cards print with a blank reverse.",
+            group
+        );
+    }
+    Slot::Blank
+}
+
+fn mirror(index: usize, max_cols: usize) -> usize {
+    let row = index / max_cols;
+    let col = index % max_cols;
+    row * max_cols + (max_cols - 1 - col)
 }
 
 fn calculate_card_position(card_index: usize, options: &PdfOptions) -> (f32, f32) {
@@ -503,6 +668,8 @@ mod tests {
             print_layout,
             cut_line_thickness: thickness,
             upscale,
+            double_sided: false,
+            back_label: None,
         }
     }
 
@@ -622,6 +789,8 @@ mod tests {
             print_layout,
             cut_line_thickness: thickness,
             upscale: false,
+            double_sided: false,
+            back_label: None,
         }
     }
 
@@ -866,5 +1035,318 @@ mod tests {
                 layout
             );
         }
+    }
+
+    fn duplex(page_size: PageSize, cut_lines: CutLines) -> PdfOptions {
+        PdfOptions {
+            page_size,
+            cut_lines,
+            double_sided: true,
+            ..PdfOptions::default()
+        }
+    }
+
+    fn side(key: &str) -> CardSide {
+        CardSide {
+            image_key: Some(key.to_string()),
+            bleed_image_key: None,
+        }
+    }
+
+    fn collection(key: &str) -> Slot {
+        Slot::Collection(SourceImage {
+            key: key.to_string(),
+            has_bleed: false,
+        })
+    }
+
+    fn card(backs: &[&str], back_group: &str) -> Printing {
+        Printing {
+            card_id: "hedge_fund".into(),
+            card_title: "Hedge Fund".into(),
+            is_official: true,
+            variant: None,
+            front: side("front.png"),
+            backs: backs
+                .iter()
+                .map(|name| side(&format!("{}.png", name)))
+                .collect(),
+            collection: "nsg".into(),
+            back_group: back_group.into(),
+            pack_id: Some("system_gateway".into()),
+            date_release: None,
+            position: None,
+        }
+    }
+
+    /// A game id nothing ships backs for, so every fallback lands on Blank.
+    const NO_BACKS: &str = "game-with-no-card-backs";
+
+    fn pages_in(printings: &[Printing], options: &PdfOptions, game_id: &str) -> Vec<Page> {
+        let (rows, cols) = options.capacity();
+        build_pages(
+            &expand_to_cards(printings),
+            options,
+            game_id,
+            BleedPreference::NoBleed,
+            rows * cols,
+            cols,
+        )
+    }
+
+    fn pages_for(printings: &[Printing], options: &PdfOptions) -> Vec<Page> {
+        pages_in(printings, options, NO_BACKS)
+    }
+
+    #[test]
+    fn a_mirrored_slot_sits_the_same_distance_from_the_opposite_page_edge() {
+        // This is what makes a duplex flip register: the grid is centred, so
+        // column c and column cols-1-c are equally far from their own edge.
+        for page_size in [PageSize::Letter, PageSize::A4] {
+            for cut_lines in [CutLines::None, CutLines::Margins, CutLines::FullPage] {
+                for print_layout in [
+                    PrintLayout::EdgeToEdge,
+                    PrintLayout::Gap,
+                    PrintLayout::Bleed,
+                ] {
+                    let options = PdfOptions {
+                        print_layout,
+                        ..duplex(page_size, cut_lines)
+                    };
+                    let (rows, cols) = options.capacity();
+                    let (page_width, _) = page_size.dimensions();
+
+                    for index in 0..rows * cols {
+                        let (front_x, front_y, width, _) = calculate_draw_rect(index, &options);
+                        let (back_x, back_y, back_width, _) =
+                            calculate_draw_rect(mirror(index, cols), &options);
+
+                        assert!(
+                            (front_x - (page_width - (back_x + back_width))).abs() < 0.001,
+                            "{:?} {:?} {:?} slot {}: {} vs {}",
+                            page_size,
+                            cut_lines,
+                            print_layout,
+                            index,
+                            front_x,
+                            page_width - (back_x + back_width),
+                        );
+                        assert!((front_y - back_y).abs() < 0.001, "slot {} row moved", index);
+                        assert!((width - back_width).abs() < 0.001);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_centred_grid_needs_no_separate_cut_lines_for_the_back_page() {
+        // Cut lines are a function of the options alone, so both pages of a
+        // pair carry the same marks. Pinned because duplex depends on it.
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        let plain = PdfOptions {
+            double_sided: false,
+            ..options
+        };
+        assert_eq!(
+            calculate_margin_cutlines(&options).len(),
+            calculate_margin_cutlines(&plain).len()
+        );
+        assert_eq!(
+            calculate_full_page_cutlines(&options).len(),
+            calculate_full_page_cutlines(&plain).len()
+        );
+    }
+
+    #[test]
+    fn mirroring_stays_within_a_row() {
+        assert_eq!(
+            (0..6).map(|i| mirror(i, 3)).collect::<Vec<_>>(),
+            vec![2, 1, 0, 5, 4, 3]
+        );
+        assert_eq!(mirror(mirror(4, 3), 3), 4, "mirroring twice is identity");
+    }
+
+    #[test]
+    fn single_sided_output_leaves_a_backless_card_alone() {
+        // Falling back to a standard back here would double every PDF.
+        let pages = pages_for(&[card(&[], "corp")], &PdfOptions::default());
+
+        assert_eq!(pages.len(), 1);
+        assert_eq!(pages[0], vec![(0, collection("front.png"))]);
+    }
+
+    #[test]
+    fn single_sided_output_puts_a_cards_own_back_in_the_next_slot() {
+        let pages = pages_for(&[card(&["back"], "corp")], &PdfOptions::default());
+        assert_eq!(
+            pages[0],
+            vec![(0, collection("front.png")), (1, collection("back.png"))]
+        );
+    }
+
+    #[test]
+    fn three_copies_of_a_three_back_card_print_six_slots() {
+        let melies = card(&["back", "back2", "back3"], "corp");
+        let pages = pages_for(&vec![melies; 3], &PdfOptions::default());
+
+        let slots: Vec<&Slot> = pages.iter().flatten().map(|(_, slot)| slot).collect();
+        assert_eq!(
+            slots,
+            vec![
+                &collection("front.png"),
+                &collection("back.png"),
+                &collection("front.png"),
+                &collection("back2.png"),
+                &collection("front.png"),
+                &collection("back3.png"),
+            ]
+        );
+    }
+
+    #[test]
+    fn duplex_pairs_every_page_of_fronts_with_a_page_of_backs() {
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        let (rows, cols) = options.capacity();
+        let per_page = rows * cols;
+
+        let pages = pages_for(&vec![card(&["back"], "corp"); per_page + 1], &options);
+
+        assert_eq!(pages.len(), 4);
+        assert_eq!(pages[0].len(), per_page);
+        assert_eq!(pages[1].len(), per_page);
+        assert_eq!(pages[2].len(), 1);
+        assert_eq!(pages[3].len(), 1);
+    }
+
+    #[test]
+    fn a_partial_page_mirrors_within_the_full_grid() {
+        // Five cards on a 3x3 page put their backs at 2, 1, 0, 5, 4 -- the
+        // right of the second row stays empty rather than the backs closing up.
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        assert_eq!(options.capacity(), (3, 3));
+
+        let pages = pages_for(&vec![card(&["back"], "corp"); 5], &options);
+        assert_eq!(
+            pages[1].iter().map(|(index, _)| *index).collect::<Vec<_>>(),
+            vec![2, 1, 0, 5, 4]
+        );
+    }
+
+    #[test]
+    fn a_back_page_is_emitted_even_when_nothing_on_it_has_a_back() {
+        // The printer pairs pages, so dropping a blank back page would put
+        // every later front on the wrong side of a sheet.
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        let pages = pages_for(&[card(&[], "corp"), card(&[], "runner")], &options);
+
+        assert_eq!(pages.len(), 2);
+        assert_eq!(
+            pages[1],
+            vec![(2, Slot::Blank), (1, Slot::Blank)],
+            "this game ships no backs, so there is nothing to fall back on"
+        );
+    }
+
+    #[test]
+    fn duplex_falls_back_to_the_games_standard_back() {
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        let pages = pages_in(
+            &[card(&[], "corp"), card(&["back"], "runner")],
+            &options,
+            "netrunner",
+        );
+
+        assert_eq!(
+            pages[1],
+            vec![
+                (2, Slot::CardBack("netrunner_corp_proxy.bleed.png", true)),
+                (1, collection("back.png")),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_named_back_label_reaches_the_page() {
+        let options = PdfOptions {
+            back_label: Some("original"),
+            ..duplex(PageSize::Letter, CutLines::Margins)
+        };
+        let pages = pages_in(&[card(&[], "runner")], &options, "netrunner");
+
+        assert_eq!(
+            pages[1][0].1,
+            Slot::CardBack("netrunner_runner_original.bleed.png", true)
+        );
+    }
+
+    #[test]
+    fn a_card_backs_bleed_comes_from_its_file_name() {
+        // The shipped backs sit on MPC's canvas and say so with `.bleed`, so
+        // they are cropped to the layout rather than having one added. A back
+        // without the suffix takes the generated path, like any other image.
+        assert!(Slot::CardBack("netrunner_corp_proxy.bleed.png", true).has_bleed());
+        assert!(!Slot::CardBack("some_flat_back.png", false).has_bleed());
+        assert!(!collection("front.png").has_bleed());
+    }
+
+    #[test]
+    fn a_standard_back_is_never_upscaled() {
+        // They already ship at print resolution; upscaling only inflates the PDF.
+        assert!(!Slot::CardBack("netrunner_corp_proxy.bleed.png", true).upscalable());
+        assert!(collection("front.png").upscalable());
+    }
+
+    #[test]
+    fn a_blank_slot_loads_nothing() {
+        assert_eq!(Slot::Blank.cache_key(), None);
+        assert!(
+            Slot::CardBack("netrunner_corp_proxy.bleed.png", true)
+                .cache_key()
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn a_side_with_no_image_still_takes_a_slot() {
+        // Duplex indexes backs by position, so dropping the slot would shift
+        // every later card onto the wrong reverse.
+        let mut bare = card(&["back"], "corp");
+        bare.front = CardSide::default();
+
+        let pages = pages_for(&[bare], &duplex(PageSize::Letter, CutLines::Margins));
+        assert_eq!(pages[0], vec![(0, Slot::Blank)]);
+        assert_eq!(pages[1], vec![(2, collection("back.png"))]);
+    }
+
+    #[test]
+    fn bleed_and_duplex_compose() {
+        // Backs are laid out on the same grid as fronts, so the property that
+        // neighbouring images meet exactly holds on a back page too.
+        let options = PdfOptions {
+            print_layout: PrintLayout::Bleed,
+            ..duplex(PageSize::Letter, CutLines::Margins)
+        };
+        let (_, cols) = options.capacity();
+
+        // Slots 1 and 0 are neighbours on the back page, in that order.
+        let (x_left, _, width, _) = calculate_draw_rect(mirror(1, cols), &options);
+        let (x_right, ..) = calculate_draw_rect(mirror(0, cols), &options);
+        assert!(
+            (x_left + width - x_right).abs() < 0.001,
+            "{} vs {}",
+            x_left + width,
+            x_right
+        );
+    }
+
+    #[test]
+    fn a_page_too_small_for_a_card_produces_no_pages() {
+        let options = PdfOptions {
+            page_size: PageSize::Custom(1.0, 1.0),
+            ..PdfOptions::default()
+        };
+        assert_eq!(options.capacity(), (0, 0));
+        assert!(pages_for(&[card(&["back"], "corp")], &options).is_empty());
     }
 }

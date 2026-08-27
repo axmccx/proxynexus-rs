@@ -137,6 +137,16 @@ enum GenerateType {
 
         #[arg(long)]
         upscale: bool,
+
+        #[arg(long, help = "Print each card's back on the following page, mirrored.")]
+        double_sided: bool,
+
+        #[arg(
+            long,
+            requires = "double_sided",
+            help = "Which set of back images to use, for cards with no back of their own. Only used with --double-sided."
+        )]
+        back_label: Option<String>,
     },
     #[command(group(
         clap::ArgGroup::new("input")
@@ -437,6 +447,8 @@ async fn handle_generate(
             cut_line_thickness,
             print_layout,
             upscale,
+            double_sided,
+            back_label,
         } => {
             let page_size_enum = parse_page_size(&page_size).context("Invalid page size")?;
             let cut_lines_enum =
@@ -455,12 +467,16 @@ async fn handle_generate(
 
             let printings = get_printings_from_source(db, game, source).await?;
 
+            let back_label = resolve_back_label(back_label.as_deref(), game, double_sided)?;
+
             let pdf_options = PdfOptions {
                 page_size: page_size_enum,
                 cut_lines: cut_lines_enum,
                 print_layout: print_layout_enum,
                 cut_line_thickness,
                 upscale,
+                double_sided,
+                back_label,
             };
 
             let bleed_mm = pdf_options.bleed_mm();
@@ -476,7 +492,7 @@ async fn handle_generate(
                 }
             }
 
-            let pdf_bytes = generate_pdf(printings, image_provider, pdf_options, None)
+            let pdf_bytes = generate_pdf(printings, image_provider, game, pdf_options, None)
                 .await
                 .context("Failed to generate PDF")?;
 
@@ -627,4 +643,47 @@ fn parse_print_layout(layout: &str) -> anyhow::Result<proxynexus_core::pdf::Prin
             layout
         )),
     }
+}
+
+fn resolve_back_label(
+    back_label: Option<&str>,
+    game_id: &str,
+    double_sided: bool,
+) -> anyhow::Result<Option<&'static str>> {
+    let labels = proxynexus_core::card_backs::back_labels(game_id);
+
+    if labels.is_empty() {
+        if back_label.is_some() {
+            return Err(anyhow!(
+                "This game ships no card backs, so --back-label has nothing to choose from"
+            ));
+        }
+        if double_sided {
+            println!(
+                "This game ships no card backs, so cards without a back of their own print blank."
+            );
+        }
+        return Ok(None);
+    }
+
+    let Some(back_label) = back_label else {
+        return Ok(None);
+    };
+
+    labels
+        .iter()
+        .copied()
+        .find(|label| *label == back_label)
+        .map(Some)
+        .ok_or_else(|| {
+            anyhow!(
+                "Unsupported back label: '{}'. Options are {}",
+                back_label,
+                labels
+                    .iter()
+                    .map(|label| format!("'{}'", label))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
 }

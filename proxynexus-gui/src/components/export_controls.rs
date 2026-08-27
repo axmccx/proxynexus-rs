@@ -497,6 +497,8 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                                         print_layout: print_layout(),
                                                         cut_line_thickness: thickness,
                                                         upscale: upscale(),
+                                                        double_sided: false,
+                                                        back_label: None,
                                                     })
                                                 }
                                             };

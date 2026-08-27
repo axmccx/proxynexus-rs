@@ -171,11 +171,15 @@ pub async fn run_export(
 
     let result = match (resolved_printings, image_provider_result) {
         (Ok(printings), Ok(image_provider)) => match options {
-            ExportOptions::Pdf(pdf_opts) => {
-                generate_pdf(printings, &image_provider, pdf_opts, progress_callback)
-                    .await
-                    .context("PDF generation failed")
-            }
+            ExportOptions::Pdf(pdf_opts) => generate_pdf(
+                printings,
+                &image_provider,
+                &active_game_id,
+                pdf_opts,
+                progress_callback,
+            )
+            .await
+            .context("PDF generation failed"),
             ExportOptions::Mpc(mpc_opts) => {
                 let card_backs = proxynexus_core::card_backs::fetch_card_backs(&active_game_id)
                     .await
