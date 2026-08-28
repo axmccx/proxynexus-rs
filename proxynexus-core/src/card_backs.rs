@@ -47,11 +47,11 @@ pub fn card_back(
         .find(|back| back.back_group == back_group && back.label == label)
 }
 
-pub async fn fetch_card_backs(game_id: &str) -> Result<Vec<(String, Vec<u8>)>> {
+pub async fn fetch_card_backs(game_id: &str) -> Result<Vec<(&'static CardBack, Vec<u8>)>> {
     let backs = card_backs(game_id);
     let mut loaded = Vec::with_capacity(backs.len());
     for back in backs {
-        loaded.push((back.file.to_string(), load_card_back(back.asset_id).await?));
+        loaded.push((back, load_card_back(back.asset_id).await?));
     }
     Ok(loaded)
 }

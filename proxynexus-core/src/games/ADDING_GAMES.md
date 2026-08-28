@@ -40,7 +40,7 @@ use crate::games::GameAdapterInfo;
 
 impl GameAdapterInfo for NewGameAdapter {
     fn game_id(&self) -> &'static str {
-        "new_game" // A short, unique game id
+        "new-game" // A short, unique game id. Must match the folder name, with `_` written as `-`.
     }
 
     fn game_name(&self) -> &'static str {
@@ -116,6 +116,9 @@ Both `build.rs` scripts scan `src/games/*/backs/`, which automatically pick up t
 `proxynexus-core/build.rs` generates the lookup table, and embeds the images for native builds.
 `proxynexus-gui/build.rs` copies the same files into `public/card_backs/`, which the web build fetches at runtime.
 
+Both derive the game id from the folder name, replacing `_` with `-`. A folder that does not match
+what `game_id()` returns leaves the game with no backs, and nothing reports it.
+
 ## 3. Register the Adapter
 Once your adapter is written, you must register it in two places:
 
@@ -163,7 +166,7 @@ use crate::games::new_game::adapter::NewGameAdapter; // 2. Import your adapter
 pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> {
     match game_id {
         "netrunner" => Some(Box::new(NetrunnerAdapter::new())),
-        "new_game" => Some(Box::new(NewGameAdapter::new())), // 3. Register your game if supported
+        "new-game" => Some(Box::new(NewGameAdapter::new())), // 3. Register your game if supported
         // "unsupported_game" => None, // Just return None!
         _ => None,
     }

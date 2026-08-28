@@ -445,7 +445,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
 
                         if sides() == Sides::Double && back_labels().len() > 1 {
                             div { class: "flex items-center gap-2",
-                                label { class: "text-xs md:text-sm text-gray-600 shrink-0", "Back art" }
+                                label { class: "text-xs md:text-sm text-gray-600 shrink-0", "Card Back" }
                                 select {
                                     disabled: is_generating,
                                     class: "w-full py-1.5 md:py-2 px-2 border border-gray-300 rounded-md bg-white outline-none focus:ring-2 focus:ring-blue-400 text-xs md:text-sm",

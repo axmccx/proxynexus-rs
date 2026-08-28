@@ -1,3 +1,4 @@
+use crate::card_backs::CardBack;
 use crate::error::Result;
 use crate::file_naming::back_label;
 use crate::image_provider::ImageProvider;
@@ -21,7 +22,7 @@ pub async fn generate_mpc_zip(
     printings: Vec<Printing>,
     image_provider: &impl ImageProvider,
     options: MpcOptions,
-    card_backs: Vec<(String, Vec<u8>)>,
+    card_backs: Vec<(&'static CardBack, Vec<u8>)>,
     progress: Option<Box<dyn Fn(f32) + Send + Sync>>,
 ) -> Result<Vec<u8>> {
     let total_images: usize = printings.iter().map(|p| 1 + p.backs.len()).sum();
@@ -62,9 +63,17 @@ pub async fn generate_mpc_zip(
 
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-    for (filename, bytes) in card_backs {
-        zip.start_file(filename, options)?;
-        zip.write_all(&bytes)?;
+    for (back, bytes) in card_backs {
+        let prepared = if back.has_bleed {
+            bytes
+        } else {
+            let format = image::guess_format(&bytes).unwrap_or(ImageFormat::Jpeg);
+            let img = image::load_from_memory(&bytes)?;
+            print_prep::encode_image(print_prep::add_mpc_bleed_border(&img), format)?
+        };
+
+        zip.start_file(back.file, options)?;
+        zip.write_all(&prepared)?;
     }
 
     zip.finish()?;
