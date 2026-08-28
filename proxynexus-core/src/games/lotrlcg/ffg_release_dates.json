@@ -1,0 +1,438 @@
+{
+ "A Journey to Rhosgobel": {
+  "code": "MEC04",
+  "released": "2011-09-11"
+ },
+ "A Shadow in the East": {
+  "code": "MEC77",
+  "released": "2019-07-01"
+ },
+ "A Storm on Cobas Haven": {
+  "code": "MEC52",
+  "released": "2016-09-15"
+ },
+ "Across the Ettenmoors": {
+  "code": "MEC41",
+  "released": "2015-09-03"
+ },
+ "Angmar Awakened Campaign Expansion": {
+  "code": "MEC108",
+  "released": "2022-09-16"
+ },
+ "Angmar Awakened Hero Expansion": {
+  "code": "MEC107",
+  "released": "2022-06-17"
+ },
+ "Assault on Osgiliath": {
+  "code": "MEC21",
+  "released": "2013-08-09"
+ },
+ "Attack on Dol Guldur": {
+  "code": null,
+  "released": "2018-02-15"
+ },
+ "Beneath the Sands": {
+  "code": "MEC58",
+  "released": "2017-05-01"
+ },
+ "Celebrimbor's Secret": {
+  "code": "MEC30",
+  "released": "2014-11-13"
+ },
+ "Challenge of the Wainriders": {
+  "code": "MEC80",
+  "released": "2019-12-01"
+ },
+ "Challenge of the Wainriders Preorder Promotion": {
+  "code": "MEC80",
+  "released": "2019-12-01"
+ },
+ "Conflict at the Carrock": {
+  "code": "MEC03",
+  "released": "2011-08-10"
+ },
+ "Core Set": {
+  "code": "MEC01",
+  "released": "2011-04-20"
+ },
+ "Defenders of Gondor": {
+  "code": "MEC105",
+  "released": "2022-01-28"
+ },
+ "Dream-chaser Campaign Expansion": {
+  "code": "MEC111",
+  "released": "2023-04-15"
+ },
+ "Dream-chaser Hero Expansion": {
+  "code": "MEC110",
+  "released": "2023-04-15"
+ },
+ "Dwarves of Durin": {
+  "code": "MEC103",
+  "released": "2022-01-28"
+ },
+ "Elves of Lórien": {
+  "code": "MEC104",
+  "released": "2022-01-28"
+ },
+ "Encounter at Amon Dîn": {
+  "code": "MEC20",
+  "released": "2013-07-05"
+ },
+ "Ered Mithrin Campaign Expansion": {
+  "code": "MEC115",
+  "released": "2024-12-01"
+ },
+ "Ered Mithrin Hero Expansion": {
+  "code": "MEC114",
+  "released": "2024-12-15"
+ },
+ "Escape from Khazad-dûm": {
+  "code": null,
+  "released": "2020-07-29"
+ },
+ "Escape from Khazad-dûm Preorder Promotion": {
+  "code": null,
+  "released": "2020-07-29"
+ },
+ "Escape from Mount Gram": {
+  "code": "MEC40",
+  "released": "2015-07-30"
+ },
+ "Fire in the Night": {
+  "code": "MEC68",
+  "released": "2018-12-11"
+ },
+ "Flight of the Stormcaller": {
+  "code": "MEC48",
+  "released": "2016-05-01"
+ },
+ "Fog on the Barrow-downs": {
+  "code": "MEC36",
+  "released": "2015-01-15"
+ },
+ "Foundations of Stone": {
+  "code": "MEC13",
+  "released": "2012-06-20"
+ },
+ "Heirs of Númenor": {
+  "code": "MEC17",
+  "released": "2012-11-26"
+ },
+ "Khazad-dûm": {
+  "code": "MEC08",
+  "released": "2012-01-06"
+ },
+ "Mount Gundabad": {
+  "code": "MEC70",
+  "released": "2019-02-01"
+ },
+ "Murder at the Prancing Pony": {
+  "code": null,
+  "released": "2015-11-14"
+ },
+ "Race Across Harad": {
+  "code": "MEC57",
+  "released": "2017-03-15"
+ },
+ "Return to Mirkwood": {
+  "code": "MEC07",
+  "released": "2011-11-23"
+ },
+ "Revised Core Set": {
+  "code": "MEC101",
+  "released": "2022-01-14"
+ },
+ "Riders of Rohan": {
+  "code": "MEC106",
+  "released": "2022-01-28"
+ },
+ "Road to Rivendell": {
+  "code": "MEC10",
+  "released": "2012-03-21"
+ },
+ "Roam Across Rhovanion": {
+  "code": "MEC67",
+  "released": "2018-08-30"
+ },
+ "Shadow and Flame": {
+  "code": "MEC14",
+  "released": "2012-08-08"
+ },
+ "Temple of the Deceived": {
+  "code": "MEC50",
+  "released": "2016-06-15"
+ },
+ "The Antlered Crown": {
+  "code": "MEC31",
+  "released": "2014-12-23"
+ },
+ "The Battle of Carn Dûm": {
+  "code": "MEC43",
+  "released": "2015-11-06"
+ },
+ "The Battle of Lake-town": {
+  "code": "MEC35",
+  "released": "2012-10-16"
+ },
+ "The Black Riders": {
+  "code": "MEC32",
+  "released": "2013-09-13"
+ },
+ "The Black Serpent": {
+  "code": "MEC59",
+  "released": "2017-07-01"
+ },
+ "The Blood of Gondor": {
+  "code": "MEC22",
+  "released": "2013-10-17"
+ },
+ "The City of Corsairs": {
+  "code": "MEC53",
+  "released": "2016-10-01"
+ },
+ "The City of Ulfast": {
+  "code": "MEC79",
+  "released": "2020-01-09"
+ },
+ "The City of Ulfast Preorder Promotion": {
+  "code": "MEC79",
+  "released": "2020-01-09"
+ },
+ "The Crossings of Poros": {
+  "code": "MEC61",
+  "released": "2018-02-01"
+ },
+ "The Dark of Mirkwood": {
+  "code": "MEC102",
+  "released": "2021-12-01"
+ },
+ "The Dead Marshes": {
+  "code": "MEC06",
+  "released": "2011-11-02"
+ },
+ "The Dread Realm": {
+  "code": "MEC44",
+  "released": "2015-12-17"
+ },
+ "The Drowned Ruins": {
+  "code": "MEC51",
+  "released": "2016-09-01"
+ },
+ "The Drúadan Forest": {
+  "code": "MEC19",
+  "released": "2013-05-31"
+ },
+ "The Dungeons of Cirith Gurat": {
+  "code": "MEC60",
+  "released": "2018-01-01"
+ },
+ "The Dunland Trap": {
+  "code": "MEC26",
+  "released": "2014-06-26"
+ },
+ "The Fate of Wilderland": {
+  "code": "MEC71",
+  "released": "2019-06-06"
+ },
+ "The Fellowship of the Ring": {
+  "code": "MEC109",
+  "released": "2022-10-14"
+ },
+ "The Flame of the West": {
+  "code": "MEC54",
+  "released": "2016-08-01"
+ },
+ "The Fortress of Nurn": {
+  "code": "MEC83",
+  "released": "2020-09-30"
+ },
+ "The Fortress of Nurn Preorder Promotion": {
+  "code": "MEC83",
+  "released": "2020-09-30"
+ },
+ "The Ghost of Framsburg": {
+  "code": "MEC69",
+  "released": "2018-12-06"
+ },
+ "The Grey Havens": {
+  "code": "MEC47",
+  "released": "2016-02-01"
+ },
+ "The Hills of Emyn Muil": {
+  "code": "MEC05",
+  "released": "2011-09-30"
+ },
+ "The Hobbit: On the Doorstep": {
+  "code": "MEC24",
+  "released": "2013-02-22"
+ },
+ "The Hobbit: Over Hill and Under Hill": {
+  "code": "MEC16",
+  "released": "2012-08-17"
+ },
+ "The Hunt for Gollum": {
+  "code": "MEC02",
+  "released": "2011-07-21"
+ },
+ "The Hunt for the Dreadnaught": {
+  "code": "MEC86",
+  "released": "2020-12-01"
+ },
+ "The Land of Shadow": {
+  "code": "MEC46",
+  "released": "2015-11-19"
+ },
+ "The Land of Sorrow": {
+  "code": "MEC82",
+  "released": "2020-08-04"
+ },
+ "The Land of Sorrow Preorder Promotion": {
+  "code": "MEC82",
+  "released": "2020-08-04"
+ },
+ "The Long Dark": {
+  "code": "MEC12",
+  "released": "2012-05-16"
+ },
+ "The Lost Realm": {
+  "code": "MEC38",
+  "released": "2015-04-03"
+ },
+ "The Massing at Osgiliath": {
+  "code": "MEC15",
+  "released": "2011-09-21"
+ },
+ "The Mines of Moria": {
+  "code": null,
+  "released": "2020-07-29"
+ },
+ "The Mines of Moria Preorder Promotion": {
+  "code": null,
+  "released": "2020-07-29"
+ },
+ "The Morgul Vale": {
+  "code": "MEC23",
+  "released": "2013-11-15"
+ },
+ "The Mountain of Fire": {
+  "code": "MEC62",
+  "released": "2017-10-01"
+ },
+ "The Mûmakil": {
+  "code": "MEC56",
+  "released": "2017-02-01"
+ },
+ "The Nîn-in-Eilph": {
+  "code": "MEC29",
+  "released": "2014-10-23"
+ },
+ "The Old Forest": {
+  "code": "MEC37",
+  "released": "2014-11-11"
+ },
+ "The Redhorn Gate": {
+  "code": "MEC09",
+  "released": "2012-03-01"
+ },
+ "The Return of the King": {
+  "code": "MEC113",
+  "released": "2024-10-12"
+ },
+ "The Road Darkens": {
+  "code": "MEC34",
+  "released": "2014-10-03"
+ },
+ "The Ruins of Belegost": {
+  "code": null,
+  "released": "2015-08-02"
+ },
+ "The Sands of Harad": {
+  "code": "MEC55",
+  "released": "2016-11-01"
+ },
+ "The Siege of Annúminas": {
+  "code": null,
+  "released": "2017-03-01"
+ },
+ "The Steward's Fear": {
+  "code": "MEC18",
+  "released": "2013-05-09"
+ },
+ "The Stone of Erech": {
+  "code": "MEC33",
+  "released": "2013-10-30"
+ },
+ "The Thing in the Depths": {
+  "code": "MEC49",
+  "released": "2016-06-01"
+ },
+ "The Three Trials": {
+  "code": "MEC27",
+  "released": "2014-07-24"
+ },
+ "The Treachery of Rhudaur": {
+  "code": "MEC42",
+  "released": "2015-09-24"
+ },
+ "The Treason of Saruman": {
+  "code": "MEC45",
+  "released": "2015-04-23"
+ },
+ "The Two Towers": {
+  "code": "MEC112",
+  "released": "2023-10-06"
+ },
+ "The Voice of Isengard": {
+  "code": "MEC25",
+  "released": "2014-02-21"
+ },
+ "The Wastes of Eriador": {
+  "code": "MEC39",
+  "released": "2015-07-02"
+ },
+ "The Watcher in the Water": {
+  "code": "MEC11",
+  "released": "2012-04-25"
+ },
+ "The Wilds of Rhovanion": {
+  "code": "MEC65",
+  "released": "2018-06-15"
+ },
+ "The Withered Heath": {
+  "code": "MEC66",
+  "released": "2018-07-01"
+ },
+ "The Wizard's Quest": {
+  "code": "MEC75",
+  "released": "2018-08-02"
+ },
+ "The Woodland Realm": {
+  "code": null,
+  "released": "2018-08-24"
+ },
+ "Trouble in Tharbad": {
+  "code": "MEC28",
+  "released": "2014-08-21"
+ },
+ "Two-Player Limited Edition Starter": {
+  "code": "MEC73",
+  "released": "2018-08-28"
+ },
+ "Under the Ash Mountains": {
+  "code": "MEC81",
+  "released": "2020-06-05"
+ },
+ "Under the Ash Mountains Preorder Promotion": {
+  "code": "MEC81",
+  "released": "2020-06-05"
+ },
+ "Wrath and Ruin": {
+  "code": "MEC78",
+  "released": "2019-11-12"
+ },
+ "Wrath and Ruin Preorder Promotion": {
+  "code": "MEC78",
+  "released": "2019-11-12"
+ }
+}
