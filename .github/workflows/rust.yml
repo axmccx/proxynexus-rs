@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  DIOXUS_CLI_VERSION: 0.7.5
 
 jobs:
   build_and_test:
@@ -52,16 +53,16 @@ jobs:
       uses: cargo-bins/cargo-binstall@main
 
     - name: Install Dioxus CLI
-      run: cargo binstall -y --force dioxus-cli
+      run: cargo binstall -y --force dioxus-cli@${{ env.DIOXUS_CLI_VERSION }}
 
     - name: Cache Dioxus target directory
       uses: actions/cache@v4
       with:
         path: |
           target/dx
-        key: dx-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+        key: dx-${{ runner.os }}-${{ env.DIOXUS_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          dx-${{ runner.os }}-
+          dx-${{ runner.os }}-${{ env.DIOXUS_CLI_VERSION }}-
 
     - name: Clean Previous Build Assets
       run: rm -rf target/dx/proxynexus-gui/release/web

@@ -1,7 +1,7 @@
 use crate::components::card_list_input::CardListInput;
 use async_lock::Mutex;
 use dioxus::prelude::*;
-use proxynexus_core::card_store::CardStore;
+use proxynexus_core::card_store::{AvailablePack, CardStore};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::games::get_decklist_adapter;
 use std::sync::Arc;
@@ -96,7 +96,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                 let packs = store.get_available_packs().await.unwrap_or_default();
                 packs
                     .into_iter()
-                    .filter(|(_, _, meta)| !meta.contains("no printings available"))
+                    .filter(|pack| pack.printable > 0)
                     .collect::<Vec<_>>()
             }
             Err(_) => Vec::new(),
@@ -109,10 +109,10 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
     // get_available_packs() already returns newest-first, so the
     // ReleaseDate mode needs no reordering; only Alphabetical does.
     let sorted_sets = use_memo(move || {
-        let mut sets: Vec<(String, String, String)> =
+        let mut sets: Vec<AvailablePack> =
             available_sets.read().as_ref().cloned().unwrap_or_default();
         if set_sort_mode() == SetSortMode::Alphabetical {
-            sets.sort_by_key(|a| a.0.to_lowercase());
+            sets.sort_by_key(|pack| pack.name.to_lowercase());
         }
         sets
     });
@@ -224,11 +224,11 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
                             selected: set_name().is_empty(),
                             "Select a set..."
                         }
-                        for (name, _code, _meta) in sorted_sets() {
+                        for pack in sorted_sets() {
                             option {
-                                value: "{name}",
-                                selected: name == set_name(),
-                                "{name}"
+                                value: "{pack.name}",
+                                selected: pack.name == set_name(),
+                                "{pack.name}"
                             }
                         }
                     }

@@ -9,25 +9,35 @@ pub async fn list_available_sets(db: &mut DbStorage, game: &str) -> Result<Strin
     let mut store = CardStore::new(db, game.to_string())?;
     let sets = store.get_available_packs().await?;
 
-    let max_name_len = sets
-        .iter()
-        .map(|(name, _, _)| name.len())
-        .max()
-        .unwrap_or(0);
-    let max_override_len = sets
-        .iter()
-        .map(|(_, code, _)| code.len() + 2)
-        .max()
-        .unwrap_or(0);
+    let max_name_len = sets.iter().map(|s| s.name.len()).max().unwrap_or(0);
+    let max_override_len = sets.iter().map(|s| s.id.len() + 2).max().unwrap_or(0);
 
     let lines: Vec<String> = sets
         .iter()
-        .map(|(name, code, meta)| {
-            let pack_override = format!("[{}]", code);
+        .map(|set| {
+            let own: i64 = set
+                .collections
+                .iter()
+                .filter_map(|c| c.split_whitespace().next()?.parse::<i64>().ok())
+                .sum();
+            let meta = if set.printable == 0 {
+                "# no printings available".to_string()
+            } else {
+                let mut parts = set.collections.clone();
+                if set.printable > own {
+                    parts.push(format!("{} from other sets", set.printable - own));
+                }
+                format!(
+                    "# {} of {} — {}",
+                    set.printable,
+                    set.total,
+                    parts.join(", ")
+                )
+            };
             format!(
                 "  - {:name_width$} {:override_width$}    {}",
-                name,
-                pack_override,
+                set.name,
+                format!("[{}]", set.id),
                 meta,
                 name_width = max_name_len,
                 override_width = max_override_len

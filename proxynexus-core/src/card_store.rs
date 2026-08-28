@@ -19,6 +19,18 @@ struct PackRow {
 }
 
 #[derive(FromGlueRow)]
+struct PackVersionRow {
+    pack_id: String,
+    version_id: String,
+    card_id: String,
+}
+
+#[derive(FromGlueRow)]
+struct PrintedCardRow {
+    card_id: String,
+}
+
+#[derive(FromGlueRow)]
 struct CardNameRow {
     id: String,
     title: String,
@@ -65,6 +77,26 @@ struct PrintingGroupKey {
     collection_name: String,
     pack_id: Option<String>,
     position: Option<i64>,
+}
+
+/// A pack, and what the loaded collections can print of it.
+///
+/// `printable` counts cards, not images. A card prints from any printing of
+/// itself, so a pack holding none of its own images is still printable in full
+/// when the sets around it carry the same cards -- which is most of the revised
+/// line. Availability has to be asked as "can these cards print", not "does
+/// this pack own images".
+#[derive(Clone, Debug, PartialEq)]
+pub struct AvailablePack {
+    pub name: String,
+    pub id: String,
+    pub date_release: Option<String>,
+    /// Cards the pack prints.
+    pub total: i64,
+    /// Of those, the ones some collection holds an image of.
+    pub printable: i64,
+    /// `"12 in nr-nsg"` per collection, counting only the pack's own images.
+    pub collections: Vec<String>,
 }
 
 pub fn normalize_title(title: &str) -> String {
@@ -330,8 +362,8 @@ impl<'a> CardStore<'a> {
         Ok((title_to_card, not_found))
     }
 
-    pub async fn get_available_packs(&mut self) -> Result<Vec<(String, String, String)>> {
-        let query = format!(
+    pub async fn get_available_packs(&mut self) -> Result<Vec<AvailablePack>> {
+        let own_images_q = format!(
             "SELECT
                 p.name as pack_name,
                 p.id as pack_id,
@@ -347,7 +379,46 @@ impl<'a> CardStore<'a> {
             quote_sql_string(&self.active_game_id)
         );
 
-        let payloads = self.db.execute(&query).await?;
+        let versions_q = format!(
+            "SELECT p.id as pack_id, v.id as version_id, v.card_id as card_id
+             FROM packs p
+             JOIN card_versions v ON v.pack_id = p.id
+             WHERE p.game_id = {}",
+            quote_sql_string(&self.active_game_id)
+        );
+        let printed_q = format!(
+            "SELECT pr.card_id as card_id
+             FROM printings pr
+             JOIN cards c ON pr.card_id = c.id
+             WHERE c.game_id = {}",
+            quote_sql_string(&self.active_game_id)
+        );
+
+        let printed: HashSet<String> = match self.db.execute(&printed_q).await?.into_iter().next() {
+            Some(payload) => payload
+                .rows_as::<PrintedCardRow>()?
+                .into_iter()
+                .map(|row| row.card_id)
+                .collect(),
+            None => HashSet::new(),
+        };
+
+        let mut totals: HashMap<String, (i64, i64)> = HashMap::new();
+        let mut seen_versions: HashSet<String> = HashSet::new();
+        if let Some(payload) = self.db.execute(&versions_q).await?.into_iter().next() {
+            for row in payload.rows_as::<PackVersionRow>()? {
+                if !seen_versions.insert(row.version_id) {
+                    continue;
+                }
+                let entry = totals.entry(row.pack_id).or_insert((0, 0));
+                entry.0 += 1;
+                if printed.contains(&row.card_id) {
+                    entry.1 += 1;
+                }
+            }
+        }
+
+        let payloads = self.db.execute(&own_images_q).await?;
 
         struct PackGroup {
             id: String,
@@ -392,24 +463,21 @@ impl<'a> CardStore<'a> {
                 .then_with(|| a.name.cmp(&b.name))
         });
 
-        let mut results = Vec::new();
-
-        for mut pack in sorted_packs {
-            pack.collections.sort();
-            let meta = if pack.collections.is_empty() {
-                None
-            } else {
-                Some(pack.collections.join(", "))
-            };
-
-            let display_meta = meta
-                .map(|m| format!("# {}", m))
-                .unwrap_or_else(|| "# no printings available".to_string());
-
-            results.push((pack.name, pack.id, display_meta));
-        }
-
-        Ok(results)
+        Ok(sorted_packs
+            .into_iter()
+            .map(|mut pack| {
+                pack.collections.sort();
+                let (total, printable) = totals.get(&pack.id).copied().unwrap_or((0, 0));
+                AvailablePack {
+                    name: pack.name,
+                    id: pack.id,
+                    date_release: pack.date_release,
+                    total,
+                    printable,
+                    collections: pack.collections,
+                }
+            })
+            .collect())
     }
 
     async fn get_card_requests_from_set_name(
@@ -1337,6 +1405,70 @@ mod tests {
         assert_eq!(result.requests.len(), 1);
         assert_eq!(result.requests[0].printing, Some("tples".to_string()));
         assert_eq!(result.requests[0].position, Some(37));
+    }
+
+    /// One card printed in two packs, with an image only in the older one --
+    /// the shape of the whole revised line.
+    async fn two_packs_one_image() -> (tempfile::TempDir, DbStorage) {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        db.initialize_schema().await.unwrap();
+        for q in [
+            "INSERT INTO packs (id, api_id, name, game_id, date_release) VALUES ('p_core', 'core_set', 'Core Set', 'lotrlcg', '2011-04-20')",
+            "INSERT INTO packs (id, api_id, name, game_id, date_release) VALUES ('p_rev', 'revised_core_set', 'Revised Core Set', 'lotrlcg', '2022-01-01')",
+            "INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_aragorn_core', 'aragorn_core', 'lotrlcg', 'Aragorn', 'aragorn')",
+            "INSERT INTO card_versions (id, card_id, pack_id, quantity, position, api_id) VALUES ('v_core', 'lotrlcg_aragorn_core', 'p_core', 1, 1, 'aragorn_core')",
+            "INSERT INTO card_versions (id, card_id, pack_id, quantity, position, api_id) VALUES ('v_rev', 'lotrlcg_aragorn_core', 'p_rev', 1, 1, 'aragorn_revcore')",
+            "INSERT INTO collections (id, name, game_id, added_date) VALUES (1, 'enhanced', 'lotrlcg', '2024-01-01')",
+            "INSERT INTO printings (id, collection_id, card_id, version_id, file_path, side) VALUES (1, 1, 'lotrlcg_aragorn_core', 'v_core', 'a.jpg', 'front')",
+        ] {
+            db.execute(q).await.unwrap();
+        }
+        (temp_dir, db)
+    }
+
+    #[tokio::test]
+    async fn a_pack_with_no_images_of_its_own_is_still_printable_from_another_pack() {
+        let (_dir, mut db) = two_packs_one_image().await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let packs = store.get_available_packs().await.unwrap();
+        let revised = packs.iter().find(|p| p.id == "p_rev").unwrap();
+
+        // Revised Core owns no image, but its Aragorn is the Core Set Aragorn,
+        // so the card prints and the pack must be offered.
+        assert!(revised.collections.is_empty());
+        assert_eq!((revised.total, revised.printable), (1, 1));
+    }
+
+    #[tokio::test]
+    async fn a_pack_owning_its_image_reports_it_as_its_own() {
+        let (_dir, mut db) = two_packs_one_image().await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let packs = store.get_available_packs().await.unwrap();
+        let core = packs.iter().find(|p| p.id == "p_core").unwrap();
+
+        assert_eq!(core.collections, vec!["1 in enhanced".to_string()]);
+        assert_eq!((core.total, core.printable), (1, 1));
+    }
+
+    #[tokio::test]
+    async fn a_pack_whose_cards_have_no_image_anywhere_is_not_printable() {
+        let (_dir, mut db) = two_packs_one_image().await;
+        for q in [
+            "INSERT INTO packs (id, api_id, name, game_id) VALUES ('p_dom', 'the_dark_of_mirkwood', 'The Dark of Mirkwood', 'lotrlcg')",
+            "INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('lotrlcg_obsidian_arrows', 'obsidian_arrows', 'lotrlcg', 'Obsidian Arrows', 'obsidian_arrows')",
+            "INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_dom', 'lotrlcg_obsidian_arrows', 'p_dom', 1, 26)",
+        ] {
+            db.execute(q).await.unwrap();
+        }
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let packs = store.get_available_packs().await.unwrap();
+        let dom = packs.iter().find(|p| p.id == "p_dom").unwrap();
+
+        assert_eq!((dom.total, dom.printable), (1, 0));
     }
 
     #[test]

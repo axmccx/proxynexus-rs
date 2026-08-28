@@ -87,8 +87,14 @@ def normalize_title(title):
 # Voice", "Watter-logged Halls"). Keyed by pack: the same wording is often
 # correct in another pack, so a global replace silently loses that card.
 PACK_TITLE_FIXES = {
+    # Not typos: A Shadow in the East names both files after Gollum, but 072 is
+    # the Sméagol hero and 073 the Gollum enemy. Correcting the spelling here
+    # would send both scans to the same card and lose Sméagol.
+    ("A Shadow in the East", "Gollum (Enemy)"): "Gollum",
+    ("A Shadow in the East", "Gollum (Hero)"): "Sméagol",
     ("A Shadow in the East", "Treacherour Easterling"): "Treacherous Easterling",
     ("Heirs of Númenor", "Lost Company"): "Lost Companion",
+    ("Heirs of Númenor", "The Leading Fish"): "The Leaping Fish",
     ("Heirs of Númenor", "Watcher in the Woods"): "Watcher in the Wood",
     ("Khazad-dûm", "Chieftan of the Pit"): "Chieftain of the Pit",
     ("Khazad-dûm", "Veteran of Nanduhiron"): "Veteran of Nanduhirion",
