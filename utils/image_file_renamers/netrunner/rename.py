@@ -51,8 +51,37 @@ def parse_legacy_filename(filename):
     return match.groups()
 
 
+def is_repeated_front(part):
+    """A printing has one front, so `front2` and up are copies of it."""
+    match = re.fullmatch(r'front(\d+)', part or '')
+    return bool(match) and int(match.group(1)) >= 2
+
+
+def canonical_part(part):
+    """The current part name for a legacy one.
+
+    A printing is one front and a sequence of backs numbered from one. The
+    front is the file with no part at all, so `back1` is just `back`, and
+    `face2` is the first back -- `face1` would have been the front.
+    """
+    if not part:
+        return ''
+    if part == 'front' or part == 'front1':
+        return ''
+    match = re.fullmatch(r'back(\d+)', part)
+    if match:
+        index = int(match.group(1))
+        return 'back' if index == 1 else part
+    match = re.fullmatch(r'face(\d+)', part)
+    if match and int(match.group(1)) >= 2:
+        index = int(match.group(1)) - 1
+        return 'back' if index == 1 else f'back{index}'
+    return part
+
+
 def build_proxynexus_name(card_id, variant, pack_id, part, ext):
     """A variant label from the filename wins over the catalog's pack_id."""
+    part = canonical_part(part)
     printing = variant if variant else pack_id
     new_name = f"{card_id}@{printing}"
     if part:
@@ -103,7 +132,7 @@ def main():
     }
 
     print(f"\n--- Scanning {'(DRY RUN) ' if args.dry_run else ''}---")
-    renamed, skipped = 0, 0
+    renamed, skipped, repeats = 0, 0, 0
 
     for root, _, files in os.walk(folder):
         for filename in files:
@@ -114,6 +143,12 @@ def main():
             if not parsed: continue
 
             code, variant, part, ext = parsed
+
+            if is_repeated_front(part):
+                print(f"[SKIP] {filename}: a printing has one front, so '{part}' is a repeat of it")
+                repeats += 1
+                continue
+
             entry = catalog.get(code)
 
             if not entry or not entry['card_id']:
@@ -138,7 +173,7 @@ def main():
             else:
                 renamed += 1
 
-    print(f"\nSummary: {renamed} processed, {skipped} skipped.")
+    print(f"\nSummary: {renamed} processed, {skipped} skipped, {repeats} repeated fronts left alone.")
 
 if __name__ == "__main__":
     main()

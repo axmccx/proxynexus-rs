@@ -123,12 +123,12 @@ a two-faced card, 3440x4800 for Jinteki Biotech's four forms. The
 09001.jpg  3440x2400  ->  sync__everything__everywhere@dad.jpg
                           sync__everything__everywhere@dad~back.jpg
 08012.jpg  3440x4800  ->  jinteki_biotech__life_imagined@val.jpg
-                          jinteki_biotech__life_imagined@val~face2.jpg  (and ~face3, ~face4)
+                          jinteki_biotech__life_imagined@val~back.jpg  (and ~back2, ~back3)
 ```
 
 Two faces are the front and back of one physical card, so the second is `~back`. Beyond two is an
-identity printed in several forms, which has no front-and-back relationship to express, so those are
-filed as `~face2` onwards.
+identity printed in several forms — several physical cards that share one front, each with its own
+reverse — so those are filed as `~back`, `~back2`, `~back3`.
 
 Only an exact multiple of 1720x2400 counts as a sheet. Cutting is the one lossy step in the
 pipeline — the faces are re-encoded with the source's own quantization tables and chroma
@@ -146,9 +146,9 @@ rather than stepping through it in FACE_SIZE cells:
 
 ```
 54019-front.jpg  1720x2400  ->  project_genesis@rb5.jpg          Project Genesis  1720x2400
-54019.jpg        1720x2400  ->  project_genesis@rb5~face2.jpg    Acheron           860x1200
-                                project_genesis@rb5~face3.jpg    Cocytus
-                                project_genesis@rb5~face4.jpg    Phlegethon
+54019.jpg        1720x2400  ->  project_genesis@rb5~back.jpg     Acheron           860x1200
+                                project_genesis@rb5~back2.jpg    Cocytus
+                                project_genesis@rb5~back3.jpg    Phlegethon
 ```
 
 Only the front escapes the resolution loss, because `media.reteki.fun` has it as a whole card — see

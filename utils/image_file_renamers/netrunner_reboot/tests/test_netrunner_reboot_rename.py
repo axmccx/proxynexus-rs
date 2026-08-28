@@ -105,9 +105,10 @@ def test_part_names_two_faces_are_front_and_back():
     assert rename.part_names(2) == ['', '~back']
 
 
-def test_part_names_beyond_two_are_numbered_faces():
-    """Matches how the existing Netrunner collection files Jinteki Biotech."""
-    assert rename.part_names(4) == ['', '~face2', '~face3', '~face4']
+def test_part_names_beyond_two_are_numbered_backs():
+    """A printing has one front, so Jinteki Biotech's three further faces are
+    the backs of three physical cards that share it."""
+    assert rename.part_names(4) == ['', '~back', '~back2', '~back3']
 
 
 # --- faces() -------------------------------------------------------------

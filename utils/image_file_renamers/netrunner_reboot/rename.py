@@ -211,15 +211,14 @@ def sheet_contribution(code, cut, parts):
 def part_names(face_count):
     """Part suffix per face, in reading order. Empty string is the front.
 
-    Two faces is a flip card, so the second is the back of the same physical
-    card. More than two is an identity printed in several forms, which the
-    existing Netrunner collection files as face2..faceN.
+    A printing has one front and a back per physical card. Two faces is a flip
+    card, so the second is that card's back. More than two is an identity
+    printed in several forms, all sharing the one front, so each further face is
+    the back of another physical card.
     """
     if face_count <= 1:
         return ['']
-    if face_count == 2:
-        return ['', '~back']
-    return [''] + [f'~face{n}' for n in range(2, face_count + 1)]
+    return [''] + ['~back'] + [f'~back{n}' for n in range(2, face_count)]
 
 
 def faces(img, grid):

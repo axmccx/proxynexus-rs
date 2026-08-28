@@ -21,7 +21,10 @@ slugs the current convention needs:
 - **card_id** — the printing's `card_id`.
 - **printing** — the filename's variant label if it has one (`01001_alt1` → `alt1`), otherwise the
   printing's `card_set_id`.
-- **part** — `-back`, `-front2` become `~back`, `~front2`.
+- **part** — a printing is one front and a sequence of backs numbered from one, with index one
+  spelled without its number. `-front`/`-front1` become no suffix, `-back1` becomes `~back`, and
+  `-face2`/`-face3`/`-face4` become `~back`/`~back2`/`~back3`. A repeated front (`-front2` and up)
+  is a copy of the one front, so those files are printed and left alone rather than renamed.
 
 The catalog is cached as `printings_cache.json` inside the folder being processed, downloaded from
 the API on first run.
