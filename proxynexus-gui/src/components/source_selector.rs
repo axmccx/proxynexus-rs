@@ -132,7 +132,7 @@ pub fn SourceSelector(props: SourceSelectorProps) -> Element {
 
     rsx! {
         div {
-            class: "flex flex-col flex-none h-[160px] md:flex-1 md:h-auto p-4 w-full",
+            class: "flex flex-col flex-none h-[160px] md:flex-1 md:h-auto px-4 pt-2 pb-4 w-full",
 
             div { class: "flex border-b border-gray-200 mb-4 shrink-0",
                 button {
