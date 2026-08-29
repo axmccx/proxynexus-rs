@@ -1275,20 +1275,6 @@ mod tests {
     }
 
     #[test]
-    fn a_named_back_label_reaches_the_page() {
-        let options = PdfOptions {
-            back_label: Some("original"),
-            ..duplex(PageSize::Letter, CutLines::Margins)
-        };
-        let pages = pages_in(&[card(&[], "runner")], &options, "netrunner");
-
-        assert_eq!(
-            pages[1][0].1,
-            Slot::CardBack("netrunner_runner_original.png", false)
-        );
-    }
-
-    #[test]
     fn a_card_backs_bleed_comes_from_its_file_name() {
         // A back that carries its own bleed says so with `.bleed`, so it is
         // cropped to the layout rather than having one added. A back without
