@@ -35,8 +35,8 @@ FFG_DIR = re.compile(r'^\d+_(?P<code>.+)$')
 # Fan-made pack codes, used to filter the catalog down before building the
 # community lookup.
 COMMUNITY_PACKS = ["R", "FH", "JS", "HMW", "FtR", "BtB", "AHaH", "TSoW", "WoW",
-                   "ATT", "ChoS", "FUtG", "JfE", "LotW", "MaV", "NCbT", "TIC",
-                   "TTS", "WAID", "WK"]
+                   "ATT", "ChoS", "FUtG", "JfE", "LotW", "MaV", "NCbT", "THBIB",
+                   "TIC", "TTS", "WAID", "WK"]
 
 # A superseded draft of the same cards as `R_R_TIFF_ENG`, under abbreviated
 # filenames that mostly don't match the catalog.

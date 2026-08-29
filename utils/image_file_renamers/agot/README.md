@@ -33,9 +33,9 @@ along with the other missing cards.
 
 ### Community made cards
 
-Twenty sets, 530 cards. Extract each into its own directory inside one parent folder, named after
-the set's pack code — e.g. `NCbT_TIFF_ENG`, `WK_TIFF_ENG`. The renamer reads the prefix to tell
-reprints apart.
+Twenty-one sets, 550 cards. Extract each into its own directory inside one parent folder, named
+after the set's pack code — e.g. `THBIB_TIFF_ENG`, `WK_TIFF_ENG`. The renamer reads the prefix to
+tell reprints apart.
 
 The first eight are on the [Card Files](https://agot.cards/2021/08/19/card-files/) index under
 *Printing Service → ENG*. That page stopped being updated in 2023; every set since links its own
@@ -63,6 +63,7 @@ files from an `announcing-<set>` post, and the downloads below are the **TIFF Fi
 | 2025-10 | Lord of the Waters | `LotW_TIFF_ENG` | 20 | [TIFF](https://drive.google.com/file/d/1z7GOsbrVczXRNfo7j33KcfDfArTq8-er/view?usp=sharing) |
 | 2025-12 | Justice for Elia | `JfE_TIFF_ENG` | 20 | [TIFF](https://drive.google.com/file/d/1GicEtS_6Q9KVD6s9hbvilWPB1StJFYTz/view?usp=sharing) |
 | 2026-02 | No Crown but Truth | `NCbT_TIFF_ENG` | 20 | [TIFF](https://drive.google.com/file/d/1wPdBqwz_XgtqwoNUlg369wvQSsLQqZbx/view?usp=sharing) |
+| 2026-08 | Till His Blood Is Boiling | `THBIB_TIFF_ENG` | 20 | [TIFF](https://drive.google.com/file/d/1pjFJNSpBobb-6xsgkv0fXuNvn0iIX5wi/view) |
 
 Each set ships a `00_CARD-BACK.tif`, and the older ones a `NOTES_ENG.pdf`. Both are ignored.
 
@@ -170,7 +171,7 @@ the catalog cache, so the suite passes on a fresh clone.
   a different card and is present. `download_missing.py` fetches all of them at ThronesDB's lower
   resolution.
 - **483 cards are in packs no archive covers.** Tower of Joy (281), Old and the New (120,
-  unreleased), The Things We Do For Love (36), Valyrian Draft Set (21), Redesigns II (16) and three
+  unreleased), The Things We Do For Love (36), Valyrian Draft Set (21), Redesigns II (16) and two
   variant packs exist only as ThronesDB images. They are out of scope for `download_missing.py`,
   which only considers packs already present.
 - **The catalog moves under you.** ThronesDB added an `R2` reprint set, which forced a pack suffix
