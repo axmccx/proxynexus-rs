@@ -19,6 +19,7 @@ pub fn build_collection(
     images_dir: &Path,
     language: String,
     version: String,
+    restricted_back_labels: Vec<String>,
 ) -> Result<BuildReport> {
     let images = scan_images(images_dir);
 
@@ -33,6 +34,7 @@ pub fn build_collection(
         version,
         language,
         generated_date: Utc::now().to_rfc3339(),
+        restricted_back_labels,
     };
 
     let zip_file = File::create(output_path)?;

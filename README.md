@@ -96,6 +96,8 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 
 **Collection Management:**
 *   `collection build`: Create a new `.pnx` collection file from a directory of card scans.
+    `--restrict-back-labels` names card back labels that a request holding this collection's
+    cards may not use, e.g. `--restrict-back-labels original`.
 *   `collection add`: Load a `.pnx` collection into your local app.
 *   `collection list`: View all loaded collections.
 *   `collection remove`: Delete a collection from your local app.
@@ -153,7 +155,7 @@ string IDs used by the game's respective database API.
 *   **What `{card_id}` names varies by game:** For most games it names the abstract card, shared by every printing of
 it. lotrlcg is the exception: its catalog collapses reprints into a single card while still needing to tell individual
 scans apart, so lotrlcg file names use `{card_id}` to name the specific printing instead (its Hall of Beorn slug, e.g.
-`aragorn_revcore@revised_core_set.jpg`). See [lotrlcg/CARD_IDENTITY.md](proxynexus-core/src/games/lotrlcg/CARD_IDENTITY.md)
+`aragorn_revcore@revised_core_set.jpg`). See [lotrlcg/notes_on_id.md](proxynexus-core/src/games/lotrlcg/notes_on_id.md)
 for why.
 
 ---

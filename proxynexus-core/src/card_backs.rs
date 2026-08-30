@@ -1,4 +1,7 @@
+use crate::db_storage::DbStorage;
 use crate::error::{ProxyNexusError, Result};
+use crate::models::Printing;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardBack {
@@ -13,22 +16,31 @@ include!(concat!(env!("OUT_DIR"), "/card_back_table.rs"));
 
 const PREFERRED_LABEL: &str = "proxy";
 
-pub fn card_backs(game_id: &str) -> &'static [CardBack] {
-    CARD_BACKS
-        .iter()
-        .find(|(id, _)| *id == game_id)
-        .map_or(&[], |(_, backs)| *backs)
-}
+pub async fn allowed_labels(
+    db: &mut DbStorage,
+    game_id: &str,
+    printings: &[Printing],
+) -> Result<Vec<&'static str>> {
+    let restrictions = db.get_back_restrictions(game_id).await?;
 
-pub fn back_labels(game_id: &str) -> Vec<&'static str> {
-    let mut labels: Vec<&'static str> = card_backs(game_id).iter().map(|back| back.label).collect();
+    let restricted: BTreeSet<&str> = printings
+        .iter()
+        .filter_map(|printing| restrictions.get(&printing.collection))
+        .flatten()
+        .map(String::as_str)
+        .collect();
+
+    let mut labels: Vec<&'static str> = backs_of(game_id)
+        .iter()
+        .map(|back| back.label)
+        .filter(|label| !restricted.contains(label))
+        .collect();
     labels.sort_unstable();
     labels.dedup();
-    labels
+    Ok(labels)
 }
 
-pub fn default_label(game_id: &str) -> Option<&'static str> {
-    let labels = back_labels(game_id);
+pub fn default_label(labels: &[&'static str]) -> Option<&'static str> {
     labels
         .iter()
         .copied()
@@ -36,21 +48,21 @@ pub fn default_label(game_id: &str) -> Option<&'static str> {
         .or_else(|| labels.first().copied())
 }
 
-pub fn card_back(
-    game_id: &str,
-    back_group: &str,
-    label: Option<&str>,
-) -> Option<&'static CardBack> {
-    let label = label.or(default_label(game_id))?;
-    card_backs(game_id)
+pub fn card_back(game_id: &str, back_group: &str, label: &str) -> Option<&'static CardBack> {
+    backs_of(game_id)
         .iter()
         .find(|back| back.back_group == back_group && back.label == label)
 }
 
-pub async fn fetch_card_backs(game_id: &str) -> Result<Vec<(&'static CardBack, Vec<u8>)>> {
-    let backs = card_backs(game_id);
-    let mut loaded = Vec::with_capacity(backs.len());
-    for back in backs {
+pub async fn fetch_card_backs(
+    game_id: &str,
+    labels: &[&'static str],
+) -> Result<Vec<(&'static CardBack, Vec<u8>)>> {
+    let mut loaded = Vec::new();
+    for back in backs_of(game_id) {
+        if !labels.contains(&back.label) {
+            continue;
+        }
         loaded.push((back, load_card_back(back.asset_id).await?));
     }
     Ok(loaded)
@@ -87,10 +99,131 @@ pub async fn load_card_back(asset_id: &str) -> Result<Vec<u8>> {
     }
 }
 
+fn backs_of(game_id: &str) -> &'static [CardBack] {
+    CARD_BACKS
+        .iter()
+        .find(|(id, _)| *id == game_id)
+        .map_or(&[], |(_, backs)| *backs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::{BTreeSet, HashMap};
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    fn printing_from(collection: &str) -> Printing {
+        Printing {
+            card_id: "a-card".into(),
+            card_title: "A Card".into(),
+            is_official: true,
+            variant: None,
+            front: Default::default(),
+            backs: Vec::new(),
+            collection: collection.into(),
+            back_group: "a-group".into(),
+            pack_id: None,
+            date_release: None,
+            position: None,
+        }
+    }
+
+    /// A game shipping at least two labels, so tests about withholding one of
+    /// several cannot quietly turn into no-ops.
+    fn a_game_with_several_labels() -> (&'static str, Vec<&'static str>) {
+        CARD_BACKS
+            .iter()
+            .find_map(|(game_id, backs)| {
+                let mut labels: Vec<&'static str> = backs.iter().map(|b| b.label).collect();
+                labels.sort_unstable();
+                labels.dedup();
+                (labels.len() >= 2).then_some((*game_id, labels))
+            })
+            .expect("no game ships two card back labels")
+    }
+
+    fn a_game_that_ships_backs() -> (&'static str, &'static [CardBack]) {
+        *CARD_BACKS
+            .iter()
+            .find(|(_, backs)| !backs.is_empty())
+            .expect("no game ships card backs")
+    }
+
+    /// A database holding `collections`, each as (name, withheld labels).
+    async fn db_with(game_id: &str, collections: &[(&str, &[&str])]) -> (TempDir, DbStorage) {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        db.initialize_schema().await.unwrap();
+
+        for (id, (name, labels)) in collections.iter().enumerate() {
+            let restricted = crate::db_storage::format_restricted_labels(
+                &labels.iter().map(|l| l.to_string()).collect::<Vec<_>>(),
+            )
+            .map_or("NULL".to_string(), |l| format!("'{}'", l));
+
+            db.execute(&format!(
+                "INSERT INTO collections (id, name, game_id, version, language, restricted_back_labels, added_date)
+                 VALUES ({}, '{}', '{}', '1.0.0', 'en', {}, '2026-01-01')",
+                id + 1,
+                name,
+                game_id,
+                restricted
+            ))
+            .await
+            .unwrap();
+        }
+
+        (temp_dir, db)
+    }
+
+    #[tokio::test]
+    async fn a_request_touching_no_restricted_collection_gets_every_label() {
+        let (game_id, backs) = a_game_that_ships_backs();
+        let (_dir, mut db) = db_with(game_id, &[("ffg", &[]), ("nsg", &[backs[0].label])]).await;
+
+        let labels = allowed_labels(&mut db, game_id, &[printing_from("ffg")])
+            .await
+            .unwrap();
+
+        assert!(labels.contains(&backs[0].label));
+    }
+
+    #[tokio::test]
+    async fn one_collection_withholding_a_label_withholds_it_for_the_whole_request() {
+        let (game_id, backs) = a_game_that_ships_backs();
+        let withheld = backs[0].label;
+        let (_dir, mut db) = db_with(game_id, &[("ffg", &[]), ("nsg", &[withheld])]).await;
+
+        let printings = [printing_from("ffg"), printing_from("nsg")];
+        let labels = allowed_labels(&mut db, game_id, &printings).await.unwrap();
+
+        assert!(!labels.contains(&withheld));
+    }
+
+    #[tokio::test]
+    async fn collections_withholding_different_labels_withhold_both() {
+        let (game_id, every) = a_game_with_several_labels();
+        let (_dir, mut db) = db_with(game_id, &[("one", &[every[0]]), ("two", &[every[1]])]).await;
+
+        let printings = [printing_from("one"), printing_from("two")];
+        let labels = allowed_labels(&mut db, game_id, &printings).await.unwrap();
+
+        assert!(!labels.contains(&every[0]));
+        assert!(!labels.contains(&every[1]));
+    }
+
+    #[tokio::test]
+    async fn withholding_every_label_leaves_none() {
+        let (game_id, backs) = a_game_that_ships_backs();
+        let every: Vec<&str> = backs.iter().map(|b| b.label).collect();
+        let (_dir, mut db) = db_with(game_id, &[("nsg", &every)]).await;
+
+        let labels = allowed_labels(&mut db, game_id, &[printing_from("nsg")])
+            .await
+            .unwrap();
+
+        assert!(labels.is_empty());
+    }
 
     #[test]
     fn an_asset_id_is_the_game_id_and_the_file_name() {
@@ -148,28 +281,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn labels_are_listed_once_and_in_order() {
-        for (game_id, _) in CARD_BACKS {
-            let labels = back_labels(game_id);
-            let mut expected = labels.clone();
-            expected.sort_unstable();
-            expected.dedup();
-            assert_eq!(labels, expected, "{}", game_id);
-        }
+    #[tokio::test]
+    async fn a_label_carried_by_several_back_groups_is_listed_once() {
+        let (game_id, every) = a_game_with_several_labels();
+        let (_dir, mut db) = db_with(game_id, &[]).await;
+
+        let labels = allowed_labels(&mut db, game_id, &[]).await.unwrap();
+
+        assert_eq!(labels, every);
     }
 
     #[test]
-    fn no_label_takes_proxy_then_the_first_alphabetically() {
-        for (game_id, _) in CARD_BACKS {
-            let labels = back_labels(game_id);
-            let expected = if labels.contains(&PREFERRED_LABEL) {
-                Some(PREFERRED_LABEL)
-            } else {
-                labels.first().copied()
-            };
-            assert_eq!(default_label(game_id), expected, "{}", game_id);
-        }
+    fn no_label_takes_proxy_then_the_first_offered() {
+        assert_eq!(default_label(&["alt", "proxy"]), Some("proxy"));
+        assert_eq!(default_label(&["alt", "zed"]), Some("alt"));
+        assert_eq!(default_label(&[]), None);
     }
 
     #[test]
@@ -177,7 +303,7 @@ mod tests {
         for (game_id, backs) in CARD_BACKS {
             for back in *backs {
                 assert_eq!(
-                    card_back(game_id, back.back_group, Some(back.label)),
+                    card_back(game_id, back.back_group, back.label),
                     Some(back),
                     "{} {} {}",
                     game_id,
@@ -192,20 +318,19 @@ mod tests {
     fn an_unknown_game_group_or_label_has_no_back() {
         // A game covers some back groups and not others, and the ones it does
         // not cover print a blank reverse rather than the wrong art.
-        assert!(card_backs("no-such-game").is_empty());
-        assert_eq!(default_label("no-such-game"), None);
-        assert_eq!(card_back("no-such-game", "corp", None), None);
+        assert!(backs_of("no-such-game").is_empty());
+        assert_eq!(card_back("no-such-game", "corp", "proxy"), None);
 
         for (game_id, backs) in CARD_BACKS {
             assert_eq!(
-                card_back(game_id, "no-such-group", None),
+                card_back(game_id, "no-such-group", "proxy"),
                 None,
                 "{}",
                 game_id
             );
             if let Some(back) = backs.first() {
                 assert_eq!(
-                    card_back(game_id, back.back_group, Some("no-such-label")),
+                    card_back(game_id, back.back_group, "no-such-label"),
                     None,
                     "{}",
                     game_id

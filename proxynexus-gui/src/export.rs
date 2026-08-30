@@ -4,6 +4,7 @@ use crate::components::source_selector::ActiveSource;
 use anyhow::Context;
 use async_lock::Mutex;
 use dioxus::prelude::*;
+use proxynexus_core::card_backs;
 use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::mpc::{MpcOptions, generate_mpc_zip};
@@ -169,8 +170,17 @@ pub async fn run_export(
     #[cfg(target_arch = "wasm32")]
     let image_provider_result = Ok(proxynexus_core::image_provider::RemoteImageProvider);
 
-    let result = match (resolved_printings, image_provider_result) {
-        (Ok(printings), Ok(image_provider)) => match options {
+    let allowed_labels = match &resolved_printings {
+        Ok(printings) => {
+            let db_arc = db_signal.read().clone();
+            let mut db = db_arc.lock().await;
+            card_backs::allowed_labels(&mut db, &active_game_id, printings).await
+        }
+        Err(_) => Ok(Vec::new()),
+    };
+
+    let result = match (resolved_printings, image_provider_result, allowed_labels) {
+        (Ok(printings), Ok(image_provider), Ok(labels)) => match options {
             ExportOptions::Pdf(pdf_opts) => generate_pdf(
                 printings,
                 &image_provider,
@@ -181,7 +191,7 @@ pub async fn run_export(
             .await
             .context("PDF generation failed"),
             ExportOptions::Mpc(mpc_opts) => {
-                let card_backs = proxynexus_core::card_backs::fetch_card_backs(&active_game_id)
+                let card_backs = card_backs::fetch_card_backs(&active_game_id, &labels)
                     .await
                     .unwrap_or_default();
 
@@ -196,8 +206,11 @@ pub async fn run_export(
                 .context("MPC ZIP generation failed")
             }
         },
-        (Err(e), _) => Err(e),
-        (_, Err(e)) => Err(e),
+        (Err(e), _, _) => Err(e),
+        (_, Err(e), _) => Err(e),
+        (_, _, Err(e)) => {
+            Err(anyhow::Error::from(e).context("Failed to read card back restrictions"))
+        }
     };
 
     let duration = start_time.elapsed();

@@ -8,6 +8,8 @@ pub struct Manifest {
     pub version: String,
     pub language: String,
     pub generated_date: String,
+    #[serde(default)]
+    pub restricted_back_labels: Vec<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

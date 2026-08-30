@@ -1,4 +1,4 @@
-use crate::db_storage::{DbStorage, quote_sql_string};
+use crate::db_storage::{DbStorage, format_restricted_labels, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
 use crate::file_naming::{back_index, back_label, parse_filename};
 use crate::models::Manifest;
@@ -124,16 +124,18 @@ impl<'a> CollectionManager<'a> {
         }
 
         let next_coll_id = self.db.get_next_id("collections").await?;
-
         let added_date = chrono::Utc::now().to_rfc3339();
+        let restricted = format_restricted_labels(&manifest.restricted_back_labels)
+            .map_or("NULL".to_string(), |labels| quote_sql_string(&labels));
 
         let insert_coll_q = format!(
-            "INSERT INTO collections (id, name, game_id, version, language, added_date) VALUES ({}, {}, {}, {}, {}, '{}')",
+            "INSERT INTO collections (id, name, game_id, version, language, restricted_back_labels, added_date) VALUES ({}, {}, {}, {}, {}, {}, '{}')",
             next_coll_id,
             quote_sql_string(&collection_name),
             quote_sql_string(&manifest.game),
             quote_sql_string(&manifest.version),
             quote_sql_string(&manifest.language),
+            restricted,
             added_date
         );
         self.db.execute(&insert_coll_q).await?;

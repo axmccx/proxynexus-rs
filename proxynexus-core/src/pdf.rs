@@ -475,7 +475,8 @@ fn back_slot(
     }
 
     let group = &card.printing.back_group;
-    if let Some(back) = crate::card_backs::card_back(game_id, group, label) {
+    if let Some(back) = label.and_then(|label| crate::card_backs::card_back(game_id, group, label))
+    {
         return Slot::CardBack(back.asset_id, back.has_bleed);
     }
 
@@ -1257,8 +1258,11 @@ mod tests {
     }
 
     #[test]
-    fn duplex_falls_back_to_the_games_standard_back() {
-        let options = duplex(PageSize::Letter, CutLines::Margins);
+    fn duplex_uses_the_games_standard_back_for_cards_without_one() {
+        let options = PdfOptions {
+            back_label: Some("proxy"),
+            ..duplex(PageSize::Letter, CutLines::Margins)
+        };
         let pages = pages_in(
             &[card(&[], "corp"), card(&["back"], "runner")],
             &options,
@@ -1272,6 +1276,16 @@ mod tests {
                 (1, collection("back.png")),
             ]
         );
+    }
+
+    #[test]
+    fn a_game_with_backs_still_blanks_when_no_label_was_chosen() {
+        // Callers resolve the label from what the request may use, so a
+        // withheld one never arrives here and there is nothing to fall back on.
+        let options = duplex(PageSize::Letter, CutLines::Margins);
+        let pages = pages_in(&[card(&[], "corp")], &options, "netrunner");
+
+        assert_eq!(pages[1][0].1, Slot::Blank);
     }
 
     #[test]

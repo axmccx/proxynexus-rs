@@ -22,6 +22,7 @@ struct CollectionDbRow {
     game_id: String,
     version: Option<String>,
     language: Option<String>,
+    restricted_back_labels: Option<String>,
     added_date: String,
     last_updated: Option<String>,
 }
@@ -152,6 +153,7 @@ impl DbStorage {
                 game_id TEXT NOT NULL,
                 version TEXT,
                 language TEXT,
+                restricted_back_labels TEXT,
                 added_date TEXT NOT NULL,
                 last_updated TEXT
             );
@@ -197,6 +199,28 @@ impl DbStorage {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn get_back_restrictions(
+        &mut self,
+        game_id: &str,
+    ) -> Result<std::collections::HashMap<String, Vec<String>>> {
+        let query = format!(
+            "SELECT * FROM collections WHERE game_id = {}",
+            quote_sql_string(game_id)
+        );
+        let payloads = self.execute(&query).await?;
+
+        let mut restrictions = std::collections::HashMap::new();
+        if let Some(payload) = payloads.into_iter().next() {
+            for row in payload.rows_as::<CollectionDbRow>()? {
+                let labels = parse_restricted_labels(row.restricted_back_labels.as_deref());
+                if !labels.is_empty() {
+                    restrictions.insert(row.name, labels);
+                }
+            }
+        }
+        Ok(restrictions)
     }
 
     pub async fn export_sql(&mut self, path: &std::path::Path) -> Result<()> {
@@ -315,7 +339,7 @@ impl DbStorage {
         if let Some(payload) = coll_payloads.into_iter().next() {
             let rows: Vec<CollectionDbRow> = payload.rows_as()?;
             for chunk in rows.chunks(500) {
-                sql.push_str("INSERT INTO collections (id, name, game_id, version, language, added_date, last_updated) VALUES ");
+                sql.push_str("INSERT INTO collections (id, name, game_id, version, language, restricted_back_labels, added_date, last_updated) VALUES ");
                 let values: Vec<String> = chunk
                     .iter()
                     .map(|row| {
@@ -331,13 +355,18 @@ impl DbStorage {
                             .last_updated
                             .as_ref()
                             .map_or("NULL".to_string(), |d| quote_sql_string(d));
+                        let restricted = row
+                            .restricted_back_labels
+                            .as_ref()
+                            .map_or("NULL".to_string(), |l| quote_sql_string(l));
                         format!(
-                            "({}, {}, {}, {}, {}, {}, {})",
+                            "({}, {}, {}, {}, {}, {}, {}, {})",
                             row.id,
                             quote_sql_string(&row.name),
                             quote_sql_string(&row.game_id),
                             version,
                             lang,
+                            restricted,
                             quote_sql_string(&row.added_date),
                             last_up
                         )
@@ -389,6 +418,23 @@ impl DbStorage {
     }
 }
 
+pub fn format_restricted_labels(labels: &[String]) -> Option<String> {
+    if labels.is_empty() {
+        return None;
+    }
+    Some(labels.join(","))
+}
+
+pub fn parse_restricted_labels(stored: Option<&str>) -> Vec<String> {
+    stored
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|label| !label.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
 pub fn quote_sql_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('\'');
@@ -413,6 +459,25 @@ pub fn build_in_clause(items: impl IntoIterator<Item = impl AsRef<str>>) -> Stri
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn withholding_nothing_stores_null() {
+        assert_eq!(format_restricted_labels(&[]), None);
+        assert!(parse_restricted_labels(None).is_empty());
+    }
+
+    #[test]
+    fn stored_labels_come_back_as_they_went_in() {
+        let labels = vec!["original".to_string(), "alt".to_string()];
+        let stored = format_restricted_labels(&labels).unwrap();
+        assert_eq!(parse_restricted_labels(Some(&stored)), labels);
+    }
+
+    #[test]
+    fn a_blank_stored_field_withholds_nothing() {
+        assert!(parse_restricted_labels(Some("")).is_empty());
+        assert!(parse_restricted_labels(Some(" , ")).is_empty());
+    }
+
     use super::*;
 
     #[test]

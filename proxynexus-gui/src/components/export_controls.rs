@@ -83,7 +83,7 @@ pub struct ExportControlsProps {
     pub on_open_info: EventHandler<(f64, f64, f64)>,
     pub on_open_upscale_info: EventHandler<(f64, f64, f64)>,
     pub on_open_sides_info: EventHandler<(f64, f64, f64)>,
-    pub active_game_id: Signal<Option<String>>,
+    pub back_labels: Resource<Vec<&'static str>>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -106,12 +106,8 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
     let mut options_open = use_signal(|| false);
     let mut back_label = use_signal(|| None::<&'static str>);
 
-    let active_game_id = props.active_game_id;
-    let back_labels =
-        use_memo(move || active_game_id().map_or_else(Vec::new, |id| card_backs::back_labels(&id)));
-
-    let default_back_label =
-        use_memo(move || active_game_id().and_then(|id| card_backs::default_label(&id)));
+    let back_labels = use_memo(move || (props.back_labels)().unwrap_or_default());
+    let default_back_label = use_memo(move || card_backs::default_label(&back_labels.read()));
 
     use_effect(move || {
         if back_label().is_some_and(|label| !back_labels().contains(&label)) {
@@ -615,7 +611,8 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                                         cut_line_thickness: thickness,
                                                         upscale: upscale(),
                                                         double_sided: sides() == Sides::Double,
-                                                        back_label: back_label(),
+                                                        back_label: back_label()
+                                                            .or(default_back_label()),
                                                     })
                                                 }
                                             };

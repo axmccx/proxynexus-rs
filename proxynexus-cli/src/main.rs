@@ -1,5 +1,6 @@
 use anyhow::{Context, anyhow};
 use clap::{Parser, Subcommand};
+use proxynexus_core::card_backs;
 use proxynexus_core::card_source::{CardSource, Cardlist, DecklistUrl, SetName};
 use proxynexus_core::catalog::CatalogManager;
 use proxynexus_core::collection_builder::build_collection;
@@ -89,6 +90,9 @@ enum CollectionAction {
 
         #[arg(short, long, default_value = "1.0.0")]
         version: String,
+
+        #[arg(long, value_delimiter = ',', num_args = 1..)]
+        restrict_back_labels: Vec<String>,
     },
     Add {
         path: PathBuf,
@@ -263,10 +267,18 @@ async fn handle_collection_action(
             images,
             language,
             version,
+            restrict_back_labels,
         } => {
             println!("Writing pnx file...");
-            let report = build_collection(game.to_string(), &output, &images, language, version)
-                .context("Failed to build collection")?;
+            let report = build_collection(
+                game.to_string(),
+                &output,
+                &images,
+                language,
+                version,
+                restrict_back_labels,
+            )
+            .context("Failed to build collection")?;
             println!("Added {} printings", report.printings_added);
             println!("Collection created: {:?}", output);
             if verbose {
@@ -466,8 +478,9 @@ async fn handle_generate(
             let source = determine_input_source(cardlist, set_name, decklist_url);
 
             let printings = get_printings_from_source(db, game, source).await?;
+            let labels = card_backs::allowed_labels(db, game, &printings).await?;
 
-            let back_label = resolve_back_label(back_label.as_deref(), game, double_sided)?;
+            let back_label = resolve_back_label(back_label.as_deref(), &labels, double_sided)?;
 
             let pdf_options = PdfOptions {
                 page_size: page_size_enum,
@@ -513,8 +526,9 @@ async fn handle_generate(
             let start = Instant::now();
 
             let printings = get_printings_from_source(db, game, source).await?;
+            let labels = card_backs::allowed_labels(db, game, &printings).await?;
 
-            let card_backs = proxynexus_core::card_backs::fetch_card_backs(game)
+            let card_backs = card_backs::fetch_card_backs(game, &labels)
                 .await
                 .unwrap_or_default();
 
@@ -647,11 +661,9 @@ fn parse_print_layout(layout: &str) -> anyhow::Result<proxynexus_core::pdf::Prin
 
 fn resolve_back_label(
     back_label: Option<&str>,
-    game_id: &str,
+    labels: &[&'static str],
     double_sided: bool,
 ) -> anyhow::Result<Option<&'static str>> {
-    let labels = proxynexus_core::card_backs::back_labels(game_id);
-
     if labels.is_empty() {
         if back_label.is_some() {
             return Err(anyhow!(
@@ -667,7 +679,7 @@ fn resolve_back_label(
     }
 
     let Some(back_label) = back_label else {
-        return Ok(None);
+        return Ok(card_backs::default_label(labels));
     };
 
     labels

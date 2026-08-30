@@ -510,6 +510,26 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
         }
     });
 
+    let back_labels = use_resource(move || async move {
+        let Some(game_id) = active_game_id() else {
+            return Vec::new();
+        };
+        let printings = match ordered_printings
+            .read()
+            .as_ref()
+            .and_then(|r| r.as_ref().ok())
+        {
+            Some((_, printings, _, _)) => printings.clone(),
+            None => Vec::new(),
+        };
+
+        let db_arc = db_signal.read().clone();
+        let mut db = db_arc.lock().await;
+        proxynexus_core::card_backs::allowed_labels(&mut db, &game_id, &printings)
+            .await
+            .unwrap_or_default()
+    });
+
     let printings_by_title = use_memo(move || {
         let res = ordered_printings.read();
         let (_base, printings, available, _not_found) = res.as_ref()?.as_ref().ok()?;
@@ -718,7 +738,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                     on_open_info: move |pos| print_layout_info_pos.set(Some(pos)),
                     on_open_upscale_info: move |pos| upscale_info_pos.set(Some(pos)),
                     on_open_sides_info: move |pos| sides_info_pos.set(Some(pos)),
-                    active_game_id,
+                    back_labels,
                     on_generate: move |options: export::ExportOptions| {
                         let source = active_source();
                         if let Some(game_id) = active_game_id() {
