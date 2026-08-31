@@ -5,7 +5,9 @@ use crate::card_source::DecklistProvider;
 use crate::card_store::normalize_title;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
-use crate::error::{ProxyNexusError, Result};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::error::ProxyNexusError;
+use crate::error::Result;
 use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::fetch_json;

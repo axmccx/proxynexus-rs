@@ -3,6 +3,7 @@ pub mod l5r;
 pub mod lotrlcg;
 pub mod netrunner;
 pub mod netrunner_reboot;
+pub mod whconquest;
 pub mod whinvasion;
 use crate::card_source::DecklistProvider;
 use crate::error::{ProxyNexusError, Result};
@@ -11,6 +12,7 @@ use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
+use crate::games::whconquest::adapter::WhcAdapter;
 use crate::games::whinvasion::adapter::WhiAdapter;
 use serde::de::DeserializeOwned;
 
@@ -30,6 +32,7 @@ pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
         Box::new(AgotAdapter::new()),
         Box::new(LotrLcgAdapter::new()),
         Box::new(WhiAdapter::new()),
+        Box::new(WhcAdapter::new()),
     ];
 
     for adapter in adapters {

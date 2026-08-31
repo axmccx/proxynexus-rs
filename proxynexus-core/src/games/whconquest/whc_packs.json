@@ -1,0 +1,162 @@
+[
+  {
+    "code": "core-set",
+    "name": "Core Set",
+    "date_release": "2014-08-01"
+  },
+  {
+    "code": "the-howl-of-blackmane",
+    "name": "The Howl of Blackmane",
+    "date_release": "2014-10-01"
+  },
+  {
+    "code": "the-scourge",
+    "name": "The Scourge",
+    "date_release": "2014-11-01"
+  },
+  {
+    "code": "gift-of-the-ethereals",
+    "name": "Gift of the Ethereals",
+    "date_release": "2014-12-01"
+  },
+  {
+    "code": "zogworts-curse",
+    "name": "Zogwort's Curse",
+    "date_release": "2015-02-01"
+  },
+  {
+    "code": "the-threat-beyond",
+    "name": "The Threat Beyond",
+    "date_release": "2015-03-01"
+  },
+  {
+    "code": "champions",
+    "name": "Champions",
+    "date_release": "2015-04-01"
+  },
+  {
+    "code": "the-descendants-of-isha",
+    "name": "The Descendants of Isha",
+    "date_release": "2015-04-01"
+  },
+  {
+    "code": "the-great-devourer",
+    "name": "The Great Devourer",
+    "date_release": "2015-05-01"
+  },
+  {
+    "code": "decree-of-ruin",
+    "name": "Decree of Ruin",
+    "date_release": "2015-07-01"
+  },
+  {
+    "code": "boundless-hate",
+    "name": "Boundless Hate",
+    "date_release": "2015-08-01"
+  },
+  {
+    "code": "deadly-salvage",
+    "name": "Deadly Salvage",
+    "date_release": "2015-09-01"
+  },
+  {
+    "code": "what-lurks-below",
+    "name": "What Lurks Below",
+    "date_release": "2015-10-01"
+  },
+  {
+    "code": "wrath-of-the-crusaders",
+    "name": "Wrath of the Crusaders",
+    "date_release": "2015-12-01"
+  },
+  {
+    "code": "the-final-gambit",
+    "name": "The Final Gambit",
+    "date_release": "2016-01-01"
+  },
+  {
+    "code": "legions-of-death",
+    "name": "Legions of Death",
+    "date_release": "2016-03-01"
+  },
+  {
+    "code": "jungles-of-nectavus",
+    "name": "Jungles of Nectavus",
+    "date_release": "2016-05-01"
+  },
+  {
+    "code": "unforgiven",
+    "name": "Unforgiven",
+    "date_release": "2016-06-01"
+  },
+  {
+    "code": "slash-and-burn",
+    "name": "Slash and Burn",
+    "date_release": "2016-08-01"
+  },
+  {
+    "code": "searching-for-truth",
+    "name": "Searching for Truth",
+    "date_release": "2016-09-01"
+  },
+  {
+    "code": "against-the-great-enemy",
+    "name": "Against the Great Enemy",
+    "date_release": "2016-10-01"
+  },
+  {
+    "code": "the-warp-unleashed",
+    "name": "The Warp Unleashed",
+    "date_release": "2016-12-01"
+  },
+  {
+    "code": "a-mask-falls-off",
+    "name": "A Mask Falls Off",
+    "date_release": null
+  },
+  {
+    "code": "aligned-stars",
+    "name": "Aligned Stars",
+    "date_release": null
+  },
+  {
+    "code": "breaching-the-veil",
+    "name": "Breaching the Veil",
+    "date_release": null
+  },
+  {
+    "code": "by-imperial-decree",
+    "name": "By Imperial Decree",
+    "date_release": null
+  },
+  {
+    "code": "defenders-of-the-faith",
+    "name": "Defenders of the Faith",
+    "date_release": null
+  },
+  {
+    "code": "enemy-territory",
+    "name": "Enemy Territory",
+    "date_release": null
+  },
+  {
+    "code": "overrun",
+    "name": "Overrun",
+    "date_release": null
+  },
+  {
+    "code": "promise-of-war",
+    "name": "Promise of War",
+    "date_release": null
+  },
+  {
+    "code": "the-eye-of-terror",
+    "name": "The Eye of Terror",
+    "date_release": null
+  },
+  {
+    "code": "the-laughing-god",
+    "name": "The Laughing God",
+    "date_release": null
+  }
+]

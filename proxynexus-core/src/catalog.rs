@@ -6,6 +6,7 @@ use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
+use crate::games::whconquest::adapter::WhcAdapter;
 use crate::games::whinvasion::adapter::WhiAdapter;
 use async_trait::async_trait;
 use gluesql::FromGlueRow;
@@ -65,6 +66,7 @@ impl<'a> CatalogManager<'a> {
             Box::new(AgotAdapter::new()),
             Box::new(LotrLcgAdapter::new()),
             Box::new(WhiAdapter::new()),
+            Box::new(WhcAdapter::new()),
         ];
 
         Self { db, adapters }
