@@ -52,10 +52,11 @@ fn build_cards_and_versions(whc_cards: Vec<WhcCard>) -> (Vec<Card>, Vec<CardVers
     let mut card_versions = Vec::with_capacity(whc_cards.len());
 
     for card in whc_cards {
+        let title = card.name.trim();
         cards.push(Card {
             id: card.unique_id.clone(),
-            title: card.name.clone(),
-            title_normalized: normalize_title(&card.name),
+            title: title.to_string(),
+            title_normalized: normalize_title(title),
             back_group: Some(WHC_BACK_GROUP.to_string()),
         });
 
@@ -129,6 +130,19 @@ mod tests {
         assert_eq!(versions[0].pack_id, "core-set");
         assert_eq!(versions[0].quantity, 3);
         assert_eq!(versions[0].position, Some(1));
+    }
+
+    #[test]
+    fn card_names_are_trimmed_before_they_are_normalized() {
+        let mut whc_card = card("broadside", "Army");
+        whc_card.name = "Sa'cea XV88 Broadside ".to_string();
+        let (cards, _) = build_cards_and_versions(vec![whc_card]);
+
+        assert_eq!(cards[0].title, "Sa'cea XV88 Broadside");
+        assert_eq!(
+            cards[0].title_normalized,
+            normalize_title("Sa'cea XV88 Broadside")
+        );
     }
 
     #[test]

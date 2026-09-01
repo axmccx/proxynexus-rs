@@ -108,7 +108,7 @@ pub fn normalize_title(title: &str) -> String {
 }
 
 pub fn clean_card_name(name: &str) -> &str {
-    name.trim_end_matches(|c: char| !c.is_alphanumeric() && !"!.*)\"'”’“‘".contains(c))
+    name.trim_end_matches(|c: char| c.is_whitespace() || "●○•·-–—".contains(c))
 }
 
 impl CardSource for Cardlist {
@@ -1312,6 +1312,12 @@ mod tests {
             clean_card_name("Title (with parens)"),
             "Title (with parens)"
         );
+        assert_eq!(clean_card_name("It Likes Riddles?"), "It Likes Riddles?");
+        assert_eq!(
+            clean_card_name("Roast 'Em or Boil 'Em?"),
+            "Roast 'Em or Boil 'Em?"
+        );
+        assert_eq!(clean_card_name("Sweet Dreams…"), "Sweet Dreams…");
 
         // invalid trailing characters get stripped
         assert_eq!(clean_card_name("Hedge Fund ●"), "Hedge Fund");
@@ -1319,6 +1325,7 @@ mod tests {
         assert_eq!(clean_card_name("Paperclip ●●●"), "Paperclip");
         assert_eq!(clean_card_name("Card Name ! ●"), "Card Name !");
         assert_eq!(clean_card_name("Card Name ●●●"), "Card Name");
+        assert_eq!(clean_card_name("Rest by Night? ●"), "Rest by Night?");
     }
 
     #[test]
@@ -1405,6 +1412,32 @@ mod tests {
         assert_eq!(result.requests.len(), 1);
         assert_eq!(result.requests[0].printing, Some("tples".to_string()));
         assert_eq!(result.requests[0].position, Some(37));
+    }
+
+    #[tokio::test]
+    async fn a_title_ending_in_punctuation_resolves_from_a_cardlist() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        db.initialize_schema().await.unwrap();
+        db.execute("INSERT INTO packs (id, api_id, name, game_id) VALUES ('p_ohauh', 'the_hobbit_over_hill_and_under_hill', 'The Hobbit: Over Hill and Under Hill', 'lotrlcg')").await.unwrap();
+        db.execute(&format!(
+            "INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('c_riddles', 'riddles', 'lotrlcg', 'It Likes Riddles?', '{}')",
+            normalize_title("It Likes Riddles?")
+        )).await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('v_riddles', 'c_riddles', 'p_ohauh', 1, 1)").await.unwrap();
+
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+
+        let result = store
+            .parse_cardlist_into_card_requests(
+                "1x It Likes Riddles? [the_hobbit_over_hill_and_under_hill]",
+            )
+            .await
+            .unwrap();
+
+        assert!(result.not_found.is_empty(), "{:?}", result.not_found);
+        assert_eq!(result.requests.len(), 1);
+        assert_eq!(result.requests[0].title, "It Likes Riddles?");
     }
 
     /// One card printed in two packs, with an image only in the older one --
