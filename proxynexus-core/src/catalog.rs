@@ -2,6 +2,7 @@ use crate::db_storage::{DbStorage, quote_sql_string};
 use crate::error::Result;
 use crate::games::GameAdapterInfo;
 use crate::games::agot::adapter::AgotAdapter;
+use crate::games::coclcg::adapter::CocAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
@@ -67,6 +68,7 @@ impl<'a> CatalogManager<'a> {
             Box::new(LotrLcgAdapter::new()),
             Box::new(WhiAdapter::new()),
             Box::new(WhcAdapter::new()),
+            Box::new(CocAdapter::new()),
         ];
 
         Self { db, adapters }

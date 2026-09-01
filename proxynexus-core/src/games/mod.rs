@@ -1,4 +1,5 @@
 pub mod agot;
+pub mod coclcg;
 pub mod l5r;
 pub mod lotrlcg;
 pub mod netrunner;
@@ -8,6 +9,7 @@ pub mod whinvasion;
 use crate::card_source::DecklistProvider;
 use crate::error::{ProxyNexusError, Result};
 use crate::games::agot::adapter::AgotAdapter;
+use crate::games::coclcg::adapter::CocAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
@@ -33,6 +35,7 @@ pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
         Box::new(LotrLcgAdapter::new()),
         Box::new(WhiAdapter::new()),
         Box::new(WhcAdapter::new()),
+        Box::new(CocAdapter::new()),
     ];
 
     for adapter in adapters {

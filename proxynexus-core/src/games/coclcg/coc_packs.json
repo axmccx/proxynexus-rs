@@ -1,0 +1,272 @@
+[
+  {
+    "code": "core-set",
+    "name": "Core Set",
+    "date_release": "2008-10-01"
+  },
+  {
+    "code": "spawn-of-madness",
+    "name": "Spawn of Madness",
+    "date_release": "2011-06-01"
+  },
+  {
+    "code": "kingsport-dreams",
+    "name": "Kingsport Dreams",
+    "date_release": "2011-07-01"
+  },
+  {
+    "code": "conspiracies-of-chaos",
+    "name": "Conspiracies of Chaos",
+    "date_release": "2011-08-01"
+  },
+  {
+    "code": "dunwich-denizens",
+    "name": "Dunwich Denizens",
+    "date_release": "2011-09-01"
+  },
+  {
+    "code": "the-mountains-of-madness",
+    "name": "The Mountains of Madness",
+    "date_release": "2011-10-01"
+  },
+  {
+    "code": "ancient-horrors",
+    "name": "Ancient Horrors",
+    "date_release": "2011-11-01"
+  },
+  {
+    "code": "spawn-of-the-sleeper",
+    "name": "Spawn of the Sleeper",
+    "date_release": "2009-01-22"
+  },
+  {
+    "code": "the-horror-beneath-the-surface",
+    "name": "The Horror Beneath the Surface",
+    "date_release": "2009-02-11"
+  },
+  {
+    "code": "the-antediluvian-dreams",
+    "name": "The Antediluvian Dreams",
+    "date_release": "2009-03-16"
+  },
+  {
+    "code": "the-terror-of-the-tides",
+    "name": "The Terror of the Tides",
+    "date_release": "2009-04-01"
+  },
+  {
+    "code": "the-thing-from-the-shore",
+    "name": "The Thing from the Shore",
+    "date_release": "2009-05-29"
+  },
+  {
+    "code": "the-path-to-yha-nthlei",
+    "name": "The Path to Y'ha-nthlei",
+    "date_release": "2009-07-14"
+  },
+  {
+    "code": "the-twilight-horror",
+    "name": "The Twilight Horror",
+    "date_release": "2009-09-10"
+  },
+  {
+    "code": "in-memory-of-day",
+    "name": "In Memory of Day",
+    "date_release": "2009-10-19"
+  },
+  {
+    "code": "in-the-dread-of-night",
+    "name": "In the Dread of Night",
+    "date_release": "2009-11-01"
+  },
+  {
+    "code": "the-search-for-the-silver-key",
+    "name": "The Search for the Silver Key",
+    "date_release": "2009-12-30"
+  },
+  {
+    "code": "sleep-of-the-dead",
+    "name": "Sleep of the Dead",
+    "date_release": "2010-02-08"
+  },
+  {
+    "code": "journey-to-unknown-kadath",
+    "name": "Journey to Unknown Kadath",
+    "date_release": "2010-03-04"
+  },
+  {
+    "code": "secrets-of-arkham",
+    "name": "Secrets of Arkham",
+    "date_release": "2010-05-27"
+  },
+  {
+    "code": "whispers-in-the-dark",
+    "name": "Whispers in the Dark",
+    "date_release": "2010-06-11"
+  },
+  {
+    "code": "murmurs-of-evil",
+    "name": "Murmurs of Evil",
+    "date_release": "2010-07-15"
+  },
+  {
+    "code": "the-spoken-covenant",
+    "name": "The Spoken Covenant",
+    "date_release": "2010-08-12"
+  },
+  {
+    "code": "the-wailer-below",
+    "name": "The Wailer Below",
+    "date_release": "2010-09-17"
+  },
+  {
+    "code": "screams-from-within",
+    "name": "Screams from Within",
+    "date_release": "2010-10-15"
+  },
+  {
+    "code": "the-cacophony",
+    "name": "The Cacophony",
+    "date_release": "2010-11-12"
+  },
+  {
+    "code": "the-order-of-the-silver-twilight",
+    "name": "The Order of the Silver Twilight",
+    "date_release": "2011-01-12"
+  },
+  {
+    "code": "the-twilight-beckons",
+    "name": "The Twilight Beckons",
+    "date_release": "2011-01-28"
+  },
+  {
+    "code": "perilous-trials",
+    "name": "Perilous Trials",
+    "date_release": "2011-02-25"
+  },
+  {
+    "code": "initiations-of-the-favored",
+    "name": "Initiations of the Favored",
+    "date_release": "2011-03-24"
+  },
+  {
+    "code": "aspirations-of-ascension",
+    "name": "Aspirations of Ascension",
+    "date_release": "2011-04-20"
+  },
+  {
+    "code": "the-gleaming-spiral",
+    "name": "The Gleaming Spiral",
+    "date_release": "2011-06-03"
+  },
+  {
+    "code": "that-which-consumes",
+    "name": "That Which Consumes",
+    "date_release": "2011-07-23"
+  },
+  {
+    "code": "the-shifting-sands",
+    "name": "The Shifting Sands",
+    "date_release": "2011-08-10"
+  },
+  {
+    "code": "curse-of-the-jade-emperor",
+    "name": "Curse of the Jade Emperor",
+    "date_release": "2011-09-23"
+  },
+  {
+    "code": "the-breathing-jungle",
+    "name": "The Breathing Jungle",
+    "date_release": "2011-10-26"
+  },
+  {
+    "code": "never-night",
+    "name": "Never Night",
+    "date_release": "2011-11-01"
+  },
+  {
+    "code": "into-tartarus",
+    "name": "Into Tartarus",
+    "date_release": "2011-12-21"
+  },
+  {
+    "code": "shadow-of-the-monolith",
+    "name": "Shadow of the Monolith",
+    "date_release": "2012-01-18"
+  },
+  {
+    "code": "written-and-bound",
+    "name": "Written and Bound",
+    "date_release": "2012-03-30"
+  },
+  {
+    "code": "words-of-power",
+    "name": "Words of Power",
+    "date_release": "2012-05-02"
+  },
+  {
+    "code": "ebla-restored",
+    "name": "Ebla Restored",
+    "date_release": "2012-06-01"
+  },
+  {
+    "code": "lost-rites",
+    "name": "Lost Rites",
+    "date_release": "2012-07-05"
+  },
+  {
+    "code": "the-unspeakable-pages",
+    "name": "The Unspeakable Pages",
+    "date_release": "2012-08-01"
+  },
+  {
+    "code": "touched-by-the-abyss",
+    "name": "Touched by the Abyss",
+    "date_release": "2012-09-01"
+  },
+  {
+    "code": "seekers-of-knowledge",
+    "name": "Seekers of Knowledge",
+    "date_release": "2012-10-18"
+  },
+  {
+    "code": "the-key-and-the-gate",
+    "name": "The Key and the Gate",
+    "date_release": "2013-05-09"
+  },
+  {
+    "code": "terror-in-venice",
+    "name": "Terror in Venice",
+    "date_release": "2013-08-23"
+  },
+  {
+    "code": "denizens-of-the-underworld",
+    "name": "Denizens of the Underworld",
+    "date_release": "2014-01-30"
+  },
+  {
+    "code": "the-sleeper-below",
+    "name": "The Sleeper Below",
+    "date_release": "2014-10-03"
+  },
+  {
+    "code": "for-the-greater-good",
+    "name": "For the Greater Good",
+    "date_release": "2015-02-27"
+  },
+  {
+    "code": "the-thousand-young",
+    "name": "The Thousand Young",
+    "date_release": "2015-06-25"
+  },
+  {
+    "code": "the-mark-of-madness",
+    "name": "The Mark of Madness",
+    "date_release": "2015-10-08"
+  },
+  {
+    "code": "promos",
+    "name": "Promos",
+    "date_release": null
+  }
+]
