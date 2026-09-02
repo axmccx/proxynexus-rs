@@ -23,6 +23,14 @@ pub enum Cardstock {
 }
 
 impl Cardstock {
+    pub const ALL: [Cardstock; 5] = [
+        Cardstock::S27,
+        Cardstock::S30,
+        Cardstock::S33,
+        Cardstock::M31,
+        Cardstock::P10,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Cardstock::S27 => "(S27) Smooth",
@@ -440,6 +448,12 @@ mod tests {
             assert_eq!(stock.as_str(), spelling, "{:?}", stock);
         }
         assert_eq!(MpcOptions::default().cardstock, Cardstock::S30);
+        assert_eq!(
+            Cardstock::ALL.len(),
+            expected.len(),
+            "a stock is missing from ALL"
+        );
+        assert!(Cardstock::ALL.contains(&MpcOptions::default().cardstock));
     }
 
     #[test]

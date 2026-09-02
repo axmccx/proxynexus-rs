@@ -1,7 +1,7 @@
 use crate::export::ExportOptions;
 use dioxus::prelude::*;
 use proxynexus_core::card_backs;
-use proxynexus_core::mpc::MpcOptions;
+use proxynexus_core::mpc::{Cardstock, MpcOptions};
 use proxynexus_core::pdf::{
     CutLines, DEFAULT_CUT_LINE_THICKNESS, MAX_CUT_LINE_THICKNESS, MIN_CUT_LINE_THICKNESS, PageSize,
     PdfOptions, PrintLayout,
@@ -124,6 +124,7 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
     });
     let mut upscale = use_signal(|| false);
     let mut upload_method = use_signal(UploadMethod::default);
+    let mut cardstock = use_signal(Cardstock::default);
 
     use_effect(move || {
         if back_labels().is_empty() {
@@ -467,7 +468,11 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                             .set(back_labels().into_iter().find(|label| *label == chosen));
                                     },
                                     for label in back_labels() {
-                                        option { value: "{label}", "{display_label(label)}" }
+                                        option {
+                                            value: "{label}",
+                                            selected: Some(label) == back_label().or(default_back_label()),
+                                            "{display_label(label)}"
+                                        }
                                     }
                                 }
                             }
@@ -536,7 +541,11 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                             .set(back_labels().into_iter().find(|label| *label == chosen));
                                     },
                                     for label in back_labels() {
-                                        option { value: "{label}", "{display_label(label)}" }
+                                        option {
+                                            value: "{label}",
+                                            selected: Some(label) == back_label().or(default_back_label()),
+                                            "{display_label(label)}"
+                                        }
                                     }
                                 }
                             }
@@ -562,6 +571,33 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                     target: "_blank",
                                     class: "text-blue-500 hover:text-blue-700 hover:underline",
                                     "instructions"
+                                }
+                            }
+                        }
+
+                        if upload_method() == UploadMethod::Autofill {
+                            div { class: "flex items-center gap-2",
+                                label { class: "text-xs md:text-sm text-gray-600 shrink-0", "Card Stock" }
+                                select {
+                                    disabled: is_generating,
+                                    class: "w-full py-1.5 md:py-2 px-2 border border-gray-300 rounded-md bg-white outline-none focus:ring-2 focus:ring-blue-400 text-xs md:text-sm",
+                                    value: cardstock().as_str(),
+                                    onchange: move |evt| {
+                                        let chosen = evt.value();
+                                        if let Some(stock) = Cardstock::ALL
+                                            .into_iter()
+                                            .find(|stock| stock.as_str() == chosen)
+                                        {
+                                            cardstock.set(stock);
+                                        }
+                                    },
+                                    for stock in Cardstock::ALL {
+                                        option {
+                                            value: "{stock.as_str()}",
+                                            selected: stock == cardstock(),
+                                            "{stock.as_str()}"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -693,9 +729,9 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                                     ExportOptions::Mpc(MpcOptions {
                                                         upscale: upscale(),
                                                         autofill: upload_method() == UploadMethod::Autofill,
+                                                        cardstock: cardstock(),
                                                         back_label: back_label()
                                                             .or(default_back_label()),
-                                                        ..MpcOptions::default()
                                                     })
                                                 }
                                                 ExportFormat::Pdf => {
