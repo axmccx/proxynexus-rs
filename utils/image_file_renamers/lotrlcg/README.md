@@ -153,11 +153,27 @@ That site composites cards onto black, so their rounded corners arrive filled wi
 than the white a flatbed leaves, and [`corner_infill.py`](../../corner_infill/README.md) does
 nothing to them because it only detects white. Run `corner_infill_dark.py` instead, which floods
 outward from each image corner and inpaints what it reaches; each of these filled 0.22-0.26% of its
-pixels, which is four corner arcs. Then rename by hand, taking the ids from `printing_card_ids`
-rather than guessing them. No `.bleed` — these are cut to the card.
+pixels, which is four corner arcs.
+
+These four are also the only images in the collection that still carry the print screen. They are
+renders of the offset-printed card rather than scans of a proxy, and the rosette is on them at
+3.5px across the 1468x2080 they download at — worst in the shadows, where near-solid ink leaves the
+paper showing through as bright dots. Everything else here comes from the Enhanced Proxies, which
+were denoised and sharpened before they were published. So
+[`lotr_despeckle.py`](../../lotr_despeckle/README.md) runs on them and on nothing else, notching the
+screen out of the spectrum — it is periodic and the picture is not — and denoising what that
+leaves. It leaves
+the resolution alone: these arrive at about 592dpi and the rest of the collection sits at about
+578dpi, so they already match, and downscaling only these to MPC's cut line would leave them the
+one set of cards at half everyone else's resolution.
+
+Then rename by hand, taking the ids from `printing_card_ids` rather than guessing them. No
+`.bleed` — these are cut to the card.
 
 ```bash
 uv run ../../corner_infill/corner_infill_dark.py ~/Downloads/cardgame-tools-lotr --debug
+uv run ../../lotr_despeckle/lotr_despeckle.py ~/Downloads/cardgame-tools-lotr-infilled \
+    -o ~/Downloads/cardgame-tools-lotr-despeckled
 ```
 
 **Three copied from another printing.** The Fellowship of the Ring is the 2022 Saga reprint of The
