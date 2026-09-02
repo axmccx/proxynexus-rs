@@ -93,6 +93,9 @@ The `proxynexus-cli` supports the following subcommands. You can use `--help` on
 **Generation:**
 *   `generate pdf`: Generate a print-and-play PDF from a specific set, cardlist, or decklist URL.
 *   `generate mpc`: Generate a MakePlayingCards (MPC) formatted ZIP file.
+    `--mpc-autofill` targets the mpc-autofill desktop tool, `--back-label` picks the standard card pack image,
+  and `--cardstock` sets the paper type. Instructions for using mpc-autofill can be found at:
+  https://github.com/chilli-axe/mpc-autofill/wiki/Desktop-Tool.
 
 **Collection Management:**
 *   `collection build`: Create a new `.pnx` collection file from a directory of card scans.
@@ -328,17 +331,15 @@ MPC size of 816x1110. *(Note: Images denoted with the `.bleed` suffix in their f
 I benchmarked this function against a version that used the Rust bindings of OpenCV's copyMakeBorder, and while mine is 
 slower, it's quite good enough for keeping the project as purely Rust as possible.
 
-#### The Uniqueness Marker
-Most orders on MPC will contain duplicates of the same image. It's also very convenient to use their
-"place images for me" autofill feature. However, MPC's image upload will notice when duplicates of the same identical
-image are uploaded, and skip them. This effectively breaks the autofill feature, meaning you'd need to manually
-place the same image for the number of copies you want.
+#### Targeting mpc-autofill
+`generate mpc --mpc-autofill` writes a zip file which includes an `order.xml` alongside the images, in the format the
+[mpc-autofill](https://github.com/chilli-axe/mpc-autofill) desktop tool reads. Extract the zip and run that tool
+from the extracted directory. It automates placing every card's front and back.
 
-To bypass this, the MPC generation process applies a "Uniqueness Marker" (`apply_uniqueness_marker` in `print_prep.rs`).
-It imperceptibly alters the RGB values of the top-left 2x2 pixels using a pseudo-random addition based on the number
-of copies being made. These altered pixels get cut off anyways, because they're well in the bleed border.
-This guarantees every file inside the generated `.zip` is technically unique as far as MPC is
-concerned, and every file gets uploaded.
+With `--mpc-autofill` an image is written once however many copies you asked for, because the order xml file can point several
+card positions at the same image. Card backs are required for this feature, so if the game adapter doesn't provide any, 
+then it can't be used and the GUI will hide the option. A card with more than one back becomes one card per back, 
+each with the same front.
 
 
 ### Image Upscaling
@@ -355,9 +356,8 @@ To save on network bandwidth and processing time, both the PDF and MPC generatio
 
 *   **PDF Generation:** Once the image bytes from the provider are obtained, it is only parsed into a `krilla::Image` structure once,
 and stored in the cache. This cached copy is then used when adding additional copies of this same image to the PDF.
-*   **MPC Generation:** This follows a similar process except it caches the image *after* the heavy bleed border is applied, 
-but *before* the uniqueness marker is stamped. This ensures the expensive `add_bleed_border` function only runs once per file, 
-while still allowing the fast uniqueness marker to stamp each individual copy just before it is written to the zip archive. 
+*   **MPC Generation:** This follows a similar process except it caches the image *after* the heavy bleed border is applied. 
+This ensures the expensive `add_bleed_border` function only runs once per file, however many copies of it are written. 
 
 ### File Generation Logic 
 

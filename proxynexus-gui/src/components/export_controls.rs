@@ -33,6 +33,13 @@ pub enum Sides {
     Double,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum UploadMethod {
+    #[default]
+    Manual,
+    Autofill,
+}
+
 #[derive(Props, Clone, PartialEq, Debug)]
 struct SegmentedControlProps<T: PartialEq + Copy + 'static> {
     value: T,
@@ -83,6 +90,7 @@ pub struct ExportControlsProps {
     pub on_open_info: EventHandler<(f64, f64, f64)>,
     pub on_open_upscale_info: EventHandler<(f64, f64, f64)>,
     pub on_open_sides_info: EventHandler<(f64, f64, f64)>,
+    pub on_open_autofill_info: EventHandler<(f64, f64, f64)>,
     pub back_labels: Resource<Vec<&'static str>>,
 }
 
@@ -115,6 +123,13 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
         }
     });
     let mut upscale = use_signal(|| false);
+    let mut upload_method = use_signal(UploadMethod::default);
+
+    use_effect(move || {
+        if back_labels().is_empty() {
+            upload_method.set(UploadMethod::Manual);
+        }
+    });
     let mut show_donate = use_signal(|| false);
 
     let thickness_value = use_memo(move || {
@@ -459,13 +474,96 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                         }
                     }
                 } else {
-                    p { class: "text-xs md:text-sm text-gray-600",
-                        "For help on printing, have a look at the "
-                        a {
-                            href: instructions_href,
-                            target: "_blank",
-                            class: "text-blue-500 hover:text-blue-700 hover:underline",
-                            "instructions"
+                    div { class: "flex flex-col gap-2 md:gap-3",
+                        if !back_labels().is_empty() {
+                        div { class: "flex flex-col gap-1 md:gap-2",
+                            div { class: "flex items-center gap-2",
+                                label { class: "text-xs md:text-sm font-medium text-gray-700", "Upload Method" }
+                                button {
+                                    id: "autofill-info-btn",
+                                    class: "text-gray-400 hover:text-blue-500 transition-colors focus:outline-none",
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            let mut eval = dioxus::document::eval(
+                                                "
+                                                let el = document.getElementById('autofill-info-btn');
+                                                let rect = el.getBoundingClientRect();
+                                                dioxus.send([rect.x, rect.y, rect.width]);
+                                                ",
+                                            );
+                                            if let Ok((x, y, w)) = eval.recv::<(f64, f64, f64)>().await {
+                                                props.on_open_autofill_info.call((x, y, w));
+                                            }
+                                        });
+                                    },
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg",
+                                        width: "18",
+                                        height: "18",
+                                        view_box: "0 0 24 24",
+                                        fill: "none",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        stroke_linecap: "round",
+                                        stroke_linejoin: "round",
+                                        circle { cx: "12", cy: "12", r: "10" }
+                                        path { d: "M12 16v-4" }
+                                        path { d: "M12 8h.01" }
+                                    }
+                                }
+                            }
+                            SegmentedControl {
+                                value: upload_method(),
+                                disabled: is_generating,
+                                options: vec![
+                                    (UploadMethod::Manual, "Manual"),
+                                    (UploadMethod::Autofill, "MPC Autofill"),
+                                ],
+                                on_change: move |v| upload_method.set(v),
+                            }
+                        }
+
+                        if upload_method() == UploadMethod::Autofill && back_labels().len() > 1 {
+                            div { class: "flex items-center gap-2",
+                                label { class: "text-xs md:text-sm text-gray-600 shrink-0", "Card Back" }
+                                select {
+                                    disabled: is_generating,
+                                    class: "w-full py-1.5 md:py-2 px-2 border border-gray-300 rounded-md bg-white outline-none focus:ring-2 focus:ring-blue-400 text-xs md:text-sm",
+                                    value: back_label().or(default_back_label()).unwrap_or_default(),
+                                    onchange: move |evt| {
+                                        let chosen = evt.value();
+                                        back_label
+                                            .set(back_labels().into_iter().find(|label| *label == chosen));
+                                    },
+                                    for label in back_labels() {
+                                        option { value: "{label}", "{display_label(label)}" }
+                                    }
+                                }
+                            }
+                        }
+                        }
+
+                        if upload_method() == UploadMethod::Autofill {
+                            p { class: "text-xs md:text-sm text-gray-600",
+                                "Extract the zip and run the "
+                                a {
+                                    href: crate::components::autofill_info::MPC_AUTOFILL_URL,
+                                    target: "_blank",
+                                    class: "text-blue-500 hover:text-blue-700 hover:underline",
+                                    "mpc-autofill desktop tool"
+                                }
+                                " from that folder to upload and place the cards."
+                            }
+                        } else {
+                            p { class: "text-xs md:text-sm text-gray-600",
+                                "For help on printing, have a look at the "
+                                a {
+                                    href: instructions_href,
+                                    target: "_blank",
+                                    class: "text-blue-500 hover:text-blue-700 hover:underline",
+                                    "instructions"
+                                }
+                            }
                         }
                     }
                 }
@@ -592,7 +690,13 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                                             }
                                             let options = match export_format() {
                                                 ExportFormat::Mpc => {
-                                                    ExportOptions::Mpc(MpcOptions { upscale: upscale() })
+                                                    ExportOptions::Mpc(MpcOptions {
+                                                        upscale: upscale(),
+                                                        autofill: upload_method() == UploadMethod::Autofill,
+                                                        back_label: back_label()
+                                                            .or(default_back_label()),
+                                                        ..MpcOptions::default()
+                                                    })
                                                 }
                                                 ExportFormat::Pdf => {
                                                     let Some(page_size) = validation.result else { return };

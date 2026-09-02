@@ -8,7 +8,7 @@ use proxynexus_core::collection_manager::CollectionManager;
 use proxynexus_core::db_storage::DbStorage;
 use proxynexus_core::image_provider::LocalImageProvider;
 use proxynexus_core::models::Printing;
-use proxynexus_core::mpc::generate_mpc_zip;
+use proxynexus_core::mpc::{Cardstock, generate_mpc_zip};
 use proxynexus_core::pdf::{
     CutLines, DEFAULT_CUT_LINE_THICKNESS, MAX_CUT_LINE_THICKNESS, MIN_CUT_LINE_THICKNESS, PageSize,
     PdfOptions, generate_pdf,
@@ -172,6 +172,22 @@ enum GenerateType {
 
         #[arg(long)]
         upscale: bool,
+
+        #[arg(
+            long = "mpc-autofill",
+            help = "Target the mpc-autofill desktop tool: add an order.xml and write each image \
+                    once rather than once per copy."
+        )]
+        autofill: bool,
+
+        #[arg(
+            long,
+            help = "Which set of back images to use, for cards with no back of their own."
+        )]
+        back_label: Option<String>,
+
+        #[arg(long, default_value = "S30", help = "S27, S30, S33, M31, or P10")]
+        cardstock: String,
     },
     Bleed {
         #[arg(short, long)]
@@ -521,12 +537,16 @@ async fn handle_generate(
             decklist_url,
             output_path,
             upscale,
+            autofill,
+            back_label,
+            cardstock,
         } => {
             let source = determine_input_source(cardlist, set_name, decklist_url);
             let start = Instant::now();
 
             let printings = get_printings_from_source(db, game, source).await?;
             let labels = card_backs::allowed_labels(db, game, &printings).await?;
+            let back_label = resolve_back_label(back_label.as_deref(), &labels, autofill)?;
 
             let card_backs = card_backs::fetch_card_backs(game, &labels)
                 .await
@@ -535,7 +555,12 @@ async fn handle_generate(
             let mpc_bytes = generate_mpc_zip(
                 printings,
                 image_provider,
-                proxynexus_core::mpc::MpcOptions { upscale },
+                proxynexus_core::mpc::MpcOptions {
+                    upscale,
+                    autofill,
+                    back_label,
+                    cardstock: parse_cardstock(&cardstock)?,
+                },
                 card_backs,
                 None,
             )
@@ -630,6 +655,20 @@ fn parse_page_size(size: &str) -> anyhow::Result<PageSize> {
         _ => Err(anyhow!(
             "Unsupported page size: '{}'. Use 'letter' or 'a4'",
             size
+        )),
+    }
+}
+
+fn parse_cardstock(stock: &str) -> anyhow::Result<Cardstock> {
+    match stock.to_uppercase().as_str() {
+        "S27" => Ok(Cardstock::S27),
+        "S30" => Ok(Cardstock::S30),
+        "S33" => Ok(Cardstock::S33),
+        "M31" => Ok(Cardstock::M31),
+        "P10" => Ok(Cardstock::P10),
+        _ => Err(anyhow!(
+            "Unsupported cardstock: '{}'. Options are 'S27', 'S30', 'S33', 'M31', or 'P10'",
+            stock
         )),
     }
 }

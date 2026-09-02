@@ -56,3 +56,5 @@ utils/image_file_renamers/**/lotrlcg*.json
 # Build outputs
 proxynexus-gui/public/card_backs/
 *.bpk
+
+docs/archive/*

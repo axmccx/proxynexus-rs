@@ -17,6 +17,7 @@ pub mod analytics;
 mod components;
 mod export;
 use components::about_modal::AboutModal;
+use components::autofill_info::AutofillInfo;
 use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
 use components::print_layout_info::PrintLayoutInfo;
@@ -417,6 +418,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
     let mut print_layout_info_pos = use_signal(|| None::<(f64, f64, f64)>);
     let mut sides_info_pos = use_signal(|| None::<(f64, f64, f64)>);
     let mut upscale_info_pos = use_signal(|| None::<(f64, f64, f64)>);
+    let mut autofill_info_pos = use_signal(|| None::<(f64, f64, f64)>);
 
     use_effect(move || {
         let current_source = active_source();
@@ -738,6 +740,7 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                     on_open_info: move |pos| print_layout_info_pos.set(Some(pos)),
                     on_open_upscale_info: move |pos| upscale_info_pos.set(Some(pos)),
                     on_open_sides_info: move |pos| sides_info_pos.set(Some(pos)),
+                    on_open_autofill_info: move |pos| autofill_info_pos.set(Some(pos)),
                     back_labels,
                     on_generate: move |options: export::ExportOptions| {
                         let source = active_source();
@@ -782,6 +785,13 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
                 UpscaleInfo {
                     pos,
                     on_close: move |_| upscale_info_pos.set(None),
+                }
+            }
+
+            if let Some(pos) = autofill_info_pos() {
+                AutofillInfo {
+                    pos,
+                    on_close: move |_| autofill_info_pos.set(None),
                 }
             }
 

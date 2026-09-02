@@ -125,25 +125,6 @@ fn generate_bleed(src: &RgbImage, config: &BleedConfig) -> RgbImage {
     image::ImageBuffer::from_raw(config.output_width, config.output_height, dest_raw).unwrap()
 }
 
-// changes a few pixels near top left corner, based on position.
-// makes the duplicate image unique, so that MPC doesn't deduplicate it on upload
-pub fn apply_uniqueness_marker(img: &mut RgbImage, position: u32) {
-    let r_add = ((position * 73) % 256) as u8;
-    let g_add = ((position * 137) % 256) as u8;
-    let b_add = ((position * 193) % 256) as u8;
-
-    for y in 0..2 {
-        for x in 0..2 {
-            if x < img.width() && y < img.height() {
-                let pixel = img.get_pixel_mut(x, y);
-                pixel.0[0] = pixel.0[0].wrapping_add(r_add);
-                pixel.0[1] = pixel.0[1].wrapping_add(g_add);
-                pixel.0[2] = pixel.0[2].wrapping_add(b_add);
-            }
-        }
-    }
-}
-
 pub fn encode_image(bordered: RgbImage, format: ImageFormat) -> Result<Vec<u8>> {
     if format == ImageFormat::Png {
         let mut png_bytes = std::io::Cursor::new(Vec::new());
@@ -317,37 +298,6 @@ mod tests {
         assert_eq!(config.output_height, 718);
         assert_eq!(config.bleed_x, 23);
         assert_eq!(config.bleed_y, 24);
-    }
-
-    #[test]
-    fn test_uniqueness_marker_bounds() {
-        let mut img = RgbImage::new(10, 10);
-        apply_uniqueness_marker(&mut img, 0);
-        apply_uniqueness_marker(&mut img, 5);
-        apply_uniqueness_marker(&mut img, 100);
-    }
-
-    #[test]
-    fn test_apply_uniqueness_marker_hashes() {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut img1 = RgbImage::new(100, 100);
-        for p in img1.pixels_mut() {
-            *p = image::Rgb([255, 255, 255]);
-        }
-        let mut img2 = img1.clone();
-
-        apply_uniqueness_marker(&mut img1, 1);
-        apply_uniqueness_marker(&mut img2, 2);
-
-        fn hash_img(img: &RgbImage) -> u64 {
-            let mut hasher = DefaultHasher::new();
-            img.as_raw().hash(&mut hasher);
-            hasher.finish()
-        }
-
-        assert_ne!(hash_img(&img1), hash_img(&img2));
     }
 
     #[test]
