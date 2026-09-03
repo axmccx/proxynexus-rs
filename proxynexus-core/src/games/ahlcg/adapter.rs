@@ -40,15 +40,7 @@ impl GameAdapterInfo for AhlcgAdapter {
 }
 
 // Which generic card back a card needs, classified by `type_code` rather
-// than `faction_code`/side -- confirmed real cards where they'd disagree:
-// 10 cards are type_code "asset" (usable in a player deck) but
-// faction_code "mythos" (e.g. "The Face", "The Muscle", recruitable allies
-// found via an encounter set) -- a faction-based guess would wrongly call
-// these encounter-back. Checked the reverse direction too (encounter-type
-// cards with a player-class faction): zero cases. `type_code` values
-// confirmed exhaustively against a full-catalog sample (not just Core
-// Set) as of this writing; anything not in either list below is left
-// unclassified (`None`) rather than guessed.
+// than `faction_code`/side
 #[cfg(not(target_arch = "wasm32"))]
 const PLAYER_TYPES: &[&str] = &["investigator", "asset", "event", "skill"];
 #[cfg(not(target_arch = "wasm32"))]
@@ -66,13 +58,6 @@ const ENCOUNTER_TYPES: &[&str] = &[
 
 #[cfg(not(target_arch = "wasm32"))]
 fn back_group_for(type_code: &str, subtype_code: Option<&str>) -> Option<String> {
-    // Weakness cards are drawn from -- and shuffled back into -- the
-    // investigator's own deck, so they carry the PLAYER card back
-    // regardless of type_code, even for "enemy"/"treachery" weaknesses
-    // (e.g. Mob Goons, 08003) that resolve as an "encounter cardtype" card
-    // per the Rules Reference once drawn. That resolution-mechanics
-    // classification is not the same axis as the physical print -- see
-    // `AhdbCard::subtype_code`'s doc comment for the confirming evidence.
     if matches!(subtype_code, Some("weakness") | Some("basicweakness")) {
         return Some("player".to_string());
     }
@@ -85,16 +70,8 @@ fn back_group_for(type_code: &str, subtype_code: Option<&str>) -> Option<String>
     }
 }
 
-/// Turns the flat, per-pack-fetched `AhdbCard` list into catalog rows.
-///
 /// ArkhamDB keeps both sides of a double-sided card under one `code` -- both
-/// the ordinary flip case (an investigator's front/back) and the case where
-/// the back is a mechanically distinct card (e.g. Carl Sanford flipping into
-/// an enemy). Either way each ArkhamDB card maps 1:1 to a Card/CardVersion
-/// here, and the back *image* is picked up separately at collection-build
-/// time via the `{card_id}@{pack_id}~back` filename convention. `back_group`
-/// is only the generic fallback back and stays keyed on this card's own
-/// `type_code`.
+/// the ordinary flip case and the case where the back is a mechanically distinct card
 #[cfg(not(target_arch = "wasm32"))]
 fn build_cards_and_versions(
     ahdb_cards: Vec<crate::games::ahlcg::models::AhdbCard>,
@@ -127,10 +104,6 @@ fn build_cards_and_versions(
 impl CatalogProvider for AhlcgAdapter {
     async fn fetch_catalog(&self) -> Result<Catalog> {
         let ahdb_packs = fetch_packs().await?;
-        // fetch_all_cards() fetches per-pack rather than the bulk
-        // /api/public/cards/ endpoint -- confirmed the bulk endpoint is
-        // badly incomplete (see api.rs docs). Slower (~115 requests instead
-        // of 1) but the catalog is actually complete.
         let ahdb_cards = fetch_all_cards(&ahdb_packs).await?;
 
         let packs: Vec<Pack> = ahdb_packs
