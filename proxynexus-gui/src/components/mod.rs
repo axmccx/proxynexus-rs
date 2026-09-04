@@ -1,6 +1,7 @@
 pub mod about_modal;
 pub mod autofill_info;
 pub mod card_list_input;
+pub mod disclaimer_modal;
 pub mod export_controls;
 pub mod preview_grid;
 pub mod print_layout_info;

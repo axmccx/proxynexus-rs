@@ -18,6 +18,7 @@ mod components;
 mod export;
 use components::about_modal::AboutModal;
 use components::autofill_info::AutofillInfo;
+use components::disclaimer_modal::DisclaimerModal;
 use components::export_controls::ExportControls;
 use components::preview_grid::PreviewGrid;
 use components::print_layout_info::PrintLayoutInfo;
@@ -414,6 +415,16 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
     let mut open_variant_selector = use_signal(|| None::<VariantSelectorState>);
     let mut is_overrides_reset_pending = use_signal(|| false);
     let mut is_about_open = use_signal(|| false);
+    let mut is_disclaimer_open = use_signal(|| {
+        #[cfg(target_arch = "wasm32")]
+        {
+            true
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            false
+        }
+    });
     let mut show_copy_toast = use_signal(|| false);
     let mut print_layout_info_pos = use_signal(|| None::<(f64, f64, f64)>);
     let mut sides_info_pos = use_signal(|| None::<(f64, f64, f64)>);
@@ -764,6 +775,12 @@ fn Workspace(db_signal: Signal<Arc<Mutex<DbStorage>>>) -> Element {
             if is_about_open() {
                 AboutModal {
                     on_close: move |_| is_about_open.set(false),
+                }
+            }
+
+            if is_disclaimer_open() {
+                DisclaimerModal {
+                    on_close: move |_| is_disclaimer_open.set(false),
                 }
             }
 
