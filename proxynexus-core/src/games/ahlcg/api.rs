@@ -2,7 +2,6 @@ use crate::error::{ProxyNexusError, Result};
 use crate::games::ahlcg::models::{AhdbCard, AhdbDecklist, AhdbPack};
 use crate::games::fetch_json;
 use crate::models::{Decklist, DecklistEntry};
-use std::collections::HashSet;
 
 const BASE_URL: &str = "https://arkhamdb.com/api/public";
 
@@ -10,27 +9,19 @@ pub async fn fetch_packs() -> Result<Vec<AhdbPack>> {
     fetch_json(&format!("{BASE_URL}/packs/")).await
 }
 
-/// Fetches every card by iterating pack-by-pack via fetch_cards_for_pack()
-/// rather than the bulk /api/public/cards/ endpoint. Slower but the resulting
-/// catalog is actually complete.
-pub async fn fetch_all_cards(packs: &[AhdbPack]) -> Result<Vec<AhdbCard>> {
-    let mut cards = Vec::new();
-    let mut seen_codes = HashSet::new();
+/// Every card, in one request.
+///
+/// `encounter=1` is what makes it every card: without it ArkhamDB returns the
+/// player cards alone, 1983 of the 5929 records, which reads like a truncated
+/// response rather than a filtered one.
+pub async fn fetch_all_cards() -> Result<Vec<AhdbCard>> {
+    let cards: Vec<AhdbCard> = fetch_json(&format!("{BASE_URL}/cards/?encounter=1")).await?;
 
-    for pack in packs {
-        let pack_cards = fetch_cards_for_pack(&pack.code).await?;
-        for card in pack_cards {
-            if seen_codes.insert(card.code.clone()) {
-                cards.push(card);
-            }
-        }
-    }
-
-    Ok(cards)
-}
-
-pub async fn fetch_cards_for_pack(pack_code: &str) -> Result<Vec<AhdbCard>> {
-    fetch_json(&format!("{BASE_URL}/cards/{pack_code}")).await
+    // A card whose two faces are each a card in their own right is returned
+    // twice, and the half ArkhamDB does not index the card under is flagged
+    // hidden. That half is a face rather than a card, so it is dropped: keeping
+    // it would put a second catalog entry behind one printed card.
+    Ok(cards.into_iter().filter(|card| !card.hidden).collect())
 }
 
 pub async fn fetch_decklist_from_arkhamdb(url: &str) -> Result<Decklist> {

@@ -103,8 +103,7 @@ fn build_cards_and_versions(
 #[async_trait]
 impl CatalogProvider for AhlcgAdapter {
     async fn fetch_catalog(&self) -> Result<Catalog> {
-        let ahdb_packs = fetch_packs().await?;
-        let ahdb_cards = fetch_all_cards(&ahdb_packs).await?;
+        let (ahdb_packs, ahdb_cards) = (fetch_packs().await?, fetch_all_cards().await?);
 
         let packs: Vec<Pack> = ahdb_packs
             .into_iter()
@@ -150,6 +149,7 @@ mod tests {
             faction_code: "neutral".to_string(),
             quantity: Some(1),
             subtype_code: subtype_code.map(|s| s.to_string()),
+            hidden: false,
         }
     }
 
