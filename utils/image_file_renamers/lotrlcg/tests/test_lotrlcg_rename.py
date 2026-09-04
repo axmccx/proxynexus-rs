@@ -277,7 +277,7 @@ def _run_process_folders(tmp_path, pack, files, cards, dry_run=True):
 
     args = types.SimpleNamespace(dry_run=dry_run)
     _, _, rows = rename.process_folders(
-        [(str(archive), True)], pack_lookup, card_lookup, str(tmp_path / "out"), args
+        [(str(archive), True, False)], pack_lookup, card_lookup, str(tmp_path / "out"), args
     )
     return sorted(row[1] for row in rows[1:])
 
@@ -392,7 +392,7 @@ def test_alt_art_hero_folder_routes_each_file_to_its_own_set(tmp_path):
 
     args = types.SimpleNamespace(dry_run=True)
     copied, skipped, rows = rename.process_folders(
-        [(str(archive), True)], pack_lookup, card_lookup, str(tmp_path / "out"), args
+        [(str(archive), True, False)], pack_lookup, card_lookup, str(tmp_path / "out"), args
     )
 
     assert sorted(row[1] for row in rows[1:]) == sorted([
@@ -411,3 +411,28 @@ def test_alt_art_table_names_cards_that_exist_in_the_catalog():
         assert slug in by_slug, f"{filename}: no card with slug {slug}"
         assert by_slug[slug]["CardSet"] == card_set, filename
         assert by_slug[slug]["CardType"] == "Hero", filename
+
+
+# --- which archives carry the print screen -----------------------------------
+
+def test_source_folders_declare_bleed_and_despeckle_per_archive():
+    for entry in rename.SOURCE_FOLDERS:
+        name, has_bleed, needs_despeckle = entry
+        assert isinstance(name, str) and name
+        assert isinstance(has_bleed, bool)
+        assert isinstance(needs_despeckle, bool)
+    names = [name for name, _, _ in rename.SOURCE_FOLDERS]
+    assert len(set(names)) == len(names)
+
+
+def test_only_the_enhanced_proxies_skip_the_despeckle():
+    # They were denoised and sharpened before publication; the two scan sets are
+    # flatbed scans of the printed cards and carry its screen.
+    clean = [name for name, _, needs in rename.SOURCE_FOLDERS if not needs]
+    assert clean == ["Enhanced Proxies"]
+
+
+def test_despeckle_is_not_loaded_at_import():
+    # It pulls in cv2 and numpy, which the test environment does not install.
+    # Making this a top-level import would break every test in this file.
+    assert rename._despeckle_module is None

@@ -1,10 +1,11 @@
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["Pillow", "unidecode"]
+# dependencies = ["Pillow", "unidecode", "numpy>=1.24.0", "opencv-python>=4.8.0"]
 # ///
 import os
 import pathlib
 import json
+import importlib.util
 import re
 import csv
 import argparse
@@ -28,11 +29,22 @@ CACHE_PATH = pathlib.Path(__file__).resolve().parent / "lotrlcg_catalog_cache.js
 # border. It has to be declared per archive rather than measured: the trimmed
 # scans in "Lord of the Rings LCG RAW" and the bled quest cards in "Lord of the
 # Rings LCG" overlap in aspect ratio, so no threshold separates them.
+#
+# `needs_despeckle` says whether the archive carries the offset print screen.
+# The Enhanced Proxies were denoised and sharpened before publication and have
+# none; the two scan sets are flatbed scans of the printed cards and do. This is
+# also a property of the archive rather than of any one image, so it is declared
+# here for the same reason -- and it is what decides the pass below.
 SOURCE_FOLDERS = [
-    ("Enhanced Proxies", True),
-    ("Lord of the Rings LCG", True),
-    ("Lord of the Rings LCG RAW", False),
+    ("Enhanced Proxies", True, False),
+    ("Lord of the Rings LCG", True, True),
+    ("Lord of the Rings LCG RAW", False, True),
 ]
+
+# Below lotr_despeckle's own default of 14, which is tuned for renders: a scan's
+# screen is broadened, so the notch leaves more of it and non-local means picks
+# up work that is no longer periodic. Its README argues the number.
+DESPECKLE_STRENGTH = 8
 
 log_file_handle = None
 
@@ -305,6 +317,38 @@ def find_orphaned_backs(folder_file_lists):
             orphans_by_folder[folder] = folder_orphans
     return orphans_by_folder
 
+_despeckle_module = None
+
+def load_despeckle():
+    """Load utils/lotr_despeckle/lotr_despeckle.py by path.
+
+    Deferred to first use rather than imported at the top: the test suite execs
+    this file with only Pillow and unidecode installed, and a top-level import
+    of cv2 and numpy would break every test in it.
+    """
+    global _despeckle_module
+    if _despeckle_module is None:
+        path = (pathlib.Path(__file__).resolve().parents[2]
+                / "lotr_despeckle" / "lotr_despeckle.py")
+        spec = importlib.util.spec_from_file_location("lotr_despeckle", path)
+        if not (spec and spec.loader):
+            raise RuntimeError(f"could not load {path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _despeckle_module = module
+    return _despeckle_module
+
+def despeckle_image(img):
+    """Notch the print screen out of a Pillow image and denoise what is left.
+
+    Runs before the JPEG encode below, so the pass sees the scan's own pixels
+    rather than quality-90 artefacts of the screen.
+    """
+    ld = load_despeckle()
+    bgr = ld.cv2.cvtColor(ld.np.array(img), ld.cv2.COLOR_RGB2BGR)
+    out = ld.despeckle(ld.descreen(bgr), DESPECKLE_STRENGTH)
+    return Image.fromarray(ld.cv2.cvtColor(out, ld.cv2.COLOR_BGR2RGB))
+
 def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args):
     """Walk all input folders, match scans against the catalog, and copy/crop
     them into output_folder. Returns (copied, skipped, audit_rows).
@@ -318,7 +362,7 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
     # We will buffer the audit rows in case it's a dry run, or just write them if it's not
     audit_rows = [["Source Path", "Bleed Output", "Crop Output"]]
 
-    for input_folder, has_bleed in input_folders:
+    for input_folder, has_bleed, needs_despeckle in input_folders:
         if not os.path.exists(input_folder):
             print(f"[WARN] Input folder not found: {input_folder}")
             continue
@@ -575,6 +619,10 @@ def process_folders(input_folders, pack_lookup, card_lookup, output_folder, args
                                 bleed_img = img
                                 if bleed_img.mode in ("RGBA", "P"):
                                     bleed_img = bleed_img.convert("RGB")
+                                if needs_despeckle:
+                                    # convert() covers the L and CMYK sources
+                                    # that reach the save below untouched.
+                                    bleed_img = despeckle_image(bleed_img.convert("RGB"))
                                 bleed_img.save(bleed_path, format="JPEG", quality=90)
 
                             copied += 1
@@ -618,7 +666,8 @@ def main():
     args = parser.parse_args()
 
     archive_root = pathlib.Path(args.archive)
-    input_folders = [(str(archive_root / name), has_bleed) for name, has_bleed in SOURCE_FOLDERS]
+    input_folders = [(str(archive_root / name), has_bleed, needs_despeckle)
+                     for name, has_bleed, needs_despeckle in SOURCE_FOLDERS]
 
     enhanced_folder = os.path.abspath(os.path.join(args.output, "lotrlcg-enhanced"))
 

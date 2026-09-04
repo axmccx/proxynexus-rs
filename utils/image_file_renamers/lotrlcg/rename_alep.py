@@ -188,7 +188,7 @@ def find_wildcard_match(raw_title, pack_cards):
 
 
 def resolve_target_id(raw_title, clean_pack, pack_cards):
-    """Resolve a scan's title fragment to a target_id: an exact match in the
+    """Resolve an image's title fragment to a target_id: an exact match in the
     live-catalog lookup for this pack, a wildcard match recovering mangled
     non-ASCII characters, or the ENCODING_FIXES fallback applied to the raw
     title and normalized against the pack. Shared by both the front- and
@@ -222,7 +222,7 @@ def resolve_target_id(raw_title, clean_pack, pack_cards):
     return target_id
 
 def parse_alep_filename(filename):
-    """Parse an ALeP scan filename shaped like 'PREFIX-1-Card Title-1o.png'.
+    """Parse an ALeP filename shaped like 'PREFIX-1-Card Title-1o.png'.
 
     Returns (copy_num, raw_title) or None if the filename doesn't match the
     expected shape.

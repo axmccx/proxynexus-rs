@@ -1,6 +1,6 @@
 # LotR LCG Image File Renamer
 
-Renames The Lord of the Rings LCG card scans to the current
+Renames The Lord of the Rings LCG card images to the current
 [image file naming convention](../../../README.md#image-file-naming-convention), resolving them
 against the [Hall of Beorn](https://hallofbeorn.com/) card exports.
 
@@ -14,7 +14,7 @@ rename_ffg_pdfs.py    FFG's print-and-play campaign and replacement cards
 audit_coverage.py     which sets the output folders can print, and what is missing
 ```
 
-Scans are copied into output folders. The sources are never modified.
+Images are copied into output folders. The sources are never modified.
 
 `rename.py` writes `lotrlcg-enhanced/`, `rename_nightmare.py` writes `lotrlcg-nightmare/`,
 `rename_alep.py` writes `lotrlcg-alep/`, and `rename_ffg_pdfs.py` writes `lotrlcg-ffg-pdf/`.
@@ -29,16 +29,18 @@ helpers they share (`log`, `set_log_file`, `fetch_json`, `clean_for_match`, `nor
 Download each archive as it comes, keeping the folder names below exactly. Only the Nightmare
 archive needs picking apart — see below.
 
-| Folder | Script | Size | Source | Has bleed |
-|---|---|---|---|---|
-| `Enhanced Proxies` | `rename.py` | 16 G | [Google Drive](https://drive.google.com/drive/folders/1jEy_yvRaPXGylPfilxhweQjffo9AZQsQ) | yes |
-| `Lord of the Rings LCG` | `rename.py` | 16 G | [archive.org](https://archive.org/download/the-lord-of-thering-lcg-collection/Lord%20of%20the%20Rings%20LCG/) | yes |
-| `Lord of the Rings LCG RAW` | `rename.py` | 4.6 G | [Google Drive](https://drive.google.com/drive/folders/1rRKAU5DcQoYqFafdgKBwMNRnTrtl0c3c), from [this r/lotrlcg post](https://www.reddit.com/r/lotrlcg/comments/fw69iq/lord_of_the_rings_the_card_game_600dpi/) | no |
-| `LOTR LCG Nightmare Cards - Remastered` | `rename_nightmare.py` | 6.4 G of 19 G | [Google Drive](https://drive.google.com/drive/folders/1d_jQs4Hno0K8e5W1pb8mif5VNFuVzCse) | yes |
+| Folder | Script | Size | Source | Has bleed | Despeckled |
+|---|---|---|---|---|---|
+| `Enhanced Proxies` | `rename.py` | 16 G | [Google Drive](https://drive.google.com/drive/folders/1jEy_yvRaPXGylPfilxhweQjffo9AZQsQ) | yes | yes |
+| `Lord of the Rings LCG` | `rename.py` | 16 G | [archive.org](https://archive.org/download/the-lord-of-thering-lcg-collection/Lord%20of%20the%20Rings%20LCG/) | yes | no |
+| `Lord of the Rings LCG RAW` | `rename.py` | 4.6 G | [Google Drive](https://drive.google.com/drive/folders/1rRKAU5DcQoYqFafdgKBwMNRnTrtl0c3c), from [this r/lotrlcg post](https://www.reddit.com/r/lotrlcg/comments/fw69iq/lord_of_the_rings_the_card_game_600dpi/) | no | no |
+| `LOTR LCG Nightmare Cards - Remastered` | `rename_nightmare.py` | 6.4 G of 19 G | [Google Drive](https://drive.google.com/drive/folders/1d_jQs4Hno0K8e5W1pb8mif5VNFuVzCse) | yes | yes |
 
 `rename.py` takes the three archives in one folder. `Enhanced Proxies` is its primary source,
-sharpened and given a bleed border; it is incomplete, and `Lord of the Rings LCG` fills the gaps.
-`Lord of the Rings LCG RAW` is the untouched scan set the others derive from, with no bleed. All
+denoised, sharpened and given a bleed border; it is incomplete, and `Lord of the Rings LCG` fills
+the gaps. `Lord of the Rings LCG RAW` is the untouched scan set the others derive from, with no
+bleed. The two scan sets still carry the offset print screen, so `rename.py` descreens what it
+takes from them — see *The print screen* below. All
 three are laid out as cycle folders (`01 - Core Set`, `02 - Shadows of Mirkwood`, …) with
 `Player`/`Encounter`/`Quest`/`Nightmare` subfolders, and the script resolves a pack from the folder
 name. Rulesheets, card backs, print templates and the `Reworked_Cards_(WorkInProgress)` folder sit
@@ -72,7 +74,7 @@ nothing here reads them. The three loose `… details.txt` files are printing in
 without a manifest is skipped, so leaving them in place is harmless; not downloading them saves the
 bulk of the archive.
 
-## Getting the ALeP scans
+## Getting the ALeP images
 
 ALeP is [A Long-extended Party](https://alongextendedparty.com/), the fan group that has continued
 the card pool since FFG stopped. From their
@@ -160,9 +162,10 @@ renders of the offset-printed card rather than scans of a proxy, and the rosette
 3.5px across the 1468x2080 they download at — worst in the shadows, where near-solid ink leaves the
 paper showing through as bright dots. Everything else here comes from the Enhanced Proxies, which
 were denoised and sharpened before they were published. So
-[`lotr_despeckle.py`](../../lotr_despeckle/README.md) runs on them and on nothing else, notching the
+[`lotr_despeckle.py`](../../lotr_despeckle/README.md) runs on these four, notching the
 screen out of the spectrum — it is periodic and the picture is not — and denoising what that
-leaves. It leaves
+leaves. At its own default strength of 14, not the 8 `rename.py` uses on the scan archives: these
+are renders, and their screen is the sharp one that default was tuned for. It leaves
 the resolution alone: these arrive at about 592dpi and the rest of the collection sits at about
 578dpi, so they already match, and downscaling only these to MPC's cut line would leave them the
 one set of cards at half everyone else's resolution.
@@ -281,7 +284,8 @@ on first run from the `PlayerCards`, `EncounterCards` and `QuestCards` exports, 
 `rename.py`, `rename_nightmare.py` and `rename_ffg_pdfs.py`. Delete it to pick up catalog changes. `rename_alep.py` has no
 cache and fetches `hallofbeorn.com/Export/ALeP` and `ringsdb.com/api/public/cards/` on every run.
 
-All four scripts re-encode to JPEG at quality 90.
+All four scripts re-encode to JPEG at quality 90. `rename.py` descreens the two scan archives
+first; the run takes about seven minutes longer for it, at 1.3s a card.
 
 ## How it maps
 
@@ -356,6 +360,42 @@ other renamers read image dimensions instead, which does not work here: the trim
 `Lord of the Rings LCG RAW` and the bled quest cards in `Lord of the Rings LCG` overlap in aspect
 ratio, so no threshold separates them.
 
+**The print screen comes off the two scan archives.** `Enhanced Proxies` was denoised and sharpened
+before it was published and carries no screen worth removing; `Lord of the Rings LCG` and
+`Lord of the Rings LCG RAW`
+are flatbed scans of the printed cards and carry the rosette at 2.4 to 3.4px, depending on the
+scan's resolution. Which is which is declared per archive as `needs_despeckle` in `SOURCE_FOLDERS`,
+beside `has_bleed` and for the same reason: it is a property of how the archive was made, not of any
+one image. Measured as the strongest spike in the 2.2-8px band standing above its own neighbourhood,
+the scan-sourced cards run 3.4 to 5.2 against the Enhanced Proxies' 2.0 to 3.7.
+
+It reaches 348 of the collection's 3,922 images — 344 from `Lord of the Rings LCG`, 4 from
+`Lord of the Rings LCG RAW` — and five packs hold 343 of them: the Two-Player Limited Edition
+Starter, The Wizard's Quest, The Woodland Realm, The Mines of Moria and Escape from Khazad-dûm.
+
+[`lotr_despeckle.py`](../../lotr_despeckle/README.md) does the work, loaded by path and only when a
+flagged archive is actually reached: it needs `cv2` and `numpy`, which the test suite does not
+install. It runs **before** the JPEG encode, so the notch sees the scan's own pixels rather than
+quality-90 artefacts of the screen.
+
+**At strength 8, not the tool's own default of 14.** That default is tuned for renders, whose screen
+is a sharp spike the notch takes out almost entirely. A scan's is broadened, so the notch alone
+leaves 25-33% here against 19% there and non-local means does more of the work — which is also why
+it must not do all of it: at 8 alone, with no notch, 52-72% survives. Over twelve scan-sourced
+cards:
+
+| strength | screen left | detail kept |
+|---|---|---|
+| 6 | 10.1% | 91.4% |
+| **8** | **5.7%** | **90.5%** |
+| 14 | 2.5% | 86.0% |
+
+6 and 8 are indistinguishable on the lighter-screen packs, and 6 leaves visible dotting on the
+Two-Player Starter cards, which carry the heaviest screen. 14 clears those but goes flat in the art.
+Read the detail column as a floor rather than a measurement: it counts strong gradients, and on
+these cards a large share of the strong gradients *are* the screen, so removing it reads as loss.
+The type is unchanged at every strength tried — it was never the constraint.
+
 **A card is only taken once.** `processed_cards` keys on `(card id, pack, is_back)`, so the first
 archive to supply a printing wins and the later ones are skipped silently.
 
@@ -409,7 +449,9 @@ uv run --with pytest --with unidecode --with pillow --with pymupdf --no-project 
 ```
 
 Covers name normalization, filename parsing, back-face detection, the pack-scoping property of
-`PACK_TITLE_FIXES`, per-folder orphaned-back validation, the ALeP title resolver, for the Nightmare
+`PACK_TITLE_FIXES`, per-folder orphaned-back validation, the shape of `SOURCE_FOLDERS` and which
+archives it flags for the despeckle, that the despeckle stays unloaded at import, the ALeP title
+resolver, for the Nightmare
 script: manifest parsing, card-reference splitting, copy-suffix and scan-key handling, the
 position-versus-title resolution rules, pack resolution, and the bleed trim landing on the MPC
 frame, and for the FFG PDF script: the wording overlap, the catalog lookup's handling of a repeated

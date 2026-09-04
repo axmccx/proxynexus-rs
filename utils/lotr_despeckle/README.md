@@ -1,21 +1,36 @@
 # LotR Despeckle
 
-Takes the print screen out of the four LotR cards downloaded from lotr.cardgame.tools and
-resamples them for print.
+Takes the print screen out of the LotR cards that still carry one.
 
-Almost nothing in the LotR collection needs this. The Enhanced Proxies were denoised and sharpened
-before they were published, and their screen is already gone. The four cards in
-`lotrlcg-gap-fills/` are the exception: they are renders of the offset-printed card, and they
-carry its rosette at 3.5px across the 1468x2080 they arrive at.
+Most of the collection does not. The Enhanced Proxies, which supply 3,574 of `lotrlcg-enhanced`'s
+3,922 images, were denoised and sharpened before they were published and their screen is already
+gone; so are the ALeP and FFG images, which are digital sources rather than scans, and the
+Nightmare remasters. Two groups are left, and they are not the same problem:
+
+| | what they are | screen at | strength |
+|---|---|---|---|
+| 348 images `rename.py` takes from `Lord of the Rings LCG` and `Lord of the Rings LCG RAW` | flatbed scans of the printed cards | 2.4-3.4px | 8 |
+| the four cards in `lotrlcg-gap-fills/` from lotr.cardgame.tools | renders of the offset-printed card | 3.5px | 14, the default |
+
+A render's screen is a sharp spike and the notch takes out nearly all of it. A scan's is broadened
+by the scanner, so the notch leaves 25-33% against 19% on a render and non-local means has to do
+more of the work — hence the lower strength on the group with the *worse* screen. See
+*Which strength* below.
 
 ```bash
 uv run lotr_despeckle.py ~/Downloads/cardgame-tools-lotr-infilled -o despeckled
 uv run lotr_despeckle.py scans/ --strength 8      # gentler
 ```
 
-Four files, a couple of seconds each, so there is nothing to parallelise — which is the one thing
-this does not share with [the Call of Cthulhu pass](../coc_despeckle/README.md), whose 1583 cards
-need a process pool.
+The scan archives do not go through this command line. `rename.py` loads this module and calls
+`descreen()` and `despeckle()` itself, so the pass runs on the scan's own pixels rather than on
+quality-90 artefacts of the screen — see [the renamer's
+README](../image_file_renamers/lotrlcg/README.md#how-it-maps). It also means the `.bleed` skip
+below never sees them.
+
+About 1.3s a card, so the four here are instant and the renamer's 348 add about seven minutes to a
+run. Neither needs the process pool [the Call of Cthulhu pass](../coc_despeckle/README.md) uses for
+its 1583 cards.
 
 Two passes:
 
@@ -46,8 +61,9 @@ flatbed scans and the scanner has already softened their screen into something t
 noise. These are renders, and theirs is sharp: at 8 almost nothing moved, and 20 still left a fifth
 of it while the art was going flat.
 
-**The notch removes it directly and costs almost nothing.** Screen band in a dark patch, against
-the untouched image, with detail measured as the strong gradients across the card:
+**The notch removes it directly and costs almost nothing.** On the four renders — screen band in a
+dark patch, against the untouched image, with detail measured as the strong gradients across the
+card:
 
 | method | screen left | detail kept |
 |---|---|---|
@@ -76,6 +92,35 @@ judge on and the one this was checked against.
 
 **The type was never the constraint.** It is unchanged across every setting tried — the strokes are
 far coarser than the screen, so nothing ever confused the two.
+
+## Which strength
+
+14 for the renders, 8 for the scans, and the reason is the notch rather than the screen.
+
+A render's rosette is a clean spike, so the notch takes nearly all of it and non-local means is only
+tidying up grain. A scan's has been through the scanner's optics and is broadened into a peak the
+notch cannot fully cover: on the scan archives it leaves 25-33%, against 19% on a render. The rest
+has to come from non-local means, so a *worse* screen wants a *lower* strength — because most of
+what is left for the filter is no longer periodic.
+
+Twelve scan-sourced cards, notch first in every row:
+
+| method | screen left | detail kept |
+|---|---|---|
+| non-local means 8, alone | 52-72% | — |
+| notch, alone | 25-33% | — |
+| notch + non-local means 6 | 10.1% | 91.4% |
+| **notch + non-local means 8** | **5.7%** | **90.5%** |
+| notch + non-local means 14 | 2.5% | 86.0% |
+
+Judged at 1:1 on a dark patch, 6 and 8 are indistinguishable on the lighter-screen packs, and 6
+leaves visible dotting on the Two-Player Starter cards, which carry the heaviest screen in the
+archive. 14 clears those but flattens the art.
+
+Read that detail column as a floor. It counts strong gradients, and on these cards a large share of
+the strong gradients *are* the screen, so taking it out reads as detail lost — the 86% at 14 looks
+worse than it is, and the gap between 8 and 14 is smaller in the pixels than in the number. The
+column separates settings; it does not measure damage. The type is unchanged at every strength.
 
 ## Why it does not downscale
 
@@ -107,8 +152,12 @@ comparison ran far worse.
 `--long-side` resamples anyway — 1038 for the cut line, 1110 for a `.bleed` image, which differ by
 the width of the bleed.
 
-Runs on images whose corners have already been filled, so after
-[`corner_infill_dark.py`](../corner_infill/README.md) and before the four are renamed by hand. See
+That argument is about the four renders. The scan archives never reach this question: `rename.py`
+calls `descreen()` and `despeckle()` and leaves `resample()` alone, and the images it writes sit at
+1632x2220 or about 1465x2090, alongside the Enhanced Proxies' 1568x2140.
+
+For the four, this runs on images whose corners have already been filled, so after
+[`corner_infill_dark.py`](../corner_infill/README.md) and before they are renamed by hand. See
 [the renamer's README](../image_file_renamers/lotrlcg/README.md#hand-filled-gaps) for where it sits.
 
 ## Tests

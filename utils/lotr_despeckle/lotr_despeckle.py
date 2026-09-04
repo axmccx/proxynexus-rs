@@ -2,13 +2,29 @@
 # requires-python = ">=3.10"
 # dependencies = ["numpy>=1.24.0", "opencv-python>=4.8.0", "Pillow"]
 # ///
-"""Take the print screen out of the four LotR cards downloaded from cardgame.tools.
+"""Take the print screen out of the LotR cards that still carry one.
 
-Almost every image in the LotR collection arrives already cleaned: the Enhanced
-Proxies were denoised and sharpened before they were published, and their screen
-is gone. The four cards in `lotrlcg-gap-fills/` taken from lotr.cardgame.tools
-are the exception -- they are renders of the offset-printed card, and they carry
-its rosette at 3.5px across the 1468x2080 they arrive at.
+Most of the collection does not. The Enhanced Proxies, which supply 3,574 of
+`lotrlcg-enhanced`'s 3,922 images, were denoised and sharpened before they were
+published; so are the ALeP and FFG images, which are digital sources rather than
+scans, and the Nightmare remasters. Two groups are left, and they have two
+different callers:
+
+  * The 348 images `rename.py` takes from "Lord of the Rings LCG" and "Lord of
+    the Rings LCG RAW" -- flatbed scans of the printed cards, screen at 2.4 to
+    3.4px. `rename.py` imports this module and calls descreen() and despeckle()
+    itself at strength 8, before its JPEG encode. It does not shell out to the
+    command line below, and nothing has to be run separately for them.
+  * The four cards in `lotrlcg-gap-fills/` taken from lotr.cardgame.tools --
+    renders of the offset-printed card, screen at 3.5px across the 1468x2080
+    they arrive at. These go through the command line below, by hand, at the
+    default strength of 14.
+
+Two strengths because a render's screen is a sharp spike the notch takes out
+almost entirely, while a scan's has been broadened by the scanner's optics and
+the notch leaves 25-33% of it. More is then left for non-local means to do, and
+what is left is no longer periodic -- so the group with the *worse* screen wants
+the *lower* strength. README.md argues both numbers.
 
 The screen is worst in the shadows, which is not where a flat-paper measurement
 looks. Where the ink is near solid the dots are the paper showing through, so
@@ -32,11 +48,12 @@ Two passes:
 Non-local means alone was tried first and is much the worse tool for this. It
 averages a pixel from other patches that look like its neighbourhood, and a
 regular rosette is the most self-similar thing on the card, so it preserves the
-screen rather than removing it: even at 20 it left 22% of it, and by then the
-art was going flat. The two together leave 2% and hold more detail than that
-did.
+screen rather than removing it: on the renders, even at 20 it left 22% of it,
+and by then the art was going flat. The two together leave 2% and hold more
+detail than that did. On the scans the gap is wider still -- non-local means at
+8 alone leaves 52-72%, against 5.7% for the pair.
 
-The resolution is left alone. The Call of Cthulhu pass resamples to MPC's
+The resolution is left alone, on both paths. The Call of Cthulhu pass resamples to MPC's
 300dpi cut line, because there the whole collection is built that way and a
 screen left in would alias under whatever filter MPC used. Neither holds here:
 the rest of lotrlcg sits at about 578dpi, these four arrive at 592dpi, and
@@ -46,8 +63,13 @@ costs little -- measured at print size, keeping full resolution and resampling
 by lanczos leaves 19% more residual but 9% more detail than downscaling here.
 `--long-side` resamples anyway, for a collection built the other way.
 
-    uv run lotr_despeckle.py ~/Downloads/cardgame-tools-lotr -o despeckled
-    uv run lotr_despeckle.py ~/Downloads/cardgame-tools-lotr --strength 14  # gentler
+The command line takes the corner-infilled folder, not the raw download:
+corner_infill_dark.py writes `<input>-infilled` beside its input, and that is
+what this reads.
+
+    uv run ../corner_infill/corner_infill_dark.py ~/Downloads/cardgame-tools-lotr
+    uv run lotr_despeckle.py ~/Downloads/cardgame-tools-lotr-infilled -o despeckled
+    uv run lotr_despeckle.py ~/Downloads/cardgame-tools-lotr-infilled --strength 8  # gentler
 """
 
 import argparse
@@ -84,7 +106,8 @@ CORRECTION_LIMIT = 28.0
 # How hard non-local means averages what the notch leaves. That residue is
 # grain rather than screen, so this is far lower than non-local means needs
 # when it has to fight the screen alone: 14 here against 20 on its own, for a
-# tenth of the screen left and more detail kept.
+# tenth of the screen left and more detail kept. This default is for the four
+# renders; rename.py passes 8 for the scan archives.
 STRENGTH = 14
 
 # The window it matches on, and how far it looks for matches. OpenCV's defaults,
@@ -107,7 +130,12 @@ def is_not_for_this_pass(name):
     """`lotrlcg-gap-fills/` also holds three cards copied out of lotrlcg-enhanced,
     named `.bleed`. Those come from the Enhanced Proxies, which were descreened
     before they were published, so this has nothing to take off them and would
-    only soften them. They are told apart by name and left alone."""
+    only soften them. They are told apart by name and left alone.
+
+    This guards the command line only. rename.py calls descreen() and despeckle()
+    directly and never reaches here, which is what it needs: it decides on the
+    source archive, and 344 of the 348 images it despeckles are `.bleed`.
+    """
     stem = name.rsplit('.', 1)[0]
     return stem.lower().endswith('.bleed')
 
