@@ -46,6 +46,8 @@ dump*.sql
 # Image file renamer caches. See utils/image_file_renamers/README.md.
 utils/image_file_renamers/**/*_cache.json
 utils/image_file_renamers/**/lotrlcg*.json
+utils/image_file_renamers/ahlcg/sced_sheet_cache/
+utils/image_file_renamers/ahlcg/arkhamdb_refs/
 
 # Re-include the asset dirs. build.rs compiles the .onnx into the upscaler, and each
 # game adapter's backs/ folder holds the card backs that ship with the app.
