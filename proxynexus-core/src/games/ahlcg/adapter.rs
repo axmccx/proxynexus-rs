@@ -31,7 +31,7 @@ impl GameAdapterInfo for AhlcgAdapter {
     }
 
     fn game_name(&self) -> &'static str {
-        "Arkham Horror: The Card Game"
+        "Arkham Horror (Chapter 1)"
     }
 
     fn subdomains(&self) -> Vec<&'static str> {
