@@ -5,6 +5,8 @@ const CUT_WIDTH: f32 = 744.0;
 const CUT_HEIGHT: f32 = 1038.0;
 const BLEED_WIDTH: f32 = 816.0;
 const BLEED_HEIGHT: f32 = 1110.0;
+const MAX_IMAGE_WIDTH: f32 = 2176.0;
+const MAX_IMAGE_HEIGHT: f32 = 2960.0;
 
 #[derive(Debug, Clone)]
 struct BleedConfig {
@@ -87,6 +89,17 @@ pub fn add_mpc_bleed_border(img: &DynamicImage) -> RgbImage {
     let config = BleedConfig::calculate(src_w, src_h);
 
     generate_bleed(&working_img, &config)
+}
+
+pub fn max_upscale_size(has_bleed: bool) -> (u32, u32) {
+    if has_bleed {
+        (MAX_IMAGE_WIDTH as u32, MAX_IMAGE_HEIGHT as u32)
+    } else {
+        (
+            (MAX_IMAGE_WIDTH * CUT_WIDTH / BLEED_WIDTH).round() as u32,
+            (MAX_IMAGE_HEIGHT * CUT_HEIGHT / BLEED_HEIGHT).round() as u32,
+        )
+    }
 }
 
 fn generate_bleed(src: &RgbImage, config: &BleedConfig) -> RgbImage {
@@ -298,6 +311,54 @@ mod tests {
         assert_eq!(config.output_height, 718);
         assert_eq!(config.bleed_x, 23);
         assert_eq!(config.bleed_y, 24);
+    }
+
+    /// What `cap_to` in the upscaler does with the size this hands it.
+    fn cap(w: u32, h: u32, max: (u32, u32)) -> (u32, u32) {
+        let scale = (max.0 as f32 / w as f32).min(max.1 as f32 / h as f32);
+        if scale >= 1.0 {
+            return (w, h);
+        }
+        (
+            (w as f32 * scale).round() as u32,
+            (h as f32 * scale).round() as u32,
+        )
+    }
+
+    #[test]
+    fn a_bled_source_is_capped_at_the_full_bleed_size() {
+        assert_eq!(max_upscale_size(true), (2176, 2960));
+    }
+
+    #[test]
+    fn an_unbled_source_is_capped_at_that_outputs_cut_area() {
+        // 2176 * 744/816 and 2960 * 1038/1110, both exact. Bleed is generated
+        // after upscaling, which grows it back to the full size above.
+        assert_eq!(max_upscale_size(false), (1984, 2768));
+    }
+
+    #[test]
+    fn both_source_kinds_reach_the_same_card_resolution() {
+        // The point of the pair. A bled source passes through at its capped
+        // size; an unbled one has bleed added, and the two land together.
+        let bled = cap(1568 * 4, 2140 * 4, max_upscale_size(true));
+        assert_eq!(bled, (2169, 2960));
+
+        let unbled = cap(744 * 4, 1038 * 4, max_upscale_size(false));
+        assert_eq!(unbled, (1984, 2768));
+        let generated = add_mpc_bleed_border(&source(unbled.0, unbled.1, 0, 0));
+        assert_eq!(generated.dimensions(), (2176, 2960));
+
+        // Same card, within a third of a percent either way.
+        let ratio = generated.width() as f32 / bled.0 as f32;
+        assert!(ratio > 0.99 && ratio < 1.01, "{ratio}");
+    }
+
+    #[test]
+    fn a_source_that_already_fits_is_left_alone() {
+        // The library's own sizes, which the upscaler reads rather than writes.
+        assert_eq!(cap(1568, 2140, max_upscale_size(true)), (1568, 2140));
+        assert_eq!(cap(1632, 2220, max_upscale_size(true)), (1632, 2220));
     }
 
     #[test]

@@ -312,7 +312,8 @@ pub async fn generate_pdf(
                 let format = image::guess_format(&raw).unwrap_or(ImageFormat::Jpeg);
 
                 let upscaled = if options.upscale && slot.upscalable() {
-                    Some(crate::upscale_image(&raw).await?)
+                    let max = crate::print_prep::max_upscale_size(slot.has_bleed());
+                    Some(crate::upscale_image(&raw, max).await?)
                 } else {
                     None
                 };

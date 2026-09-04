@@ -39,7 +39,7 @@ onmessage = async (e) => {
                 throw new Error("upscale_in_worker function not found in Wasm module exports.");
             }
             
-            const result = await target.upscale_in_worker(e.data.bytes);
+            const result = await target.upscale_in_worker(e.data.bytes, e.data.maxWidth, e.data.maxHeight);
             postMessage(
                 { type: "done", id: e.data.id, bytes: result.bytes, width: result.width, height: result.height },
                 [result.bytes.buffer]

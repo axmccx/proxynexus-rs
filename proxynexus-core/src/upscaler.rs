@@ -86,12 +86,12 @@ pub async fn probe_webgpu() -> bool {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn upscale_image(bytes: &[u8]) -> Result<image::RgbImage> {
-    upscale_image_inner(bytes).await
+pub async fn upscale_image(bytes: &[u8], max: (u32, u32)) -> Result<image::RgbImage> {
+    upscale_image_inner(bytes, max).await
 }
 
 #[cfg(target_arch = "wasm32")]
-pub async fn upscale_image(bytes: &[u8]) -> Result<image::RgbImage> {
+pub async fn upscale_image(bytes: &[u8], max: (u32, u32)) -> Result<image::RgbImage> {
     use js_sys::{Object, Reflect, Uint8Array};
 
     let (worker, pending_requests) = get_or_init_worker().await?;
@@ -113,6 +113,8 @@ pub async fn upscale_image(bytes: &[u8]) -> Result<image::RgbImage> {
     let js_image_array = Uint8Array::from(bytes_vec.as_slice());
     let js_image_buffer = js_image_array.buffer();
     Reflect::set(&js_request, &"bytes".into(), &js_image_array.into()).unwrap();
+    Reflect::set(&js_request, &"maxWidth".into(), &max.0.into()).unwrap();
+    Reflect::set(&js_request, &"maxHeight".into(), &max.1.into()).unwrap();
 
     let buffers_to_transfer = js_sys::Array::of1(&js_image_buffer);
 
@@ -133,12 +135,14 @@ pub async fn upscale_image(bytes: &[u8]) -> Result<image::RgbImage> {
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub async fn upscale_in_worker(
     bytes: js_sys::Uint8Array,
+    max_width: u32,
+    max_height: u32,
 ) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {
     use js_sys::{Object, Reflect, Uint8Array};
 
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     let raw_bytes = bytes.to_vec();
-    let img = upscale_image_inner(&raw_bytes)
+    let img = upscale_image_inner(&raw_bytes, (max_width, max_height))
         .await
         .map_err(|e| wasm_bindgen::JsValue::from_str(&e.to_string()))?;
 
@@ -315,7 +319,7 @@ async fn get_or_init_worker() -> Result<(web_sys::Worker, PendingRequestsMap)> {
     Ok((worker, pending_requests))
 }
 
-async fn upscale_image_inner(bytes: &[u8]) -> Result<image::RgbImage> {
+async fn upscale_image_inner(bytes: &[u8], max: (u32, u32)) -> Result<image::RgbImage> {
     let img = image::load_from_memory(bytes)?;
     let img_rgb = img.to_rgb8();
 
@@ -343,7 +347,23 @@ async fn upscale_image_inner(bytes: &[u8]) -> Result<image::RgbImage> {
         })
         .await?;
 
-    process_tiled(&img_rgb, &state.model, &state.device).await
+    let out_img = process_tiled(&img_rgb, &state.model, &state.device).await?;
+    Ok(cap_to(out_img, max))
+}
+
+fn cap_to(img: image::RgbImage, (max_w, max_h): (u32, u32)) -> image::RgbImage {
+    let (w, h) = img.dimensions();
+    let scale = (max_w as f32 / w as f32).min(max_h as f32 / h as f32);
+    if scale >= 1.0 {
+        return img;
+    }
+
+    image::imageops::resize(
+        &img,
+        (w as f32 * scale).round() as u32,
+        (h as f32 * scale).round() as u32,
+        image::imageops::FilterType::Lanczos3,
+    )
 }
 
 async fn process_tiled<B: Backend>(

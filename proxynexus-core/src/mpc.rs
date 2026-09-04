@@ -268,7 +268,8 @@ async fn process_back_group<W: Write + Seek>(
                 PreparedImage::Source(image_data)
             } else {
                 let img = if options.upscale {
-                    image::DynamicImage::ImageRgb8(crate::upscale_image(&image_data).await?)
+                    let max = print_prep::max_upscale_size(req.source.has_bleed);
+                    image::DynamicImage::ImageRgb8(crate::upscale_image(&image_data, max).await?)
                 } else {
                     image::load_from_memory(&image_data)?
                 };

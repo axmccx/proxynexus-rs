@@ -21,15 +21,15 @@ pub mod query;
 #[cfg(feature = "upscaling")]
 pub mod upscaler;
 
-pub async fn upscale_image(bytes: &[u8]) -> error::Result<image::RgbImage> {
+pub async fn upscale_image(bytes: &[u8], max: (u32, u32)) -> error::Result<image::RgbImage> {
     #[cfg(feature = "upscaling")]
     {
-        upscaler::upscale_image(bytes).await
+        upscaler::upscale_image(bytes, max).await
     }
 
     #[cfg(not(feature = "upscaling"))]
     {
-        let _ = bytes;
+        let _ = (bytes, max);
         Err(error::ProxyNexusError::Internal(
             "AI upscaling is not enabled in this build. Rebuild with '--features upscaling' to enable it.".to_string()
         ))
