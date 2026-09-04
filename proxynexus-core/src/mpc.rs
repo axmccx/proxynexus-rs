@@ -231,9 +231,14 @@ async fn process_back_group<W: Write + Seek>(
 
     requests.sort_by(|a, b| a.source.key.cmp(&b.source.key));
 
+    enum PreparedImage {
+        Source(Vec<u8>),
+        Pixels(image::RgbImage),
+    }
+
     struct CachedImage {
         key: String,
-        image: image::RgbImage,
+        prepared: PreparedImage,
         format: ImageFormat,
     }
 
@@ -255,21 +260,29 @@ async fn process_back_group<W: Write + Seek>(
             let image_data = image_provider.get_image_bytes(&current_image_key).await?;
             let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
 
-            let img = if options.upscale {
-                image::DynamicImage::ImageRgb8(crate::upscale_image(&image_data).await?)
+            // Image doesn't require any modifications, so use the bytes rather than decode and re-encode them.
+            let prepared = if req.source.has_bleed
+                && !options.upscale
+                && matches!(image_format, ImageFormat::Jpeg | ImageFormat::Png)
+            {
+                PreparedImage::Source(image_data)
             } else {
-                image::load_from_memory(&image_data)?
-            };
+                let img = if options.upscale {
+                    image::DynamicImage::ImageRgb8(crate::upscale_image(&image_data).await?)
+                } else {
+                    image::load_from_memory(&image_data)?
+                };
 
-            let bleed_image = if req.source.has_bleed {
-                img.to_rgb8()
-            } else {
-                print_prep::add_mpc_bleed_border(&img)
+                PreparedImage::Pixels(if req.source.has_bleed {
+                    img.to_rgb8()
+                } else {
+                    print_prep::add_mpc_bleed_border(&img)
+                })
             };
 
             current_cache = Some(CachedImage {
                 key: current_image_key.clone(),
-                image: bleed_image,
+                prepared,
                 format: image_format,
             });
             current_file = None;
@@ -306,12 +319,16 @@ async fn process_back_group<W: Write + Seek>(
         let path = match &current_file {
             Some(written) if options.autofill => written.clone(),
             _ => {
-                let bordered_bytes = print_prep::encode_image(cached.image.clone(), cached.format)?;
                 let file_options =
                     SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
                 zip.start_file(&filename, file_options)?;
-                zip.write_all(&bordered_bytes)?;
+                match &cached.prepared {
+                    PreparedImage::Source(bytes) => zip.write_all(bytes)?,
+                    PreparedImage::Pixels(img) => {
+                        zip.write_all(&print_prep::encode_image(img.clone(), cached.format)?)?
+                    }
+                }
                 current_file = Some(filename.clone());
                 filename
             }
@@ -526,10 +543,12 @@ mod tests {
 
     struct FakeImages;
 
-    impl crate::image_provider::ImageProvider for FakeImages {
+    impl ImageProvider for FakeImages {
         async fn get_image_bytes(&self, _key: &str) -> Result<Vec<u8>> {
-            let img = image::DynamicImage::ImageRgb8(image::RgbImage::new(744, 1038));
-            print_prep::encode_image(img.to_rgb8(), ImageFormat::Jpeg)
+            let img = image::RgbImage::from_fn(744, 1038, |x, y| {
+                image::Rgb([(x % 256) as u8, (y % 256) as u8, ((x * y) % 256) as u8])
+            });
+            print_prep::encode_image(img, ImageFormat::Jpeg)
         }
     }
 
@@ -576,6 +595,61 @@ mod tests {
             None,
         )
         .await
+    }
+
+    fn bled_side(key: &str) -> crate::models::CardSide {
+        crate::models::CardSide {
+            image_key: None,
+            bleed_image_key: Some(key.to_string()),
+        }
+    }
+
+    async fn only_image_in(bytes: Vec<u8>) -> (String, Vec<u8>) {
+        let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let name = (0..archive.len())
+            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .find(|n| n.ends_with(".jpg") || n.ends_with(".png"))
+            .expect("no image in the zip");
+
+        let mut written = Vec::new();
+        std::io::Read::read_to_end(&mut archive.by_name(&name).unwrap(), &mut written).unwrap();
+        (name, written)
+    }
+
+    #[tokio::test]
+    async fn a_bled_source_reaches_the_zip_as_its_own_bytes() {
+        // Nothing to crop, pad or upscale, so decoding it only to re-encode
+        // would spend a jpeg generation arriving at the same picture.
+        let printing = Printing {
+            front: bled_side("front.bleed.jpg"),
+            backs: vec![bled_side("back.bleed.jpg")],
+            ..a_printing_with_backs(&[])
+        };
+        let bytes = generate_mpc_zip(
+            vec![printing],
+            &FakeImages,
+            MpcOptions::default(),
+            Vec::new(),
+            None,
+        )
+        .await
+        .unwrap();
+
+        let (_, written) = only_image_in(bytes).await;
+        let source = FakeImages.get_image_bytes("front.bleed.jpg").await.unwrap();
+
+        assert_eq!(written, source);
+    }
+
+    #[tokio::test]
+    async fn an_unbled_source_is_still_encoded_with_its_generated_bleed() {
+        let bytes = generate(false, false).await.unwrap();
+        let (_, written) = only_image_in(bytes).await;
+        let source = FakeImages.get_image_bytes("front.jpg").await.unwrap();
+
+        assert_ne!(written, source);
+        let out = image::load_from_memory(&written).unwrap().to_rgb8();
+        assert_eq!(out.dimensions(), (816, 1110));
     }
 
     async fn zip_entries(autofill: bool, with_back: bool) -> Vec<String> {
