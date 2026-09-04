@@ -8,8 +8,12 @@ use crate::games::GameAdapterInfo;
 use crate::games::ahlcg::api::fetch_decklist_from_arkhamdb;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::ahlcg::api::{fetch_all_cards, fetch_packs};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::games::ahlcg::models::AhdbCard;
 use crate::models::Decklist;
 use async_trait::async_trait;
+#[cfg(not(target_arch = "wasm32"))]
+use std::collections::{HashMap, HashSet};
 
 pub struct AhlcgAdapter {}
 
@@ -81,17 +85,146 @@ fn display_title(name: &str, xp: Option<i64>) -> String {
     }
 }
 
+/// Groups the codes that are one card, and labels each group with its lowest
+/// code. Only reprints are grouped: `duplicated_by` is ArkhamDB saying two
+/// codes are the same card printed twice.
+#[cfg(not(target_arch = "wasm32"))]
+fn same_card_groups(ahdb_cards: &[AhdbCard]) -> HashMap<String, String> {
+    let mut adjacent: HashMap<&str, Vec<&str>> = HashMap::new();
+    for card in ahdb_cards {
+        for reprint in &card.duplicated_by {
+            adjacent.entry(&card.code).or_default().push(reprint);
+            adjacent.entry(reprint).or_default().push(&card.code);
+        }
+    }
+
+    let mut group_of = HashMap::new();
+    for card in ahdb_cards {
+        if group_of.contains_key(&card.code) {
+            continue;
+        }
+
+        let mut group = Vec::new();
+        let mut seen = HashSet::from([card.code.as_str()]);
+        let mut pending = vec![card.code.as_str()];
+        while let Some(code) = pending.pop() {
+            group.push(code);
+            for next in adjacent.get(code).into_iter().flatten() {
+                if seen.insert(next) {
+                    pending.push(next);
+                }
+            }
+        }
+
+        let label = group.iter().min().expect("the card itself is in its group");
+        for code in &group {
+            group_of.insert((*code).to_string(), (*label).to_string());
+        }
+    }
+
+    group_of
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn group_of<'a>(groups: &'a HashMap<String, String>, code: &'a str) -> &'a str {
+    groups.get(code).map_or(code, String::as_str)
+}
+
+/// One title per code, spelling apart the titles that more than one card
+/// answers to. Everything downstream reads the title as the card's name -- the
+/// variant picker offers one title's printings as interchangeable, a typed card
+/// list resolves a title to a single card -- so a title two cards share makes
+/// them one card to the rest of the program.
+///
+/// Reprints are left sharing a title, because they are one card. Where a
+/// subtitle does not do the separating, the lowest code keeps the plain title
+/// and the others are spelled out against it, so that one parallel investigator
+/// does not rename the ordinary one.
+#[cfg(not(target_arch = "wasm32"))]
+fn card_titles(ahdb_cards: &[AhdbCard]) -> HashMap<String, String> {
+    let groups = same_card_groups(ahdb_cards);
+    let base = |card: &AhdbCard| display_title(&card.name, card.xp);
+
+    let mut sharing: HashMap<String, Vec<&AhdbCard>> = HashMap::new();
+    for card in ahdb_cards {
+        sharing
+            .entry(normalize_title(&base(card)))
+            .or_default()
+            .push(card);
+    }
+
+    let mut titles = HashMap::with_capacity(ahdb_cards.len());
+    for group in sharing.into_values() {
+        let cards_sharing: HashSet<&str> = group
+            .iter()
+            .map(|card| group_of(&groups, &card.code))
+            .collect();
+
+        if cards_sharing.len() < 2 {
+            for card in group {
+                titles.insert(card.code.clone(), base(card));
+            }
+            continue;
+        }
+
+        // The subtitle names the card where every one of them carries a
+        // subtitle and no two carry the same.
+        let mut subnames: HashMap<&str, &str> = HashMap::new();
+        for card in &group {
+            subnames.insert(
+                group_of(&groups, &card.code),
+                card.subname.as_deref().unwrap_or_default(),
+            );
+        }
+        let by_subname = subnames.values().all(|subname| !subname.is_empty())
+            && subnames.values().collect::<HashSet<_>>().len() == cards_sharing.len();
+
+        let plain = cards_sharing
+            .iter()
+            .min()
+            .expect("a shared title has at least two cards");
+
+        for card in &group {
+            if !by_subname && group_of(&groups, &card.code) == *plain {
+                titles.insert(card.code.clone(), base(card));
+                continue;
+            }
+
+            // Two faces of one printing sit at the same position, and only the
+            // code tells those apart.
+            let shares_a_position = group.iter().any(|other| {
+                group_of(&groups, &other.code) != group_of(&groups, &card.code)
+                    && other.pack_code == card.pack_code
+                    && other.position == card.position
+            });
+
+            let suffix = match (by_subname, shares_a_position) {
+                (true, _) => card.subname.clone().unwrap_or_default(),
+                (false, true) => card.code.clone(),
+                (false, false) => format!("{} {}", card.pack_code, card.position),
+            };
+            titles.insert(card.code.clone(), format!("{} ({})", base(card), suffix));
+        }
+    }
+
+    titles
+}
+
 /// ArkhamDB keeps both sides of a double-sided card under one `code` -- both
 /// the ordinary flip case and the case where the back is a mechanically distinct card
 #[cfg(not(target_arch = "wasm32"))]
 fn build_cards_and_versions(
     ahdb_cards: Vec<crate::games::ahlcg::models::AhdbCard>,
 ) -> (Vec<Card>, Vec<CardVersion>) {
+    let titles = card_titles(&ahdb_cards);
     let mut cards = Vec::with_capacity(ahdb_cards.len());
     let mut card_versions = Vec::with_capacity(ahdb_cards.len());
 
     for card in ahdb_cards {
-        let title = display_title(&card.name, card.xp);
+        let title = titles
+            .get(&card.code)
+            .cloned()
+            .unwrap_or_else(|| display_title(&card.name, card.xp));
 
         cards.push(Card {
             id: card.code.clone(),
@@ -164,6 +297,23 @@ mod tests {
             subtype_code: subtype_code.map(|s| s.to_string()),
             hidden: false,
             xp: None,
+            subname: None,
+            duplicated_by: Vec::new(),
+        }
+    }
+
+    fn location(
+        code: &str,
+        name: &str,
+        subname: Option<&str>,
+        pack_code: &str,
+        position: i64,
+    ) -> AhdbCard {
+        AhdbCard {
+            pack_code: pack_code.to_string(),
+            position,
+            subname: subname.map(|s| s.to_string()),
+            ..card(code, name, "location", None)
         }
     }
 
@@ -230,10 +380,106 @@ mod tests {
     }
 
     #[test]
-    fn a_card_with_no_level_keeps_its_plain_name() {
-        let raw = vec![card("01001", "Roland Banks", "investigator", None)];
+    fn a_title_only_one_card_answers_to_is_left_alone() {
+        let raw = vec![
+            card("01001", "Roland Banks", "investigator", None),
+            card("01121", "Ghoul Priest", "enemy", None),
+        ];
         let (cards, _) = build_cards_and_versions(raw);
 
         assert_eq!(cards[0].title, "Roland Banks");
+        assert_eq!(cards[1].title, "Ghoul Priest");
+    }
+
+    #[test]
+    fn reprints_keep_one_title_between_them() {
+        // `60227` Seeking Answers (2) and its reprint `01685`. The two are
+        // worded differently on the card, but ArkhamDB calls them one card and
+        // the printing picker should offer them as one card's two printings.
+        let mut original = player_card("60227", "Seeking Answers", "har", 27, 2);
+        original.duplicated_by = vec!["01685".to_string()];
+        let raw = vec![
+            original,
+            player_card("01685", "Seeking Answers", "rcore", 685, 2),
+        ];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards[0].title, "Seeking Answers (2)");
+        assert_eq!(cards[1].title, "Seeking Answers (2)");
+        assert_eq!(cards[0].title_normalized, cards[1].title_normalized);
+    }
+
+    #[test]
+    fn two_cards_of_one_name_are_told_apart_by_their_subtitles() {
+        // `03298` and `03299` Abbey Tower, a designed pair.
+        let raw = vec![
+            location("03298", "Abbey Tower", Some("The Path is Open"), "bsr", 298),
+            location("03299", "Abbey Tower", Some("Spires Forbidden"), "bsr", 299),
+        ];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards[0].title, "Abbey Tower (The Path is Open)");
+        assert_eq!(cards[1].title, "Abbey Tower (Spires Forbidden)");
+    }
+
+    #[test]
+    fn a_subtitle_two_cards_share_does_not_separate_them() {
+        // Two Historical Society · Record Office, one per scenario.
+        let raw = vec![
+            location(
+                "03129",
+                "Historical Society",
+                Some("Record Office"),
+                "eotp",
+                129,
+            ),
+            location(
+                "03138",
+                "Historical Society",
+                Some("Record Office"),
+                "eotp",
+                138,
+            ),
+        ];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards[0].title, "Historical Society");
+        assert_eq!(cards[1].title, "Historical Society (eotp 138)");
+    }
+
+    #[test]
+    fn a_parallel_investigator_does_not_rename_the_ordinary_one() {
+        // `90024` is a different Roland with the same name and subtitle. The
+        // plain title stays with the card players mean by it.
+        let mut roland = card("01001", "Roland Banks", "investigator", None);
+        roland.subname = Some("The Fed".to_string());
+        roland.duplicated_by = vec!["01501".to_string()];
+        let mut revised = card("01501", "Roland Banks", "investigator", None);
+        revised.subname = Some("The Fed".to_string());
+        revised.pack_code = "rcore".to_string();
+        let mut parallel = card("90024", "Roland Banks", "investigator", None);
+        parallel.subname = Some("The Fed".to_string());
+        parallel.pack_code = "btb".to_string();
+        parallel.position = 24;
+
+        let (cards, _) = build_cards_and_versions(vec![roland, revised, parallel]);
+
+        assert_eq!(cards[0].title, "Roland Banks");
+        assert_eq!(cards[1].title, "Roland Banks");
+        assert_eq!(cards[2].title, "Roland Banks (btb 24)");
+    }
+
+    #[test]
+    fn two_faces_at_one_position_fall_back_to_the_code() {
+        // `09748a` and `09748b` Alien Frontier share a pack and a position, so
+        // nothing but the code tells them apart.
+        let raw = vec![
+            location("09748a", "Alien Frontier", None, "tskc", 748),
+            location("09748b", "Alien Frontier", None, "tskc", 748),
+        ];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards[0].title, "Alien Frontier");
+        assert_eq!(cards[1].title, "Alien Frontier (09748b)");
     }
 }

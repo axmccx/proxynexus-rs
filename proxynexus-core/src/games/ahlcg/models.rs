@@ -55,6 +55,10 @@ pub struct AhdbCard {
     pub hidden: bool,
     #[serde(default)]
     pub xp: Option<i64>,
+    #[serde(default)]
+    pub subname: Option<String>,
+    #[serde(default)]
+    pub duplicated_by: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -82,6 +86,8 @@ mod tests {
         assert_eq!(card.quantity, None);
         assert_eq!(card.subtype_code, None);
         assert_eq!(card.xp, None);
+        assert_eq!(card.subname, None);
+        assert!(card.duplicated_by.is_empty());
     }
 
     #[test]
@@ -99,6 +105,29 @@ mod tests {
                 "type_code":"skill","faction_code":"seeker","xp":2}"#,
         );
         assert_eq!(upgrade.xp, Some(2));
+    }
+
+    #[test]
+    fn a_reprint_is_listed_on_the_card_it_reprints() {
+        // `60227` Seeking Answers (2) and `01685` are one card printed twice,
+        // with the text reworded between the two.
+        let card = parse(
+            r#"{"code":"60227","name":"Seeking Answers","pack_code":"har","position":27,
+                "type_code":"event","faction_code":"seeker","xp":2,
+                "duplicated_by":["01685"]}"#,
+        );
+        assert_eq!(card.duplicated_by, ["01685"]);
+    }
+
+    #[test]
+    fn a_subtitle_is_read_where_the_card_has_one() {
+        // `03298` Abbey Tower, one of two locations of that name in the pack.
+        let card = parse(
+            r#"{"code":"03298","name":"Abbey Tower","subname":"The Path is Open",
+                "pack_code":"bsr","position":298,"type_code":"location",
+                "faction_code":"mythos"}"#,
+        );
+        assert_eq!(card.subname.as_deref(), Some("The Path is Open"));
     }
 
     #[test]
