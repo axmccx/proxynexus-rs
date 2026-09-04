@@ -70,6 +70,17 @@ fn back_group_for(type_code: &str, subtype_code: Option<&str>) -> Option<String>
     }
 }
 
+/// The name ArkhamDB prints on the card. `name` alone is the base name, shared
+/// by every level of an upgradeable card, so the level has to be spelled out
+/// for the title to name one card.
+#[cfg(not(target_arch = "wasm32"))]
+fn display_title(name: &str, xp: Option<i64>) -> String {
+    match xp {
+        Some(xp) if xp > 0 => format!("{} ({})", name, xp),
+        _ => name.to_string(),
+    }
+}
+
 /// ArkhamDB keeps both sides of a double-sided card under one `code` -- both
 /// the ordinary flip case and the case where the back is a mechanically distinct card
 #[cfg(not(target_arch = "wasm32"))]
@@ -80,10 +91,12 @@ fn build_cards_and_versions(
     let mut card_versions = Vec::with_capacity(ahdb_cards.len());
 
     for card in ahdb_cards {
+        let title = display_title(&card.name, card.xp);
+
         cards.push(Card {
             id: card.code.clone(),
-            title: card.name.clone(),
-            title_normalized: normalize_title(&card.name),
+            title_normalized: normalize_title(&title),
+            title,
             back_group: back_group_for(&card.type_code, card.subtype_code.as_deref()),
         });
 
@@ -150,6 +163,16 @@ mod tests {
             quantity: Some(1),
             subtype_code: subtype_code.map(|s| s.to_string()),
             hidden: false,
+            xp: None,
+        }
+    }
+
+    fn player_card(code: &str, name: &str, pack_code: &str, position: i64, xp: i64) -> AhdbCard {
+        AhdbCard {
+            pack_code: pack_code.to_string(),
+            position,
+            xp: Some(xp),
+            ..card(code, name, "skill", None)
         }
     }
 
@@ -187,5 +210,30 @@ mod tests {
         let (cards, _) = build_cards_and_versions(raw);
 
         assert_eq!(cards[0].back_group, None);
+    }
+
+    #[test]
+    fn an_upgrade_is_a_card_of_its_own_title() {
+        // Both are named "Deduction" in the API; only the level tells them
+        // apart, and the pipeline groups by title.
+        let raw = vec![
+            player_card("01039", "Deduction", "core", 39, 0),
+            player_card("02150", "Deduction", "tece", 150, 2),
+        ];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards.len(), 2);
+        assert_eq!(cards[0].title, "Deduction");
+        assert_eq!(cards[0].title_normalized, "deduction");
+        assert_eq!(cards[1].title, "Deduction (2)");
+        assert_ne!(cards[1].title_normalized, cards[0].title_normalized);
+    }
+
+    #[test]
+    fn a_card_with_no_level_keeps_its_plain_name() {
+        let raw = vec![card("01001", "Roland Banks", "investigator", None)];
+        let (cards, _) = build_cards_and_versions(raw);
+
+        assert_eq!(cards[0].title, "Roland Banks");
     }
 }

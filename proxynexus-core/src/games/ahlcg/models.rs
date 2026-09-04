@@ -53,6 +53,8 @@ pub struct AhdbCard {
     pub subtype_code: Option<String>,
     #[serde(default)]
     pub hidden: bool,
+    #[serde(default)]
+    pub xp: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -79,6 +81,24 @@ mod tests {
         assert!(!card.hidden);
         assert_eq!(card.quantity, None);
         assert_eq!(card.subtype_code, None);
+        assert_eq!(card.xp, None);
+    }
+
+    #[test]
+    fn an_upgrade_carries_its_level() {
+        // `01039` Deduction is level 0; `02150` is the level 2 of the same
+        // name, and only `xp` says so.
+        let base = parse(
+            r#"{"code":"01039","name":"Deduction","pack_code":"core","position":39,
+                "type_code":"skill","faction_code":"seeker","xp":0}"#,
+        );
+        assert_eq!(base.xp, Some(0));
+
+        let upgrade = parse(
+            r#"{"code":"02150","name":"Deduction","pack_code":"tece","position":150,
+                "type_code":"skill","faction_code":"seeker","xp":2}"#,
+        );
+        assert_eq!(upgrade.xp, Some(2));
     }
 
     #[test]
