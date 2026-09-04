@@ -308,25 +308,32 @@ pub async fn generate_pdf(
             };
 
             if !image_cache.contains_key(&image_key) {
-                let mut image_data = slot.load(image_provider).await?;
+                let raw = slot.load(image_provider).await?;
+                let format = image::guess_format(&raw).unwrap_or(ImageFormat::Jpeg);
 
-                if options.upscale && slot.upscalable() {
-                    image_data = crate::upscale_image(&image_data).await?
-                }
+                let upscaled = if options.upscale && slot.upscalable() {
+                    Some(crate::upscale_image(&raw).await?)
+                } else {
+                    None
+                };
 
-                if slot.has_bleed() {
-                    let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-                    let img = image::load_from_memory(&image_data)?;
-                    let cropped = crate::print_prep::crop_bleed_border(&img, bleed_ratio).to_rgb8();
-                    image_data = crate::print_prep::encode_image(cropped, format)?;
-                } else if bleed_ratio > 0.0 {
-                    let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-                    let img = image::load_from_memory(&image_data)?;
-                    let bled = crate::print_prep::add_uniform_bleed_border(&img, bleed_ratio);
-                    image_data = crate::print_prep::encode_image(bled, format)?;
-                }
-
-                let format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
+                let image_data = if slot.has_bleed() || bleed_ratio > 0.0 {
+                    let img = match upscaled {
+                        Some(rgb) => image::DynamicImage::ImageRgb8(rgb),
+                        None => image::load_from_memory(&raw)?,
+                    };
+                    let prepared = if slot.has_bleed() {
+                        crate::print_prep::crop_bleed_border(&img, bleed_ratio).to_rgb8()
+                    } else {
+                        crate::print_prep::add_uniform_bleed_border(&img, bleed_ratio)
+                    };
+                    crate::print_prep::encode_image(prepared, format)?
+                } else {
+                    match upscaled {
+                        Some(rgb) => crate::print_prep::encode_image(rgb, format)?,
+                        None => raw,
+                    }
+                };
 
                 let image = if format == ImageFormat::Png {
                     Image::from_png(Data::from(image_data), true)

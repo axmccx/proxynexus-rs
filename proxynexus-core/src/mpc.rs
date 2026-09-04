@@ -252,14 +252,15 @@ async fn process_back_group<W: Write + Seek>(
             .as_ref()
             .is_none_or(|c| c.key != current_image_key)
         {
-            let mut image_data = image_provider.get_image_bytes(&current_image_key).await?;
-
-            if options.upscale {
-                image_data = crate::upscale_image(&image_data).await?
-            }
-
+            let image_data = image_provider.get_image_bytes(&current_image_key).await?;
             let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
-            let img = image::load_from_memory(&image_data)?;
+
+            let img = if options.upscale {
+                image::DynamicImage::ImageRgb8(crate::upscale_image(&image_data).await?)
+            } else {
+                image::load_from_memory(&image_data)?
+            };
+
             let bleed_image = if req.source.has_bleed {
                 img.to_rgb8()
             } else {

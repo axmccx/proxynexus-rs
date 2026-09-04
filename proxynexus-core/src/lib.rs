@@ -21,7 +21,7 @@ pub mod query;
 #[cfg(feature = "upscaling")]
 pub mod upscaler;
 
-pub async fn upscale_image(bytes: &[u8]) -> error::Result<Vec<u8>> {
+pub async fn upscale_image(bytes: &[u8]) -> error::Result<image::RgbImage> {
     #[cfg(feature = "upscaling")]
     {
         upscaler::upscale_image(bytes).await
