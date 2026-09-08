@@ -40,10 +40,6 @@ impl GameAdapterInfo for WhcAdapter {
     fn game_name(&self) -> &'static str {
         "Warhammer 40k Conquest"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["whconquest"]
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

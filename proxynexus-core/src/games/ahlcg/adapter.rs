@@ -37,10 +37,6 @@ impl GameAdapterInfo for AhlcgAdapter {
     fn game_name(&self) -> &'static str {
         "Arkham Horror (Chapter 1)"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["ahlcg"]
-    }
 }
 
 // Which generic card back a card needs, classified by `type_code` rather

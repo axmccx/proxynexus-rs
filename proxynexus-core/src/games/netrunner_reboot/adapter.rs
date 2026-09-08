@@ -33,10 +33,6 @@ impl GameAdapterInfo for NetrunnerRebootAdapter {
     fn game_name(&self) -> &'static str {
         "Netrunner Reboot Project"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["netrunner-reboot"]
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

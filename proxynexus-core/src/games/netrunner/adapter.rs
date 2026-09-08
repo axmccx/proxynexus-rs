@@ -33,10 +33,6 @@ impl GameAdapterInfo for NetrunnerAdapter {
     fn game_name(&self) -> &'static str {
         "Netrunner"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["netrunner"]
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

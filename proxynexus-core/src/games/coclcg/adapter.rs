@@ -32,10 +32,6 @@ impl GameAdapterInfo for CocAdapter {
     fn game_name(&self) -> &'static str {
         "Call of Cthulhu"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["coclcg"]
-    }
 }
 
 /// Story cards are the only ones with a back of their own, and each of the

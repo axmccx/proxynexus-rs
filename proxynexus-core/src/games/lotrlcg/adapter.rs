@@ -41,10 +41,6 @@ impl GameAdapterInfo for LotrLcgAdapter {
     fn game_name(&self) -> &'static str {
         "Lord of the Rings LCG"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["lotrlcg"]
-    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]

@@ -33,10 +33,6 @@ impl GameAdapterInfo for AgotAdapter {
     fn game_name(&self) -> &'static str {
         "A Game of Thrones"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["thrones", "agot"]
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

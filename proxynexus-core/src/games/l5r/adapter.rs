@@ -35,10 +35,6 @@ impl GameAdapterInfo for L5rAdapter {
     fn game_name(&self) -> &'static str {
         "Legend of the Five Rings"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["l5r"]
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

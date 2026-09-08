@@ -11,42 +11,15 @@ use crate::card_source::DecklistProvider;
 use crate::error::{ProxyNexusError, Result};
 use crate::games::agot::adapter::AgotAdapter;
 use crate::games::ahlcg::adapter::AhlcgAdapter;
-use crate::games::coclcg::adapter::CocAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
-use crate::games::whconquest::adapter::WhcAdapter;
-use crate::games::whinvasion::adapter::WhiAdapter;
 use serde::de::DeserializeOwned;
 
 pub trait GameAdapterInfo {
     fn game_id(&self) -> &'static str;
     fn game_name(&self) -> &'static str;
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec![]
-    }
-}
-
-pub fn get_game_id_by_subdomain(subdomain: &str) -> Option<&'static str> {
-    let adapters: Vec<Box<dyn GameAdapterInfo>> = vec![
-        Box::new(NetrunnerAdapter::new()),
-        Box::new(NetrunnerRebootAdapter::new()),
-        Box::new(L5rAdapter::new()),
-        Box::new(AgotAdapter::new()),
-        Box::new(LotrLcgAdapter::new()),
-        Box::new(AhlcgAdapter::new()),
-        Box::new(WhiAdapter::new()),
-        Box::new(WhcAdapter::new()),
-        Box::new(CocAdapter::new()),
-    ];
-
-    for adapter in adapters {
-        if adapter.subdomains().contains(&subdomain) {
-            return Some(adapter.game_id());
-        }
-    }
-    None
 }
 
 pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> {

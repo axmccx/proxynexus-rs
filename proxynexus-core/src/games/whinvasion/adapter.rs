@@ -37,10 +37,6 @@ impl GameAdapterInfo for WhiAdapter {
     fn game_name(&self) -> &'static str {
         "Warhammer Invasion"
     }
-
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["whinvasion"]
-    }
 }
 
 /// Turns the flat `whi_full.json` card list into catalog rows.
