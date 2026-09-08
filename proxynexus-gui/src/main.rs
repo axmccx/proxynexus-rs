@@ -232,6 +232,19 @@ async fn hydrate_wasm_db(db: &mut DbStorage) -> anyhow::Result<()> {
 use async_lock::Mutex;
 use std::sync::Arc;
 
+#[cfg(target_arch = "wasm32")]
+fn dismiss_loading_overlay() {
+    let _ = dioxus::document::eval(
+        "
+        const overlay = document.getElementById('app-loading');
+        if (overlay) {
+            overlay.classList.add('is-done');
+            setTimeout(() => overlay.remove(), 250);
+        }
+        ",
+    );
+}
+
 #[component]
 fn App() -> Element {
     let db_signal = use_signal(|| Arc::new(Mutex::new(get_db_storage())));
@@ -256,6 +269,9 @@ fn App() -> Element {
             *GPU_AVAILABLE.write() = proxynexus_core::probe_gpu().await;
 
             db_ready.set(true);
+
+            #[cfg(target_arch = "wasm32")]
+            dismiss_loading_overlay();
         });
     });
 

@@ -57,12 +57,13 @@ When the CLI or desktop app runs for the first time, it synchronizes all card an
 and saves it locally. The app then needs image files of cards, which are added from collection `.pnx` files. 
 The CLI is able to create these collections from a folder of card scan image files, and manage them in the app.
 
+You can find the collections hosted by the web app [here](https://mega.nz/folder/9ltxiTTC#cfs2rMIn9kTocqc9BytKEw).
+If you want to use these with your local instance, skip steps the 1 and 2 below.
+
 ### 1. Acquiring Images
 To build a collection, you need a folder of correctly named card images. 
-The file names in the folder **must** follow the [image file naming conventions](#image-file-naming-convention). 
+The file names in the folder **must** follow the [image file naming conventions](#image-file-naming-convention).
 
-You can find the images used in the collections here: 
-[Google Drive - Proxy Nexus Collections](https://mega.nz/folder/El9QRTLD#sRPGDODVCESlswE6hvpZRA).
 
 ### 2. Building a Collection `.pnx` File
 ```bash

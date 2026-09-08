@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>{app_title}</title>
+        <meta name="description" content="Generate print-and-play PDFs and MakePlayingCards.com-ready images for LCGs and other card games from a card list, set name, or decklist URL.">
+        <meta name="author" content="Alex McCulloch">
+        <meta name="theme-color" content="#f9fafb">
+
+        <link rel="canonical" href="https://proxynexus.net/">
+        <link rel="icon" href="/favicon.ico" sizes="any">
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="Proxy Nexus">
+        <meta property="og:title" content="Proxy Nexus - High Quality Card Game Proxies">
+        <meta property="og:description" content="Generate print-and-play PDFs and MakePlayingCards.com-ready images for LCGs and other card games from a card list, set name, or decklist URL.">
+        <meta property="og:url" content="https://proxynexus.net/">
+        <meta property="og:locale" content="en_US">
+
+        <meta name="twitter:card" content="summary">
+
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "Proxy Nexus",
+            "url": "https://proxynexus.net/",
+            "inLanguage": "en",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Web, Windows, macOS, Linux",
+            "description": "Generate print-and-play PDFs and MakePlayingCards.com-ready images for LCGs and other card games from a card list, set name, or decklist URL.",
+            "author": {
+                "@type": "Person",
+                "name": "Alex McCulloch"
+            },
+            "license": "https://github.com/axmccx/proxynexus-rs/blob/master/LICENSE",
+            "keywords": "card game proxies, living card games, LCG, print and play, MakePlayingCards",
+            "sameAs": [
+                "https://github.com/axmccx/proxynexus-rs"
+            ]
+        }
+        </script>
+
+        <style>
+            #app-loading {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.875rem;
+                background-color: #f9fafb;
+                color: #6b7280;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                opacity: 1;
+                transition: opacity 200ms ease-out;
+            }
+
+            #app-loading.is-done {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            #app-loading .spinner {
+                width: 2.5rem;
+                height: 2.5rem;
+                border: 3px solid #e5e7eb;
+                border-top-color: #2563eb;
+                border-radius: 50%;
+                animation: app-loading-spin 800ms linear infinite;
+            }
+
+            #app-loading .status {
+                font-size: 0.875rem;
+            }
+
+            @keyframes app-loading-spin {
+                to { transform: rotate(360deg); }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                #app-loading .spinner { animation-duration: 2400ms; }
+                #app-loading { transition: none; }
+            }
+        </style>
+{style_include}
+    </head>
+    <body>
+        <div id="app-loading">
+            <div class="spinner"></div>
+            <div class="status">Loading&hellip;</div>
+        </div>
+        <noscript>
+            <p>Proxy Nexus runs in your browser and needs JavaScript enabled to generate proxies.</p>
+        </noscript>
+        <div id="main"></div>
+    </body>
+</html>
