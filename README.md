@@ -21,15 +21,15 @@ The CLI provides features to build and manage card image collections.
   provides the `dx` command for running the GUI
 - **Linux:**
   - `clang` is required to cross-compile C-based dependencies (e.g. `zstd-sys`) for the `wasm32-unknown-unknown` target.
-- **macOS:**
-  - Install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac).
-  - Set the `VULKAN_SDK` environment variable to the installation directory (e.g., `export VULKAN_SDK=/path/to/vulkan/sdk`).
-  - Install OpenSSL: `brew install openssl`
+- **macOS:** 
+  - Xcode command line tools (`xcode-select --install`).
+- **Windows:** [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) with the
+  "Desktop development with C++" workload, which supplies the MSVC linker. WebView2 ships with Windows 11.
 
 
 ### Running the Web App Locally
 ```bash
-dx serve --platform web
+dx serve --platform web --release
 ```
 The web app fetches images from a Cloudflare R2 bucket, even when running locally, therefore it does not work offline. 
 This is mostly for testing.
@@ -37,11 +37,12 @@ This is mostly for testing.
 
 ### Running the Desktop App Locally
 ```bash
-dx serve
+dx serve --release
 ```
 The desktop app runs locally, including its database and image file collections. You'll notice on first start that it won't
 know of any card names or sets. **To make the Desktop app usable, you must first use the CLI to load a local card collection.**
 
+You can omit `--release` to build faster, but the app will run more slowly.
 
 ### Building the CLI
 ```bash
