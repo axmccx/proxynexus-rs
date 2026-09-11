@@ -1,5 +1,9 @@
 use crate::error::{ProxyNexusError, Result};
-use image::{DynamicImage, GenericImageView, ImageFormat, RgbImage, imageops::FilterType};
+use image::codecs::png::{CompressionType, FilterType as PngFilter, PngEncoder};
+use image::{
+    DynamicImage, ExtendedColorType, GenericImageView, ImageEncoder, ImageFormat, RgbImage,
+    imageops::FilterType,
+};
 
 const CUT_WIDTH: f32 = 744.0;
 const CUT_HEIGHT: f32 = 1038.0;
@@ -138,21 +142,33 @@ fn generate_bleed(src: &RgbImage, config: &BleedConfig) -> RgbImage {
     image::ImageBuffer::from_raw(config.output_width, config.output_height, dest_raw).unwrap()
 }
 
-pub fn encode_image(bordered: RgbImage, format: ImageFormat) -> Result<Vec<u8>> {
+pub fn encode_image(img: &RgbImage, format: ImageFormat, optimize: bool) -> Result<Vec<u8>> {
     if format == ImageFormat::Png {
-        let mut png_bytes = std::io::Cursor::new(Vec::new());
-        DynamicImage::ImageRgb8(bordered).write_to(&mut png_bytes, ImageFormat::Png)?;
-        return Ok(png_bytes.into_inner());
+        let compression = if optimize {
+            CompressionType::Best
+        } else {
+            CompressionType::Fast
+        };
+        let mut png_bytes = Vec::new();
+        PngEncoder::new_with_quality(&mut png_bytes, compression, PngFilter::Adaptive)
+            .write_image(
+                img.as_raw(),
+                img.width(),
+                img.height(),
+                ExtendedColorType::Rgb8,
+            )?;
+        return Ok(png_bytes);
     }
 
     let mut jpeg_bytes = Vec::new();
-    let encoder = jpeg_encoder::Encoder::new(&mut jpeg_bytes, 95);
+    let mut encoder = jpeg_encoder::Encoder::new(&mut jpeg_bytes, 95);
+    encoder.set_optimized_huffman_tables(optimize);
 
     encoder
         .encode(
-            bordered.as_raw(),
-            bordered.width() as u16,
-            bordered.height() as u16,
+            img.as_raw(),
+            img.width() as u16,
+            img.height() as u16,
             jpeg_encoder::ColorType::Rgb,
         )
         .map_err(|e| ProxyNexusError::Internal(e.to_string()))?;
@@ -359,6 +375,25 @@ mod tests {
         // The library's own sizes, which the upscaler reads rather than writes.
         assert_eq!(cap(1568, 2140, max_upscale_size(true)), (1568, 2140));
         assert_eq!(cap(1632, 2220, max_upscale_size(true)), (1632, 2220));
+    }
+
+    #[test]
+    fn optimizing_changes_the_bytes_but_not_the_picture() {
+        let img = RgbImage::from_fn(200, 280, |x, y| {
+            image::Rgb([(x % 256) as u8, (y % 256) as u8, ((x * y) % 256) as u8])
+        });
+
+        for format in [ImageFormat::Jpeg, ImageFormat::Png] {
+            let standard = encode_image(&img, format, false).unwrap();
+            let optimized = encode_image(&img, format, true).unwrap();
+
+            assert_ne!(standard, optimized, "{format:?}");
+            assert_eq!(
+                image::load_from_memory(&standard).unwrap().to_rgb8(),
+                image::load_from_memory(&optimized).unwrap().to_rgb8(),
+                "{format:?}"
+            );
+        }
     }
 
     #[test]

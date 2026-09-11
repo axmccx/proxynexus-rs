@@ -595,8 +595,9 @@ async fn handle_generate(
                     {
                         let bordered = proxynexus_core::print_prep::add_mpc_bleed_border(&img);
                         if let Ok(encoded) = proxynexus_core::print_prep::encode_image(
-                            bordered,
+                            &bordered,
                             image::ImageFormat::Png,
+                            false,
                         ) {
                             let file_name = path.file_name().unwrap();
                             let out_path = output_dir.join(file_name).with_extension("png");

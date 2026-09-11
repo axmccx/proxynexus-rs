@@ -328,10 +328,10 @@ pub async fn generate_pdf(
                     } else {
                         crate::print_prep::add_uniform_bleed_border(&img, bleed_ratio)
                     };
-                    crate::print_prep::encode_image(prepared, format)?
+                    crate::print_prep::encode_image(&prepared, format, false)?
                 } else {
                     match upscaled {
-                        Some(rgb) => crate::print_prep::encode_image(rgb, format)?,
+                        Some(rgb) => crate::print_prep::encode_image(&rgb, format, false)?,
                         None => raw,
                     }
                 };

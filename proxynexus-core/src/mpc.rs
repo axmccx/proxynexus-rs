@@ -143,7 +143,11 @@ pub async fn generate_mpc_zip(
         } else {
             let format = image::guess_format(&bytes).unwrap_or(ImageFormat::Jpeg);
             let img = image::load_from_memory(&bytes)?;
-            print_prep::encode_image(print_prep::add_mpc_bleed_border(&img), format)?
+            encode_for_mpc(
+                &print_prep::add_mpc_bleed_border(&img),
+                format,
+                back.asset_id,
+            )?
         };
 
         zip.start_file(back.file, file_options)?;
@@ -231,14 +235,9 @@ async fn process_back_group<W: Write + Seek>(
 
     requests.sort_by(|a, b| a.source.key.cmp(&b.source.key));
 
-    enum PreparedImage {
-        Source(Vec<u8>),
-        Pixels(image::RgbImage),
-    }
-
     struct CachedImage {
         key: String,
-        prepared: PreparedImage,
+        bytes: Vec<u8>,
         format: ImageFormat,
     }
 
@@ -261,11 +260,11 @@ async fn process_back_group<W: Write + Seek>(
             let image_format = image::guess_format(&image_data).unwrap_or(ImageFormat::Jpeg);
 
             // Image doesn't require any modifications, so use the bytes rather than decode and re-encode them.
-            let prepared = if req.source.has_bleed
+            let bytes = if req.source.has_bleed
                 && !options.upscale
                 && matches!(image_format, ImageFormat::Jpeg | ImageFormat::Png)
             {
-                PreparedImage::Source(image_data)
+                image_data
             } else {
                 let img = if options.upscale {
                     let max = print_prep::max_upscale_size(req.source.has_bleed);
@@ -274,16 +273,17 @@ async fn process_back_group<W: Write + Seek>(
                     image::load_from_memory(&image_data)?
                 };
 
-                PreparedImage::Pixels(if req.source.has_bleed {
+                let pixels = if req.source.has_bleed {
                     img.to_rgb8()
                 } else {
                     print_prep::add_mpc_bleed_border(&img)
-                })
+                };
+                encode_for_mpc(&pixels, image_format, &current_image_key)?
             };
 
             current_cache = Some(CachedImage {
                 key: current_image_key.clone(),
-                prepared,
+                bytes,
                 format: image_format,
             });
             current_file = None;
@@ -324,12 +324,7 @@ async fn process_back_group<W: Write + Seek>(
                     SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
                 zip.start_file(&filename, file_options)?;
-                match &cached.prepared {
-                    PreparedImage::Source(bytes) => zip.write_all(bytes)?,
-                    PreparedImage::Pixels(img) => {
-                        zip.write_all(&print_prep::encode_image(img.clone(), cached.format)?)?
-                    }
-                }
+                zip.write_all(&cached.bytes)?;
                 current_file = Some(filename.clone());
                 filename
             }
@@ -361,6 +356,26 @@ async fn process_back_group<W: Write + Seek>(
     }
 
     Ok(())
+}
+
+/// MakePlayingCards' uploader seems to use Cloudflare WAF, which scans the raw bytes of uploaded image.
+/// It appears that if a file includes the byte sequence `chr(` (ignoring case), it'll fail to upload.
+/// Presumably because it's seen as a SQL injection attempt. mpc_rejects checks for this sequence of bytes,
+/// and if present, we re-encode the image with `optimize` enabled to change the bytes
+/// without changing the actual image.
+fn mpc_rejects(bytes: &[u8]) -> bool {
+    bytes
+        .windows(4)
+        .any(|w| w[..3].eq_ignore_ascii_case(b"chr") && w[3] == b'(')
+}
+
+fn encode_for_mpc(img: &image::RgbImage, format: ImageFormat, source: &str) -> Result<Vec<u8>> {
+    let bytes = print_prep::encode_image(img, format, false)?;
+    if mpc_rejects(&bytes) {
+        info!("MPC would reject {}, re-encoding", source);
+        return print_prep::encode_image(img, format, true);
+    }
+    Ok(bytes)
 }
 
 /// Builds the `order.xml` the mpc-autofill desktop tool reads. Paths are
@@ -549,7 +564,7 @@ mod tests {
             let img = image::RgbImage::from_fn(744, 1038, |x, y| {
                 image::Rgb([(x % 256) as u8, (y % 256) as u8, ((x * y) % 256) as u8])
             });
-            print_prep::encode_image(img, ImageFormat::Jpeg)
+            print_prep::encode_image(&img, ImageFormat::Jpeg, false)
         }
     }
 
