@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source not "./public/instructions.html";
 
 @theme {
   --animate-border: border 4s linear infinite;

@@ -38,7 +38,7 @@ pub fn AutofillInfo(props: AutofillInfoProps) -> Element {
                     div {
                         h4 { class: "font-semibold mb-1", "Manual" }
                         p { class: "text-gray-600 leading-relaxed",
-                            "Requires you to upload the images and setup the order yourself. Refer to the steps on the instructions page."
+                            "Requires you to upload the images and set up the order yourself. Refer to the steps on the instructions page."
                         }
                     }
                     div {
@@ -53,7 +53,7 @@ pub fn AutofillInfo(props: AutofillInfoProps) -> Element {
                                 class: "text-blue-500 hover:text-blue-700 hover:underline",
                                 "mpc-autofill desktop tool"
                             }
-                            ", which uploads and places every images for you."
+                            ", which uploads and places every image for you."
                         }
                     }
                 }

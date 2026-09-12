@@ -35,11 +35,11 @@ pub fn SidesInfo(props: SidesInfoProps) -> Element {
                 div { class: "flex flex-col gap-4 text-sm mt-2",
                     div {
                         h4 { class: "font-semibold", "Single" }
-                        p { class: "text-gray-600", "Includes cards with its own back-side image, next to its front. The game's standard backs are not included." }
+                        p { class: "text-gray-600", "Includes cards with their own back-side image, next to their front. The game's standard backs are not included." }
                     }
                     div {
                         h4 { class: "font-semibold", "Double" }
-                        p { class: "text-gray-600", "Includes all cards backs on every even numbered page. Set the printer to duplex, flipping on the long edge." }
+                        p { class: "text-gray-600", "Includes all card backs on every even-numbered page. Set the printer to duplex, flipping on the long edge." }
                     }
                 }
             }

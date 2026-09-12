@@ -47,7 +47,7 @@ pub fn PrintLayoutInfo(props: PrintLayoutInfoProps) -> Element {
                     }
                     div {
                         h4 { class: "font-semibold", "Bleed" }
-                        p { class: "text-gray-600", "Adds a bleed border around each card, up to 1mm, while preserving their original size." }
+                        p { class: "text-gray-600", "Adds a bleed border around each card, up to 1mm, while preserving its original size." }
                     }
                 }
             }

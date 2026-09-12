@@ -616,15 +616,6 @@ pub fn ExportControls(props: ExportControlsProps) -> Element {
                             "donating"
                         }
                     }
-                    div { class: "hidden md:block text-sm text-center text-gray-600 pb-1",
-                        "Issues? Report it "
-                        a {
-                            href: "https://github.com/axmccx/proxynexus-rs/issues/new",
-                            target: "_blank",
-                            class: "text-blue-500 hover:text-blue-700 hover:underline",
-                            "here"
-                        }
-                    }
                 }
 
                 if let Some(p) = (props.progress)() {
