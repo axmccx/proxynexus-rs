@@ -16,20 +16,20 @@ The CLI provides features to build and manage card image collections.
 ## Building & Running
 
 ### Prerequisites
-- [Rust](https://rust-lang.org/learn/get-started/), 
-- [dioxus-cli](https://dioxuslabs.com/learn/0.7/getting_started/) 
-  provides the `dx` command for running the GUI
+- [Rust](https://rust-lang.org/learn/get-started/) 1.92 or newer.
+- [dioxus-cli](https://dioxuslabs.com/learn/0.7/getting_started/)
+  **version 0.7.5**, provides the `dx` command for running the GUI
 - **Linux:**
   - `clang` is required to cross-compile C-based dependencies (e.g. `zstd-sys`) for the `wasm32-unknown-unknown` target.
 - **macOS:**
-  - Install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac).
-  - Set the `VULKAN_SDK` environment variable to the installation directory (e.g., `export VULKAN_SDK=/path/to/vulkan/sdk`).
-  - Install OpenSSL: `brew install openssl`
+  - Xcode command line tools (`xcode-select --install`).
+- **Windows:** [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) with the
+  "Desktop development with C++" workload, which supplies the MSVC linker.
 
 
 ### Running the Web App Locally
 ```bash
-dx serve --platform web
+dx serve --platform web --profile local
 ```
 The web app fetches images from a Cloudflare R2 bucket, even when running locally, therefore it does not work offline. 
 This is mostly for testing.
@@ -37,17 +37,19 @@ This is mostly for testing.
 
 ### Running the Desktop App Locally
 ```bash
-dx serve
+dx serve --profile local
 ```
 The desktop app runs locally, including its database and image file collections. You'll notice on first start that it won't
 know of any card names or sets. **To make the Desktop app usable, you must first use the CLI to load a local card collection.**
 
+The `local` profile is an optimized build without the `release` profile's file size optimizations, which are slow to build.
+You can omit `--profile local` to build faster, but the app will run more slowly.
 
 ### Building the CLI
 ```bash
-cargo build -p proxynexus-cli --release
+cargo build -p proxynexus-cli --profile local
 ```
-The built binary will be located at `./target/release/proxynexus-cli` (or `.\target\release\proxynexus-cli.exe` on Windows)
+The built binary will be located at `./target/local/proxynexus-cli` (or `.\target\local\proxynexus-cli.exe` on Windows)
 
 ---
 
@@ -277,9 +279,9 @@ making its database effectively read-only.
     rclone sync ~/.proxynexus/collections r2-bucket-name:proxynexus-collections --progress
     ```
 
-3.  Export the local DB, containing the new collection metadata, as a new `init.sql` payload that the web app hydrates from.
+3.  Export the local DB, containing the new collection metadata, as a new `init.sql.gz` payload that the web app hydrates from.
     ```bash
-    proxynexus-cli export --output proxynexus-gui/public/init.sql
+    proxynexus-cli export --output proxynexus-gui/public/init.sql.gz
     ```
 
 4.  Run the web app locally (`dx serve --platform web`) to ensure the new `init.sql` loads correctly
