@@ -37,7 +37,6 @@ impl GameAdapterInfo for Agot1stAdapter {
     fn game_name(&self) -> &'static str {
         "A Game of Thrones 1st Edition"
     }
-
 }
 
 /// Turns the flat `agot1st_cards.json` card list into catalog rows.
