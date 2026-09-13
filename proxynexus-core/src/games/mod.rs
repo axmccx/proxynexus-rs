@@ -21,6 +21,7 @@ use serde::de::DeserializeOwned;
 pub trait GameAdapterInfo {
     fn game_id(&self) -> &'static str;
     fn game_name(&self) -> &'static str;
+}
 
 pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> {
     match game_id {
