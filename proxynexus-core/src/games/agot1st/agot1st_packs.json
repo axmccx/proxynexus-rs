@@ -1,0 +1,634 @@
+[
+  {
+    "code": "core",
+    "name": "Core",
+    "position": 1,
+    "total_cards": 274,
+    "total_unique": 214,
+    "available": "2008-11-12"
+  },
+  {
+    "code": "kings-of-the-sea",
+    "name": "Kings of the Sea",
+    "position": 2,
+    "total_cards": 158,
+    "total_unique": 54,
+    "available": "2009-07-24"
+  },
+  {
+    "code": "princes-of-the-sun",
+    "name": "Princes of the Sun",
+    "position": 3,
+    "total_cards": 120,
+    "total_unique": 60,
+    "available": null
+  },
+  {
+    "code": "lords-of-winter",
+    "name": "Lords of Winter",
+    "position": 4,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2010-06-11"
+  },
+  {
+    "code": "kings-of-the-storm",
+    "name": "Kings of the Storm",
+    "position": 5,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2010-09-24"
+  },
+  {
+    "code": "queen-of-dragons",
+    "name": "Queen of Dragons",
+    "position": 6,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2011-04-27"
+  },
+  {
+    "code": "lions-of-the-rock",
+    "name": "Lions of the Rock",
+    "position": 7,
+    "total_cards": 165,
+    "total_unique": 55,
+    "available": "2012-01-06"
+  },
+  {
+    "code": "the-war-of-five-kings",
+    "name": "The War of Five Kings",
+    "position": 8,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-02-19"
+  },
+  {
+    "code": "ancient-enemies",
+    "name": "Ancient Enemies",
+    "position": 9,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-03-20"
+  },
+  {
+    "code": "sacred-bonds",
+    "name": "Sacred Bonds",
+    "position": 10,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-04-20"
+  },
+  {
+    "code": "epic-battles",
+    "name": "Epic Battles",
+    "position": 11,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-05-20"
+  },
+  {
+    "code": "battle-of-ruby-ford",
+    "name": "Battle of Ruby Ford",
+    "position": 12,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-06-20"
+  },
+  {
+    "code": "calling-the-banners",
+    "name": "Calling the Banners",
+    "position": 13,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-07-20"
+  },
+  {
+    "code": "a-song-of-summer",
+    "name": "A Song of Summer",
+    "position": 14,
+    "total_cards": 42,
+    "total_unique": 20,
+    "available": "2008-10-20"
+  },
+  {
+    "code": "the-winds-of-winter",
+    "name": "The Winds of Winter",
+    "position": 15,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-11-20"
+  },
+  {
+    "code": "a-change-of-seasons",
+    "name": "A Change of Seasons",
+    "position": 16,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2008-12-10"
+  },
+  {
+    "code": "the-raven-s-song",
+    "name": "The Raven's Song",
+    "position": 17,
+    "total_cards": 42,
+    "total_unique": 20,
+    "available": "2009-01-22"
+  },
+  {
+    "code": "refugees-of-war",
+    "name": "Refugees of War",
+    "position": 18,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2009-02-11"
+  },
+  {
+    "code": "scattered-armies",
+    "name": "Scattered Armies",
+    "position": 19,
+    "total_cards": 38,
+    "total_unique": 20,
+    "available": "2009-03-16"
+  },
+  {
+    "code": "city-of-secrets",
+    "name": "City of Secrets",
+    "position": 20,
+    "total_cards": 40,
+    "total_unique": 20,
+    "available": "2009-05-29"
+  },
+  {
+    "code": "a-time-of-trials",
+    "name": "A Time of Trials",
+    "position": 21,
+    "total_cards": 38,
+    "total_unique": 20,
+    "available": "2009-06-29"
+  },
+  {
+    "code": "the-tower-of-the-hand",
+    "name": "The Tower of the Hand",
+    "position": 22,
+    "total_cards": 36,
+    "total_unique": 20,
+    "available": "2009-07-22"
+  },
+  {
+    "code": "tales-from-the-red-keep",
+    "name": "Tales from the Red Keep",
+    "position": 23,
+    "total_cards": 34,
+    "total_unique": 20,
+    "available": "2009-09-02"
+  },
+  {
+    "code": "secrets-and-spies",
+    "name": "Secrets and Spies",
+    "position": 24,
+    "total_cards": 38,
+    "total_unique": 20,
+    "available": "2009-10-01"
+  },
+  {
+    "code": "the-battle-of-blackwater-bay",
+    "name": "The Battle of Blackwater Bay",
+    "position": 25,
+    "total_cards": 36,
+    "total_unique": 20,
+    "available": "2009-10-29"
+  },
+  {
+    "code": "wolves-of-the-north",
+    "name": "Wolves of the North",
+    "position": 26,
+    "total_cards": 42,
+    "total_unique": 20,
+    "available": "2010-02-01"
+  },
+  {
+    "code": "beyond-the-wall",
+    "name": "Beyond the Wall",
+    "position": 27,
+    "total_cards": 46,
+    "total_unique": 20,
+    "available": "2010-02-25"
+  },
+  {
+    "code": "a-sword-in-the-darkness",
+    "name": "A Sword in the Darkness",
+    "position": 28,
+    "total_cards": 44,
+    "total_unique": 20,
+    "available": "2010-03-25"
+  },
+  {
+    "code": "the-wildling-horde",
+    "name": "The Wildling Horde",
+    "position": 29,
+    "total_cards": 44,
+    "total_unique": 20,
+    "available": "2010-04-22"
+  },
+  {
+    "code": "a-king-in-the-north",
+    "name": "A King in the North",
+    "position": 30,
+    "total_cards": 44,
+    "total_unique": 20,
+    "available": "2010-05-20"
+  },
+  {
+    "code": "return-of-the-others",
+    "name": "Return of the Others",
+    "position": 31,
+    "total_cards": 38,
+    "total_unique": 20,
+    "available": "2010-07-12"
+  },
+  {
+    "code": "illyrio-s-gift",
+    "name": "Illyrio's Gift",
+    "position": 32,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-08-12"
+  },
+  {
+    "code": "rituals-of-r-hllor",
+    "name": "Rituals of R'hllor",
+    "position": 33,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-09-10"
+  },
+  {
+    "code": "mountains-of-the-moon",
+    "name": "Mountains of the Moon",
+    "position": 34,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-10-15"
+  },
+  {
+    "code": "a-song-of-silence",
+    "name": "A Song of Silence",
+    "position": 35,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-11-05"
+  },
+  {
+    "code": "of-snakes-and-sand",
+    "name": "Of Snakes and Sand",
+    "position": 36,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2010-12-06"
+  },
+  {
+    "code": "dreadfort-betrayal",
+    "name": "Dreadfort Betrayal",
+    "position": 37,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-01-21"
+  },
+  {
+    "code": "gates-of-the-citadel",
+    "name": "Gates of the Citadel",
+    "position": 38,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-04-15"
+  },
+  {
+    "code": "forging-the-chain",
+    "name": "Forging the Chain",
+    "position": 39,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-05-18"
+  },
+  {
+    "code": "called-by-the-conclave",
+    "name": "Called by the Conclave",
+    "position": 40,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-06-17"
+  },
+  {
+    "code": "the-isle-of-ravens",
+    "name": "The Isle of Ravens",
+    "position": 41,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-07-14"
+  },
+  {
+    "code": "mask-of-the-archmaester",
+    "name": "Mask of the Archmaester",
+    "position": 42,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-08-10"
+  },
+  {
+    "code": "here-to-serve",
+    "name": "Here to Serve",
+    "position": 43,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-09-23"
+  },
+  {
+    "code": "the-tourney-for-the-hand",
+    "name": "The Tourney for the Hand",
+    "position": 44,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-10-19"
+  },
+  {
+    "code": "the-grand-melee",
+    "name": "The Grand Melee",
+    "position": 45,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-11-10"
+  },
+  {
+    "code": "on-dangerous-grounds",
+    "name": "On Dangerous Grounds",
+    "position": 46,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2011-12-15"
+  },
+  {
+    "code": "where-loyalty-lies",
+    "name": "Where Loyalty Lies",
+    "position": 47,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-01-06"
+  },
+  {
+    "code": "trial-by-combat",
+    "name": "Trial By Combat",
+    "position": 48,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-02-15"
+  },
+  {
+    "code": "a-poisoned-spear",
+    "name": "A Poisoned Spear",
+    "position": 49,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-03-21"
+  },
+  {
+    "code": "valar-morghulis",
+    "name": "Valar Morghulis",
+    "position": 50,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-05-09"
+  },
+  {
+    "code": "valar-dohaeris",
+    "name": "Valar Dohaeris",
+    "position": 51,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-06-14"
+  },
+  {
+    "code": "chasing-dragons",
+    "name": "Chasing Dragons",
+    "position": 52,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-07-18"
+  },
+  {
+    "code": "a-harsh-mistress",
+    "name": "A Harsh Mistress",
+    "position": 53,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-08-17"
+  },
+  {
+    "code": "the-house-of-black-and-white",
+    "name": "The House of Black and White",
+    "position": 54,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-09-27"
+  },
+  {
+    "code": "a-roll-of-the-dice",
+    "name": "A Roll of the Dice",
+    "position": 55,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2012-10-26"
+  },
+  {
+    "code": "reach-of-the-kraken",
+    "name": "Reach of the Kraken",
+    "position": 56,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-02-01"
+  },
+  {
+    "code": "the-grand-fleet",
+    "name": "The Grand Fleet",
+    "position": 57,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-02-28"
+  },
+  {
+    "code": "the-pirates-of-lys",
+    "name": "The Pirates of Lys",
+    "position": 58,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-03-21"
+  },
+  {
+    "code": "a-turn-of-the-tide",
+    "name": "A Turn of the Tide",
+    "position": 59,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-04-25"
+  },
+  {
+    "code": "the-captain-s-command",
+    "name": "The Captain's Command",
+    "position": 60,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-05-24"
+  },
+  {
+    "code": "a-journey-s-end",
+    "name": "A Journey's End",
+    "position": 61,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-06-27"
+  },
+  {
+    "code": "the-banners-gather",
+    "name": "The Banners Gather",
+    "position": 62,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-08-16"
+  },
+  {
+    "code": "fire-and-ice",
+    "name": "Fire and Ice",
+    "position": 63,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-09-27"
+  },
+  {
+    "code": "the-kingsguard",
+    "name": "The Kingsguard",
+    "position": 64,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-10-31"
+  },
+  {
+    "code": "the-horn-that-wakes",
+    "name": "The Horn that Wakes",
+    "position": 65,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-11-22"
+  },
+  {
+    "code": "forgotten-fellowship",
+    "name": "Forgotten Fellowship",
+    "position": 66,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2013-12-13"
+  },
+  {
+    "code": "a-hidden-agenda",
+    "name": "A Hidden Agenda",
+    "position": 67,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-01-16"
+  },
+  {
+    "code": "spoils-of-war",
+    "name": "Spoils of War",
+    "position": 68,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-03-17"
+  },
+  {
+    "code": "the-champion-s-purse",
+    "name": "The Champion's Purse",
+    "position": 69,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-04-18"
+  },
+  {
+    "code": "fire-made-flesh",
+    "name": "Fire Made Flesh",
+    "position": 70,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-05-15"
+  },
+  {
+    "code": "ancestral-home",
+    "name": "Ancestral Home",
+    "position": 71,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-06-20"
+  },
+  {
+    "code": "the-prize-of-the-north",
+    "name": "The Prize of the North",
+    "position": 72,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-07-24"
+  },
+  {
+    "code": "a-dire-message",
+    "name": "A Dire Message",
+    "position": 73,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2014-08-21"
+  },
+  {
+    "code": "secrets-and-schemes",
+    "name": "Secrets and Schemes",
+    "position": 74,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-01-05"
+  },
+  {
+    "code": "a-deadly-game",
+    "name": "A Deadly Game",
+    "position": 75,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-01-28"
+  },
+  {
+    "code": "the-valemen",
+    "name": "The Valemen",
+    "position": 76,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-02-20"
+  },
+  {
+    "code": "a-time-for-wolves",
+    "name": "A Time for Wolves",
+    "position": 77,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-04-03"
+  },
+  {
+    "code": "house-of-talons",
+    "name": "House of Talons",
+    "position": 78,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-04-16"
+  },
+  {
+    "code": "the-blue-is-calling",
+    "name": "The Blue is Calling",
+    "position": 79,
+    "total_cards": 60,
+    "total_unique": 20,
+    "available": "2015-05-21"
+  }
+]
