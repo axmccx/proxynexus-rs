@@ -38,9 +38,6 @@ impl GameAdapterInfo for Agot1stAdapter {
         "A Game of Thrones 1st Edition"
     }
 
-    fn subdomains(&self) -> Vec<&'static str> {
-        vec!["agot1st"]
-    }
 }
 
 /// Turns the flat `agot1st_cards.json` card list into catalog rows.
@@ -60,10 +57,6 @@ fn build_cards_and_versions(
             title: card.name.clone(),
             title_normalized: normalize_title(&card.name),
             back_group: Some(AGOT1ST_BACK_GROUP.to_string()),
-            rarity: None,
-            linked_card_code: None,
-            linked_card_name: None,
-            linked_card_back_group: None,
         });
 
         card_versions.push(CardVersion {
