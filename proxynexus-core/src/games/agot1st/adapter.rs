@@ -84,11 +84,13 @@ impl CatalogProvider for Agot1stAdapter {
     async fn fetch_catalog(&self) -> Result<Catalog> {
         // Load all packs (sets/expansions). All data is stored in a
         // single JSON file.
-        let agot1st_packs: Vec<Agot1stPack> = serde_json::from_str(include_str!("agot1st_packs.json"))?;
+        let agot1st_packs: Vec<Agot1stPack> =
+            serde_json::from_str(include_str!("agot1st_packs.json"))?;
 
         // Load every card across every pack. `agot1st_full.json` is one bulk
         // file covering the whole catalog.
-        let agot1st_cards: Vec<Agot1stCard> = serde_json::from_str(include_str!("agot1st_cards.json"))?;
+        let agot1st_cards: Vec<Agot1stCard> =
+            serde_json::from_str(include_str!("agot1st_cards.json"))?;
 
         let packs: Vec<Pack> = agot1st_packs
             .into_iter()
@@ -116,7 +118,13 @@ mod tests {
     use super::*;
     use crate::games::agot1st::models::Agot1stCard;
 
-    fn card(unique_id: &str, name: &str, pack_code: &str, card_type: &str, house: &str) -> Agot1stCard {
+    fn card(
+        unique_id: &str,
+        name: &str,
+        pack_code: &str,
+        card_type: &str,
+        house: &str,
+    ) -> Agot1stCard {
         Agot1stCard {
             unique_id: unique_id.to_string(),
             name: name.to_string(),
@@ -148,7 +156,6 @@ mod tests {
         assert_eq!(versions[0].card_id, "16120");
         assert_eq!(versions[0].pack_id, "a-journey-s-end");
     }
-
 
     #[test]
     fn card_quantity_is_carried_through_when_present() {

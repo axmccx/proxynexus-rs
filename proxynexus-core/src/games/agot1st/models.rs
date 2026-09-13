@@ -52,7 +52,7 @@ pub struct Agot1stCard {
     /// Card type. Options: Agenda, Attachment, Character, Event, House, Location, Plot.
     pub card_type: String,
     /// Card's house. Options: Baratheon, Greyjoy, Lannister, Martell,
-    ///  Neutral, Stark, Targaryen. Can also be a comma separated list 
+    ///  Neutral, Stark, Targaryen. Can also be a comma separated list
     ///  of multiple houses (e.g. "Stark,Targaryen").
     pub house: String,
     /// How many copies of this card are in a playset. Sent by the source
