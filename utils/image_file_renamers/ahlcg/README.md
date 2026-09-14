@@ -72,14 +72,16 @@ Drive source first, because SCED needs its output to know what to skip.
 uv run rename.py "~/Downloads/Arkaham Horror LCG/Chapter 1" --dry-run      # preview
 uv run rename.py "~/Downloads/Arkaham Horror LCG/Chapter 1" -o hq_renamed
 uv run fix_orientation.py hq_renamed -o hq_faced
-uv run ../../corner_infill/corner_infill_arc.py hq_faced \
+uv run ../../corner_infill/corner_infill_arc.py hq_faced -o hq_infilled
+uv run ../../ahlcg_edge_trim/ahlcg_edge_trim.py hq_infilled \
     -o ~/Pictures/proxynexus_collections/ahlcg/ahlcg-hq
 
 # 2. SCED, filling what Google Drive did not reach -> ahlcg-tts
 uv run rename_tts.py ~/ah-images --exclude hq_renamed --dry-run            # preview
 uv run rename_tts.py ~/ah-images --exclude hq_renamed -o tts_cut
 uv run fix_orientation.py tts_cut -o tts_faced
-uv run ../../corner_infill/corner_infill_arc.py tts_faced \
+uv run ../../corner_infill/corner_infill_arc.py tts_faced -o tts_infilled
+uv run ../../ahlcg_edge_trim/ahlcg_edge_trim.py tts_infilled \
     -o ~/Pictures/proxynexus_collections/ahlcg/ahlcg-tts
 ```
 
@@ -107,6 +109,32 @@ rounded corners. It matters because Proxy Nexus builds bleed by repeating the ou
 a black wedge left in a corner becomes the whole bleed. Nearly all the work is on the SCED images —
 3263 of 5916 have a corner to fill, against 3 of 491 from Google Drive, which were cut to the card
 and so hold the card's own border colour there.
+
+**[ahlcg_edge_trim.py](../../ahlcg_edge_trim/README.md)** removes the same ground where it runs
+along a straight edge instead of sitting in a corner. **Both steps are needed and neither covers
+the other.** `corner_infill_arc.py` looks for a wedge outside a rounded corner; a SCED card that
+does not fill its grid cell also carries a strip 1-6px wide down a whole side, and the corner arcs
+are only its ends. Left in place it becomes the whole bleed on that side, which is the black line
+MPC rejects an order for and reports as insufficient bleed.
+
+It is the last step because it is the one that decides where the card ends. Run it after
+`corner_infill_arc.py`, which is the order these collections were measured and corrected in.
+
+| Collection | Images | With a strip |
+|---|---|---|
+| `ahlcg-tts` | 5916 | 1056 |
+| `ahlcg-ch2` | 585 | 28 |
+| `ahlcg-hq` | 491 | 2 |
+
+18% of the SCED collection, spread over 59 of its 68 packs rather than concentrated in one — the
+Dunwich cycle runs to 88%. The Google Drive images were cut to the card and have no sheet ground to
+carry, so its two are worth looking at rather than trusting.
+
+A collection built before this step existed does not have to be rebuilt to get it: the script reads
+a folder of finished images and writes a corrected copy, so pointing it at the collection itself
+works. `--no-copy-through` then writes only the files that changed, which is what to compare
+against the collection they came from. The same goes for `ahlcg-ch2`, which
+[is not built here](#the-google-drive-source) but carries the same ground.
 
 ## Finishing the face check
 
