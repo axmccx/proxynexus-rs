@@ -53,8 +53,8 @@ fn build_cards_and_versions(
     for card in agot1st_cards {
         cards.push(Card {
             id: card.unique_id.clone(),
-            title: card.name.clone(),
-            title_normalized: normalize_title(&card.name),
+            title: card.label.clone(),
+            title_normalized: normalize_title(&card.label),
             back_group: Some(AGOT1ST_BACK_GROUP.to_string()),
         });
 
@@ -113,6 +113,7 @@ mod tests {
     fn card(
         unique_id: &str,
         name: &str,
+        label: &str,
         pack_code: &str,
         card_type: &str,
         house: &str,
@@ -120,6 +121,7 @@ mod tests {
         Agot1stCard {
             unique_id: unique_id.to_string(),
             name: name.to_string(),
+            label: label.to_string(),
             pack_code: pack_code.to_string(),
             card_type: card_type.to_string(),
             house: house.to_string(),
@@ -134,6 +136,7 @@ mod tests {
         // A Journey's End (pack_code a-journey-s-end).
         let (cards, versions) = build_cards_and_versions(vec![card(
             "16120",
+            "Favored by the Warrior",
             "Favored by the Warrior",
             "a-journey-s-end",
             "Event",
@@ -151,7 +154,14 @@ mod tests {
 
     #[test]
     fn card_quantity_is_carried_through_when_present() {
-        let mut raw = card("13025", "Card 13025", "core-set", "Character", "Lannister");
+        let mut raw = card(
+            "13025",
+            "Card 13025",
+            "Card 13025",
+            "core-set",
+            "Character",
+            "Lannister",
+        );
         raw.card_quantity = Some(3);
         let (_, versions) = build_cards_and_versions(vec![raw]);
 
@@ -160,7 +170,14 @@ mod tests {
 
     #[test]
     fn card_number_is_carried_through_to_version_position() {
-        let mut raw = card("14115", "Card 14115", "core-set", "Attachment", "Martell");
+        let mut raw = card(
+            "14115",
+            "Card 14115",
+            "Card 14115",
+            "core-set",
+            "Attachment",
+            "Martell",
+        );
         raw.card_number = Some(115);
         let (_, versions) = build_cards_and_versions(vec![raw]);
 

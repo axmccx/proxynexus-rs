@@ -36,7 +36,8 @@ pub struct Agot1stPack {
 ///    "pack_code": "a-sword-in-the-darkness",
 ///    "card_type": "Location",
 ///    "card_quantity": 1,
-///    "house": "Baratheon"
+///    "house": "Baratheon",
+///    "label": "The Iron Throne (a-sword-in-the-darkness)"
 ///  },
 /// ```
 
@@ -47,6 +48,9 @@ pub struct Agot1stCard {
     pub unique_id: String,
     /// The card's name.
     pub name: String,
+    /// The card's label. Combination of the card's name and its pack code, to resolve
+    /// duplicate names across packs. Example: "The Iron Throne (a-sword-in-the-darkness)".
+    pub label: String,
     /// Matches the `{pack_id}` portion of the image naming convention.
     pub pack_code: String,
     /// Card type. Options: Agenda, Attachment, Character, Event, House, Location, Plot.
