@@ -111,7 +111,7 @@ impl DbStorage {
     }
 
     pub async fn get_games(&mut self) -> Result<Vec<(String, String)>> {
-        let query = "SELECT id, display_name FROM games";
+        let query = "SELECT id, display_name FROM games ORDER BY display_name";
         let payloads = self.execute(query).await?;
         let mut games = Vec::new();
         if let Some(payload) = payloads.into_iter().next() {
