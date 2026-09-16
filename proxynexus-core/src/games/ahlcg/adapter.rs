@@ -9,7 +9,7 @@ use crate::games::ahlcg::api::fetch_decklist_from_arkhamdb;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::ahlcg::api::{fetch_all_cards, fetch_packs};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::games::ahlcg::models::AhdbCard;
+use crate::games::ahlcg::models::{AhdbCard, AhdbPack};
 use crate::models::Decklist;
 use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
@@ -206,6 +206,41 @@ fn card_titles(ahdb_cards: &[AhdbCard]) -> HashMap<String, String> {
     titles
 }
 
+/// Versions for the repackaged campaign and investigator expansions. ArkhamDB
+/// keeps each card under its original pack, so these would otherwise be empty.
+/// Cards with an `encounter_code` go in the campaign expansion, the rest in the
+/// investigator expansion.
+#[cfg(not(target_arch = "wasm32"))]
+fn reprint_versions(ahdb_packs: &[AhdbPack], ahdb_cards: &[AhdbCard]) -> Vec<CardVersion> {
+    let mut versions = Vec::new();
+
+    for pack in ahdb_packs {
+        let Some(reprint_type) = pack.reprint_type.as_deref() else {
+            continue;
+        };
+        let campaign_half = reprint_type == "campaign";
+        let reprinted: HashSet<&str> = pack.reprint_packs.iter().map(String::as_str).collect();
+
+        for card in ahdb_cards {
+            if !reprinted.contains(card.pack_code.as_str())
+                || card.encounter_code.is_some() != campaign_half
+            {
+                continue;
+            }
+
+            versions.push(CardVersion {
+                card_id: card.code.clone(),
+                pack_id: pack.code.clone(),
+                quantity: card.quantity.unwrap_or(1),
+                position: Some(card.position),
+                api_id: None,
+            });
+        }
+    }
+
+    versions
+}
+
 /// ArkhamDB keeps both sides of a double-sided card under one `code` -- both
 /// the ordinary flip case and the case where the back is a mechanically distinct card
 #[cfg(not(target_arch = "wasm32"))]
@@ -248,15 +283,17 @@ impl CatalogProvider for AhlcgAdapter {
         let (ahdb_packs, ahdb_cards) = (fetch_packs().await?, fetch_all_cards().await?);
 
         let packs: Vec<Pack> = ahdb_packs
-            .into_iter()
+            .iter()
             .map(|pack| Pack {
-                id: pack.code,
-                name: pack.name,
-                date_release: pack.available,
+                id: pack.code.clone(),
+                name: pack.name.clone(),
+                date_release: pack.available.clone(),
             })
             .collect();
 
-        let (cards, card_versions) = build_cards_and_versions(ahdb_cards);
+        let mut reprints = reprint_versions(&ahdb_packs, &ahdb_cards);
+        let (cards, mut card_versions) = build_cards_and_versions(ahdb_cards);
+        card_versions.append(&mut reprints);
 
         Ok(Catalog {
             game_id: self.game_id().to_string(),
@@ -279,7 +316,28 @@ impl DecklistProvider for AhlcgAdapter {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use crate::games::ahlcg::models::AhdbCard;
+    use crate::games::ahlcg::models::{AhdbCard, AhdbPack};
+
+    fn pack(code: &str, reprint_type: Option<&str>, reprint_packs: &[&str]) -> AhdbPack {
+        AhdbPack {
+            code: code.to_string(),
+            name: code.to_string(),
+            position: 1,
+            available: None,
+            reprint_type: reprint_type.map(|t| t.to_string()),
+            reprint_packs: reprint_packs.iter().map(|p| p.to_string()).collect(),
+        }
+    }
+
+    fn cycle_card(code: &str, pack_code: &str, position: i64, encounter: Option<&str>) -> AhdbCard {
+        AhdbCard {
+            pack_code: pack_code.to_string(),
+            position,
+            quantity: Some(2),
+            encounter_code: encounter.map(|e| e.to_string()),
+            ..card(code, code, "location", None)
+        }
+    }
 
     fn card(code: &str, name: &str, type_code: &str, subtype_code: Option<&str>) -> AhdbCard {
         AhdbCard {
@@ -295,6 +353,7 @@ mod tests {
             xp: None,
             subname: None,
             duplicated_by: Vec::new(),
+            encounter_code: None,
         }
     }
 
@@ -477,5 +536,80 @@ mod tests {
 
         assert_eq!(cards[0].title, "Alien Frontier");
         assert_eq!(cards[1].title, "Alien Frontier (09748b)");
+    }
+
+    #[test]
+    fn a_repackaged_expansion_takes_a_version_of_every_card_it_reprints() {
+        // `ptcc` reprints the Carcosa cycle's encounter cards and `ptcp` its
+        // player cards; neither carries a card of its own in ArkhamDB.
+        let packs = vec![
+            pack("ptc", None, &[]),
+            pack("eotp", None, &[]),
+            pack("ptcc", Some("campaign"), &["ptc", "eotp"]),
+            pack("ptcp", Some("player"), &["ptc", "eotp"]),
+        ];
+        let cards = vec![
+            cycle_card("03042", "ptc", 42, None),
+            cycle_card("03060", "ptc", 60, Some("the_last_king")),
+            cycle_card("03150", "eotp", 150, Some("echoes_of_the_past")),
+        ];
+
+        let versions = reprint_versions(&packs, &cards);
+        let filed = |pack_id: &str| {
+            let mut codes: Vec<&str> = versions
+                .iter()
+                .filter(|v| v.pack_id == pack_id)
+                .map(|v| v.card_id.as_str())
+                .collect();
+            codes.sort_unstable();
+            codes
+        };
+
+        assert_eq!(filed("ptcc"), ["03060", "03150"]);
+        assert_eq!(filed("ptcp"), ["03042"]);
+    }
+
+    #[test]
+    fn a_pack_that_reprints_nothing_takes_no_extra_version() {
+        let packs = vec![pack("ptc", None, &[]), pack("core", None, &[])];
+        let cards = vec![cycle_card("03042", "ptc", 42, None)];
+
+        assert!(reprint_versions(&packs, &cards).is_empty());
+    }
+
+    #[test]
+    fn a_reprinted_card_keeps_the_version_of_the_box_it_was_first_printed_in() {
+        // The old mythos packs stay selectable: the repackage is a second
+        // version of the card, not a move.
+        let packs = vec![
+            pack("ptc", None, &[]),
+            pack("ptcp", Some("player"), &["ptc"]),
+        ];
+        let cards = vec![cycle_card("03042", "ptc", 42, None)];
+
+        let (_, mut versions) = build_cards_and_versions(cards.clone());
+        versions.append(&mut reprint_versions(&packs, &cards));
+
+        let mut filed: Vec<(&str, &str)> = versions
+            .iter()
+            .map(|v| (v.card_id.as_str(), v.pack_id.as_str()))
+            .collect();
+        filed.sort_unstable();
+        assert_eq!(filed, [("03042", "ptc"), ("03042", "ptcp")]);
+    }
+
+    #[test]
+    fn a_reprinted_version_carries_the_quantity_and_position_of_its_first_printing() {
+        // The repackage renumbers its cards and ArkhamDB does not carry the new
+        // numbers, so the first printing's position is what there is.
+        let packs = vec![pack("ptcc", Some("campaign"), &["ptc"])];
+        let cards = vec![cycle_card("03060", "ptc", 60, Some("the_last_king"))];
+
+        let versions = reprint_versions(&packs, &cards);
+
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].position, Some(60));
+        assert_eq!(versions[0].quantity, 2);
+        assert_eq!(versions[0].api_id, None);
     }
 }
