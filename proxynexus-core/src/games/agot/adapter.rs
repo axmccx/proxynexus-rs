@@ -31,7 +31,7 @@ impl GameAdapterInfo for AgotAdapter {
     }
 
     fn game_name(&self) -> &'static str {
-        "A Game of Thrones"
+        "A Game of Thrones 2nd Edition"
     }
 }
 
