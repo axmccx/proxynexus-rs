@@ -4,6 +4,7 @@ pub mod ahlcg;
 pub mod coclcg;
 pub mod l5r;
 pub mod lotrlcg;
+pub mod marvel_champions;
 pub mod netrunner;
 pub mod netrunner_reboot;
 pub mod whconquest;

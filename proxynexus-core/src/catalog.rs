@@ -7,6 +7,7 @@ use crate::games::ahlcg::adapter::AhlcgAdapter;
 use crate::games::coclcg::adapter::CocAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
+use crate::games::marvel_champions::adapter::MarvelChampionsAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use crate::games::whconquest::adapter::WhcAdapter;
@@ -73,6 +74,7 @@ impl<'a> CatalogManager<'a> {
             Box::new(WhiAdapter::new()),
             Box::new(WhcAdapter::new()),
             Box::new(CocAdapter::new()),
+            Box::new(MarvelChampionsAdapter::new()),
         ];
 
         Self { db, adapters }
