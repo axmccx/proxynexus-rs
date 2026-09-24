@@ -3,37 +3,34 @@
 # dependencies = ["Pillow", "numpy"]
 # ///
 """
-Makes Marvel Champions' landscape scans face the same way.
+Makes Marvel Champions' landscape images face the same way.
 
 Main schemes, side schemes and player side schemes are printed landscape, and
 are stored portrait so every card in a collection is the same shape. A quarter
-turn either way does that, and the sources turn them both ways, so without this
-some schemes print upside down against the rest. Every one is turned to be read
+turn either way does that, and the source turns them the way this does not, so
+without it some schemes print upside down against the rest. Every one is turned to be read
 by turning the card clockwise; `--ccw` turns them the other way.
 
-MarvelCDB has no picture of many of these faces, so the scans are compared with
+MarvelCDB has no picture of many of these faces, so the images are compared with
 each other instead. Each of these cards has a white title band along its top
-edge, which a quarter turn puts along one long side of the portrait scan: the
-right side when it is stored clockwise, the left when anticlockwise. A scan's
+edge, which a quarter turn puts along one long side of the portrait image: the
+right side when it is stored clockwise, the left when anticlockwise. An image's
 brightness across its width, averaged down its height, is its profile. A first
 guess comes from which edge is brighter; a template is then built from every
-profile turned to face clockwise, each scan is scored against the template and
-its mirror, and that repeats until no scan changes side.
+profile turned to face clockwise, each image is scored against the template and
+its mirror, and that repeats until no image changes side.
 
 Output goes to a separate directory; the input is never modified.
 """
 
 import argparse
-import json
 import os
 import re
 import shutil
 
 import numpy as np
+from catalog import load_catalog
 from PIL import Image, JpegImagePlugin
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-CATALOG_CACHE = os.path.join(HERE, 'marvel_champions_catalog_cache.json')
 
 LANDSCAPE_TYPES = {'main_scheme', 'side_scheme', 'player_side_scheme'}
 
@@ -42,14 +39,9 @@ PROFILE_SIZE = (150, 216)
 PROFILE_ROWS = slice(20, 196)
 # Columns in from each edge the first guess compares, where the title band sits.
 BAND = slice(5, 20)
-# Scans closer to the template's mirror than this are reported for a look.
+# Images closer to the template's mirror than this are reported for a look.
 UNSURE = 0.2
 ROUNDS = 10
-
-
-def load_catalog():
-    with open(CATALOG_CACHE, encoding='utf-8') as handle:
-        return json.load(handle)['cards']
 
 
 def printed_face(name, by_code):
@@ -77,7 +69,7 @@ def correlation(a, b):
 
 
 def classify(profiles):
-    """Whether each scan has its title band on the right, with a score.
+    """Whether each image has its title band on the right, with a score.
 
     The score is how much closer the profile is to the template than to its
     mirror; its sign is the side.
@@ -113,7 +105,7 @@ def save_settings(image, quality):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[1])
-    parser.add_argument('input', help='Directory of renamed scans.')
+    parser.add_argument('input', help='Directory of renamed images.')
     parser.add_argument('-o', '--output', help="Output directory. Defaults to '<input>-faced'.")
     parser.add_argument('--ccw', action='store_true',
                         help='Store landscape art to be read by turning the card anticlockwise.')
@@ -125,7 +117,8 @@ def main():
 
     source = os.path.abspath(os.path.expanduser(args.input.rstrip(os.sep)))
     dest = os.path.expanduser(args.output) if args.output else f'{source}-faced'
-    by_code = {c['code']: c for c in load_catalog()}
+    cards, _packs = load_catalog()
+    by_code = {c['code']: c for c in cards}
 
     names = sorted(n for n in os.listdir(source) if n.endswith('.jpg'))
     landscape = [n for n in names
@@ -135,7 +128,7 @@ def main():
     turn = {n for n in landscape if right[n] == args.ccw}
     unsure = sorted(n for n in landscape if abs(scores[n]) < UNSURE)
 
-    print(f'{len(names)} scans, {len(landscape)} landscape, {len(turn)} to turn 180')
+    print(f'{len(names)} images, {len(landscape)} landscape, {len(turn)} to turn 180')
     if unsure:
         print(f'\nClose to the template either way round, check these ({len(unsure)}):')
         for name in unsure:

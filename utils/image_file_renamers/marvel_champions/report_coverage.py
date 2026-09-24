@@ -3,23 +3,24 @@
 # dependencies = []
 # ///
 """
-Writes what the two Marvel Champions collections hold and what they miss.
+Writes what a Marvel Champions collection holds and what it misses.
 
-Three files, meant to be shared with whoever made a source:
+Files, meant to be shared with whoever made the source:
 
-    marvel-champions-collections.md            the state of both collections
+    marvel-champions-collections.md              the state of the collection
     marvel-champions-collection-differences.csv  one row per set
-    marvel-champions-<name>-missing.csv        one row per card face a source lacks
+    <collection>-missing.csv                     one row per card face it lacks
 
-Counts come from the collection folders and from MarvelCDB, so it reads the
-finished collections rather than rebuilding anything.
+Counts come from the collection folder and from MarvelCDB, so it reads the
+finished collection rather than rebuilding anything. More than one folder can
+be passed, and each file then says which of them holds a face.
 """
 
 import argparse
 import csv
 import os
 
-from rename import OUT_OF_PRINT_PACKS, load_catalog
+from catalog import OUT_OF_PRINT_PACKS, load_catalog
 
 
 def printed_cards(cards):
@@ -114,12 +115,9 @@ def summary(faces, by_code, pack_names, held, set_rows):
     lines = [
         '# Marvel Champions proxy collections',
         '',
-        'Two collections, built from two sources. Only the sets Fantasy Flight lists as out of',
-        'print are included; a set still in print is left out of both, whatever a source holds',
-        'for it.',
-        '',
-        'The images differ in kind: one source scanned the cards, the other rendered proxies',
-        'with a bleed border already in the image.',
+        f'{len(held)} collection{"s" if len(held) > 1 else ""}. Only the sets Fantasy Flight',
+        'lists as out of print are included; a set still in print is left out, whatever a source',
+        'holds for it.',
         '',
         '## What each collection holds',
         '',
@@ -132,9 +130,9 @@ def summary(faces, by_code, pack_names, held, set_rows):
         lines.append(f'| `{name}` | {len(have)} | {len(cards)} | {len(have & set(faces))} |')
     lines += [
         '',
-        f'Together they hold {len(covered)} of the {len(faces)}. No card is in both, and neither',
-        "holds a card missing its second face: a card's two sides have to sit in the same",
-        'collection, so where one source has only one side of a card, the other supplies both.',
+        f'Together they hold {len(covered)} of the {len(faces)}.'
+        if len(held) > 1 else
+        f'That is {len(covered)} of the {len(faces)}.',
         '',
         '## The out-of-print sets',
         '',
@@ -153,18 +151,18 @@ def summary(faces, by_code, pack_names, held, set_rows):
         '',
         '## Sets left out, because they are still in print',
         '',
-        f'{len(in_print)} sets, none of them in either collection:',
+        f'{len(in_print)} sets, none of them in a collection here:',
         '',
         ', '.join(f'{pack_names.get(code, code)} (`{code}`)' for code in in_print) + '.',
         '',
-        'One of The Wrecking Crew and The Once and Future Kang is out of print too, but which',
-        'one is unconfirmed, so both are treated as in print and left out.',
+        'The Once and Future Kang is among them: it left Asmodee\'s distribution catalogue in',
+        'September 2026, but Fantasy Flight has not marked it out of print.',
         '',
         '## What is missing',
         '',
-        f'{len(missing)} of the {len(faces)} are in neither collection, {reprints} of them',
-        'reprints: MarvelCDB gives a reprint its own code, and where the only scan of that card',
-        "sits under a different printing, the reprint's own code has no image. The per-card CSVs",
+        f'{len(missing)} of the {len(faces)} are in no collection here, {reprints} of them',
+        'reprints: MarvelCDB gives a reprint its own code, and the image of that card sits',
+        "under the code it reprints instead. The per-card CSVs",
         'list every face a source lacks, with a `reprint_of` column naming the card it reprints.',
     ]
     return lines

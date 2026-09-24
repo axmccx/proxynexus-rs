@@ -20,7 +20,8 @@ def _load(name):
 
 
 fix_orientation = _load("fix_orientation")
-fill_corners = _load("fill_corners")
+rename_proxies = _load("rename_proxies")
+report_coverage = _load("report_coverage")
 
 
 def title_on_right(seed):
@@ -33,7 +34,7 @@ def title_on_right(seed):
 
 
 class TestClassify:
-    def test_each_scan_is_placed_by_which_side_its_title_band_is_on(self):
+    def test_each_image_is_placed_by_which_side_its_title_band_is_on(self):
         profiles = {f"r{i}": title_on_right(i) for i in range(6)}
         profiles.update({f"l{i}": title_on_right(10 + i)[::-1] for i in range(4)})
         right, scores = fix_orientation.classify(profiles)
@@ -72,30 +73,6 @@ class TestPrintedFace:
                 == "01097b")
 
 
-class TestCornerMask:
-    def test_only_the_wedge_outside_the_circle_is_masked(self):
-        mask = fill_corners.corner_mask(400, 300, radius=50)
-        assert mask[0, 0] and mask[0, 299] and mask[399, 0] and mask[399, 299]
-        assert not mask[49, 49] and not mask[200, 150]
-        assert not mask[0, 50] and not mask[50, 0]
-
-    def test_the_four_corners_are_mirror_images(self):
-        mask = fill_corners.corner_mask(400, 300, radius=50) > 0
-        top_left = mask[:50, :50]
-        assert (mask[:50, -50:] == top_left[:, ::-1]).all()
-        assert (mask[-50:, :50] == top_left[::-1]).all()
-        assert (mask[-50:, -50:] == top_left[::-1, ::-1]).all()
-
-    def test_a_filled_corner_takes_the_colour_beside_it(self):
-        image = np.full((400, 300, 3), 200, np.uint8)
-        image[:, :] = (40, 60, 180)
-        image[fill_corners.corner_mask(400, 300, radius=50) > 0] = 230
-        filled = fill_corners.fill(image)
-        assert np.abs(filled[0, 0].astype(int) - (40, 60, 180)).max() < 20
-
-
-rename_proxies = _load("rename_proxies")
-
 
 class TestProxyNames:
     def test_a_front_and_a_back_of_one_card(self):
@@ -119,7 +96,7 @@ class TestProxyNames:
         assert reports["Codes MarvelCDB does not list"] == ["Wasp/00000_front.png"]
         assert reports["Card backs, which live in the adapter"] == ["_Shared Backs/Hero Back.png"]
 
-    def test_a_card_the_source_has_one_side_of_is_left_out(self):
+    def test_a_two_faced_card_with_only_a_front_is_reported(self):
         by_code = {
             "04160a": {"code": "04160a", "pack_code": "trors", "linked_to_code": "04160b"},
             "26002": {"code": "26002", "pack_code": "vision", "back_name": "Dense"},
@@ -131,15 +108,20 @@ class TestProxyNames:
                    "13001a@wsp.bleed.jpg": "d", "13001a@wsp~back.bleed.jpg": "e"}
         reports = defaultdict(list)
 
-        kept = rename_proxies.whole_cards(written, by_code, reports)
+        rename_proxies.report_one_sided(written, by_code, reports)
 
-        # The single-sided card stays; the two-sided ones need both faces here.
-        assert set(kept) == {"04164@trors.bleed.jpg",
-                             "13001a@wsp.bleed.jpg", "13001a@wsp~back.bleed.jpg"}
-        assert len(reports["Cards the source has one side of, left to the other source"]) == 2
+        # The single-faced card and the complete pair say nothing.
+        assert reports["Two-faced cards the source has the front of only"] == [
+            "04160a@trors", "26002@vision"]
 
+    def test_an_alt_art_is_a_printing_of_its_own(self):
+        assert rename_proxies.alt_printing("Gambit") == "alt_gambit"
+        assert rename_proxies.alt_printing("Age of Apocalypse") == "alt_age_of_apocalypse"
+        match = rename_proxies.ALT_FACE.match("08013_front Stealth Strike (Gambit)")
+        assert match.groups() == ("08013", "front", "Gambit")
+        assert rename_proxies.output_name("08013", "front", "alt_gambit") \
+            == "08013@alt_gambit.bleed.jpg"
 
-report_coverage = _load("report_coverage")
 
 
 class TestWantedFaces:
