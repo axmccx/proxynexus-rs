@@ -101,13 +101,13 @@ agendas — face the same way. They are stored portrait, as
 [AGOT's plots are](../agot/rotate_horizontal.py), but neither source stores them facing
 consistently, so some acts in a campaign would print upside down relative to the rest. Each is
 compared against ArkhamDB's own picture rather than turned on a rule. It turns 49 of the 491
-Google Drive images and 1 of the 5916 SCED ones: SCED is generated and already consistent, the
+Google Drive images and 1 of the 6054 SCED ones: SCED is generated and already consistent, the
 Google Drive archive is hand-made and is not.
 
 **[corner_infill_arc.py](../../corner_infill/README.md)** removes the ground outside each card's
 rounded corners. It matters because Proxy Nexus builds bleed by repeating the outermost pixel, so
 a black wedge left in a corner becomes the whole bleed. Nearly all the work is on the SCED images —
-3263 of 5916 have a corner to fill, against 3 of 491 from Google Drive, which were cut to the card
+3331 of 6054 have a corner to fill, against 3 of 491 from Google Drive, which were cut to the card
 and so hold the card's own border colour there.
 
 **[ahlcg_edge_trim.py](../../ahlcg_edge_trim/README.md)** removes the same ground where it runs
@@ -122,7 +122,7 @@ It is the last step because it is the one that decides where the card ends. Run 
 
 | Collection | Images | With a strip |
 |---|---|---|
-| `ahlcg-tts` | 5916 | 1056 |
+| `ahlcg-tts` | 6054 | 1067 |
 | `ahlcg-ch2` | 585 | 28 |
 | `ahlcg-hq` | 491 | 2 |
 
@@ -192,6 +192,11 @@ stories were the right way round 53 times out of 53. Locations were not: they ar
 unrevealed side up and often, though not always, authored that way. So locations, and only
 locations, are checked per card and swapped where they are reversed. `--check-faces` takes other
 types, `all`, or `none`.
+
+A back ArkhamDB has no picture of is still cut: ArkhamDB links 138 Chapter 1 cards to a second face
+it holds no image for, among them the Scarlet Keys keys and most of Edge of the Earth and Hemlock
+Vale, and SCED holds every one of those backs. A location among them is checked against ArkhamDB's
+front alone, which made the same call as the two-picture check on 815 of 824 settled locations.
 
 ## Tests
 

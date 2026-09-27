@@ -125,14 +125,17 @@ class TestBacks:
         assert not tts.has_own_back(entry(unique_back=False, width=10, height=7))
 
     def test_arkhamdb_giving_a_back_image_means_a_second_face(self):
-        assert tts.wants_back(card('01125', backimagesrc='/x.png'), {})
+        assert tts.wants_back(card('01125', backimagesrc='/x.png'))
 
     def test_a_linked_half_counts_as_a_second_face(self):
-        by_code = {'03076b': {'imagesrc': '/y.png'}}
-        assert tts.wants_back(card('03076a', linked_to_code='03076b'), by_code)
+        assert tts.wants_back(card('03076a', linked_to_code='03076b'))
+
+    def test_a_linked_half_with_no_picture_on_arkhamdb_still_counts(self):
+        # `09519b`, the Unstable side of The Eye of Ravens, has no `imagesrc`.
+        assert tts.wants_back(card('09519a', type_code='key', linked_to_code='09519b'))
 
     def test_a_card_with_the_standard_back_wants_none(self):
-        assert not tts.wants_back(card('01044'), {})
+        assert not tts.wants_back(card('01044'))
 
 
 class TestAlreadyHeld:
@@ -184,6 +187,30 @@ class TestBestCorrelation:
         other = Image.new('RGB', (100, 140), 'black')
         other.paste(Image.new('RGB', (100, 70), 'white'), (0, 0))
         assert tts.best_correlation(tts.orientation.squared(one), other) < 0.9
+
+
+class TestFaceScores:
+    @staticmethod
+    def _picture(box):
+        image = Image.new('RGB', (100, 140), 'black')
+        image.paste(Image.new('RGB', (box[2] - box[0], box[3] - box[1]), 'white'), box[:2])
+        return image
+
+    def test_a_reversed_pair_scores_higher_swapped(self):
+        front = self._picture((0, 0, 50, 70))
+        back = self._picture((0, 0, 100, 70))
+        squared = tts.orientation.squared
+        straight, reversed_ = tts.face_scores(squared(back), squared(front), front, back)
+        assert reversed_ > straight
+
+    def test_with_no_back_reference_the_front_alone_decides(self):
+        front = self._picture((0, 0, 50, 70))
+        back = self._picture((0, 0, 100, 70))
+        squared = tts.orientation.squared
+        straight, reversed_ = tts.face_scores(squared(back), squared(front), front, None)
+        assert reversed_ > straight
+        straight, reversed_ = tts.face_scores(squared(front), squared(back), front, None)
+        assert straight > reversed_
 
 
 class TestReferenceFetcher:

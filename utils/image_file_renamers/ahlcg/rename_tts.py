@@ -292,12 +292,14 @@ def has_own_back(entry):
     return entry['unique_back'] or entry['width'] * entry['height'] == 1
 
 
-def wants_back(card, by_code):
-    """Whether ArkhamDB gives this card a second face of its own."""
-    if card.get('backimagesrc'):
-        return True
-    linked = card.get('linked_to_code')
-    return bool(linked and by_code.get(linked, {}).get('imagesrc'))
+def wants_back(card):
+    """Whether ArkhamDB gives this card a second face of its own.
+
+    A linked half counts whether or not ArkhamDB has a picture of it: it has
+    none for the Scarlet Keys keys and most of Edge of the Earth and Hemlock
+    Vale, but SCED holds those backs all the same.
+    """
+    return bool(card.get('backimagesrc') or card.get('linked_to_code'))
 
 
 def already_held(directory):
@@ -312,7 +314,7 @@ def already_held(directory):
     return held
 
 
-def plan(cards, index, by_code, hidden_of, held, checked, reports):
+def plan(cards, index, hidden_of, held, checked, reports):
     """Work out, for every card in scope, which sheet slot to cut it from."""
     jobs, how_counts, claimed = [], defaultdict(int), defaultdict(list)
     for card in sorted(cards, key=lambda c: c['code']):
@@ -329,7 +331,7 @@ def plan(cards, index, by_code, hidden_of, held, checked, reports):
             continue
         how_counts[how] += 1
         claimed[identity].append((code, how))
-        back = wants_back(card, by_code)
+        back = wants_back(card)
         if back and not (entry['back'] and has_own_back(entry)):
             reports['Cards ArkhamDB gives a second face that SCED does not hold'].append(
                 f"{code}  {card['name']}  ({card['pack_code']})")
@@ -418,6 +420,21 @@ def best_correlation(signature, reference):
     return best
 
 
+def face_scores(face, back, front_reference, back_reference):
+    """How well the two pictures match ArkhamDB as they stand, and swapped.
+
+    Where ArkhamDB has no picture of the back, only the front is compared.
+    Measured against the settled locations of `ahlcg-tts`, that makes the same
+    call as comparing both on 815 of 824; the rest fall inside FACE_MARGIN, or
+    are cards whose two ArkhamDB pictures are both the front.
+    """
+    if back_reference is None:
+        return (best_correlation(face, front_reference),
+                best_correlation(back, front_reference))
+    return (best_correlation(face, front_reference) + best_correlation(back, back_reference),
+            best_correlation(face, back_reference) + best_correlation(back, front_reference))
+
+
 def settle_faces(jobs, by_code, output, workers, reports):
     """Put each checked card's two pictures the way round ArkhamDB has them.
 
@@ -453,15 +470,18 @@ def settle_faces(jobs, by_code, output, workers, reports):
     for job in checked:
         front_url = orientation.reference_url(job['card'], False, by_code)
         back_url = orientation.reference_url(job['card'], True, by_code)
-        front_path, back_path = paths.get(front_url), paths.get(back_url)
-        if not front_path or not back_path:
+        front_path = paths.get(front_url)
+        back_path = paths.get(back_url) if back_url else None
+        if not front_path or (back_url and not back_path):
             reports['Cards left as SCED had them, no reference yet'].append(job['code'])
             continue
         try:
             with Image.open(front_path) as image:
                 front_reference = image.convert('RGB').copy()
-            with Image.open(back_path) as image:
-                back_reference = image.convert('RGB').copy()
+            back_reference = None
+            if back_path:
+                with Image.open(back_path) as image:
+                    back_reference = image.convert('RGB').copy()
         except (OSError, ValueError):
             reports['Cards left as SCED had them, no reference yet'].append(job['code'])
             continue
@@ -474,10 +494,7 @@ def settle_faces(jobs, by_code, output, workers, reports):
         except (OSError, ValueError):
             reports['Cards whose written pictures could not be read'].append(job['code'])
             continue
-        straight = (best_correlation(face, front_reference)
-                    + best_correlation(back, back_reference))
-        reversed_ = (best_correlation(face, back_reference)
-                     + best_correlation(back, front_reference))
+        straight, reversed_ = face_scores(face, back, front_reference, back_reference)
         if reversed_ <= straight:
             continue
         if abs(reversed_ - straight) < FACE_MARGIN:
@@ -553,7 +570,7 @@ def main():
           f'carrying no id and {translated} translated ones')
 
     reports = defaultdict(list)
-    jobs, how_counts = plan(wanted, index, by_code, hidden_of, held, checked, reports)
+    jobs, how_counts = plan(wanted, index, hidden_of, held, checked, reports)
 
     faces = len(jobs)
     backs = sum(1 for job in jobs if job['back'])
