@@ -161,6 +161,16 @@ def load_catalog(refresh=False):
     return data['cards'], data['packs']
 
 
+def wants_back(card):
+    """Whether ArkhamDB gives this card a second face of its own.
+
+    A linked half counts whether or not ArkhamDB has a picture of it: it has
+    none for the Scarlet Keys keys and most of Edge of the Earth and Hemlock
+    Vale, but SCED holds those backs all the same.
+    """
+    return bool(card.get('backimagesrc') or card.get('linked_to_code'))
+
+
 class Catalog:
     """The cards of one pack, indexed the ways a filename addresses them."""
 
@@ -472,6 +482,23 @@ def collect(source, reports, wanted):
     return folders
 
 
+def drop_backless_fronts(written, by_code):
+    """Leave out every front whose back the archive does not reach.
+
+    A card missing its back here is one SCED holds both sides of, and
+    `rename_tts.py --exclude` only fills in cards this collection does not hold.
+    """
+    dropped = []
+    for name in sorted(written):
+        code, rest = name.split('@', 1)
+        if rest.endswith('~back.jpg') or not wants_back(by_code[code]):
+            continue
+        if name.replace('.jpg', '~back.jpg') not in written:
+            del written[name]
+            dropped.append(name)
+    return dropped
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Rename Arkham Horror LCG scans to the Proxy Nexus convention.')
@@ -550,6 +577,10 @@ def main():
                 hit = True
             if not hit:
                 reports['Unmatched: shared back covering no resolved card'].append(entry['rel'])
+
+    by_code = {card['code']: card for card in cards}
+    for name in drop_backless_fronts(written, by_code):
+        reports['Fronts left out for want of their back, for SCED to supply'].append(name)
 
     print(f'{len(written)} files resolved')
     for how, count in sorted(how_counts.items()):

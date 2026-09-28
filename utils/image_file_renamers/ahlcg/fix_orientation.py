@@ -18,9 +18,9 @@ down relative to the rest.
 
 Rather than guess, each scan is compared against the card's picture on ArkhamDB.
 That settles which way the art actually faces; a scan facing the wrong way is
-turned 180, which keeps it portrait. Backs are covered too: ArkhamDB carries a
-back image for every double-sided card, and a card whose back is printed as a
-card of its own has its own picture.
+turned 180, which keeps it portrait. Backs are covered too, where ArkhamDB has a
+picture of one: a back image on the card, or the picture of the card its back is
+printed as. A back with neither is copied through and reported.
 
 References are cached, so a second run costs nothing. Output goes to a separate
 directory; the input is never modified.

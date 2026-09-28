@@ -45,6 +45,7 @@ rename = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rename)
 
 load_catalog = rename.load_catalog
+wants_back = rename.wants_back
 
 _faces = importlib.util.spec_from_file_location(
     'ahlcg_face_helpers', pathlib.Path(__file__).resolve().parent / 'fix_orientation.py')
@@ -280,26 +281,29 @@ def cell(sheet, width, height, slot):
     return sheet.crop((column * cw, row * ch, (column + 1) * cw, (row + 1) * ch))
 
 
-def has_own_back(entry):
+def back_users(index):
+    """How many ArkhamDB ids each BackURL is the back of."""
+    users = defaultdict(set)
+    for identity, entries in index.items():
+        for entry in entries:
+            if entry['back']:
+                users[entry['back']].add(identity)
+    return users
+
+
+def has_own_back(entry, users):
     """Whether an entry's BackURL is this card's own second face.
 
     A `UniqueBack` deck gives every slot its own back, so the back is a grid to
     be cut the same way the face is. Without it the deck shares one picture --
     which is the generic card back on a deck of many cards, but on a deck of one
     is simply that card's back, and SCED models most double-sided encounter
-    cards as a deck of one.
+    cards as a deck of one. A few decks of many carry a picture no other card
+    uses as its back, and that picture is the card's own: `06015a` Dream-Gate's
+    is Pointless Reality, where the generic backs serve thousands of ids.
     """
-    return entry['unique_back'] or entry['width'] * entry['height'] == 1
-
-
-def wants_back(card):
-    """Whether ArkhamDB gives this card a second face of its own.
-
-    A linked half counts whether or not ArkhamDB has a picture of it: it has
-    none for the Scarlet Keys keys and most of Edge of the Earth and Hemlock
-    Vale, but SCED holds those backs all the same.
-    """
-    return bool(card.get('backimagesrc') or card.get('linked_to_code'))
+    return (entry['unique_back'] or entry['width'] * entry['height'] == 1
+            or len(users[entry['back']]) == 1)
 
 
 def already_held(directory):
@@ -317,6 +321,7 @@ def already_held(directory):
 def plan(cards, index, hidden_of, held, checked, reports):
     """Work out, for every card in scope, which sheet slot to cut it from."""
     jobs, how_counts, claimed = [], defaultdict(int), defaultdict(list)
+    users = back_users(index)
     for card in sorted(cards, key=lambda c: c['code']):
         code = card['code']
         if code in held:
@@ -332,7 +337,7 @@ def plan(cards, index, hidden_of, held, checked, reports):
         how_counts[how] += 1
         claimed[identity].append((code, how))
         back = wants_back(card)
-        if back and not (entry['back'] and has_own_back(entry)):
+        if back and not (entry['back'] and has_own_back(entry, users)):
             reports['Cards ArkhamDB gives a second face that SCED does not hold'].append(
                 f"{code}  {card['name']}  ({card['pack_code']})")
             back = False
@@ -377,6 +382,18 @@ def sheet_jobs(jobs):
     return by_sheet
 
 
+def side_image(sheet, entry, side):
+    """The picture of one side of a card, from the sheet that side is on.
+
+    A face sheet and a unique back sheet carry the deck's grid and are cut slot
+    for slot. Any other back is one picture serving the whole deck, and is the
+    card's own picture uncut.
+    """
+    if side and not entry['unique_back']:
+        return sheet
+    return cell(sheet, entry['width'], entry['height'], entry['slot'])
+
+
 def write_sheet(url, cuts, output, quality, reports):
     """Cut every card taken from one sheet, then let it go."""
     path = cache_path(url)
@@ -387,11 +404,7 @@ def write_sheet(url, cuts, output, quality, reports):
             if sheet.mode != 'RGB':
                 sheet = sheet.convert('RGB')
             for job, side in cuts:
-                entry = job['entry']
-                # Both sheets carry the same grid: a unique back is cut slot for
-                # slot with the face, and a deck of one card is a 1x1 grid whose
-                # only cell is the whole picture.
-                image = cell(sheet, entry['width'], entry['height'], entry['slot'])
+                image = side_image(sheet, job['entry'], side)
                 name = f"{job['code']}@{job['pack']}{side}.jpg"
                 image.save(os.path.join(output, name), 'JPEG',
                            quality=quality, optimize=True, subsampling=0)

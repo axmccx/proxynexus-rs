@@ -115,14 +115,29 @@ class TestCell:
 
 
 class TestBacks:
+    SHARED = {'back-url': {'01044', '01045'}}
+
     def test_a_unique_back_is_the_cards_own(self):
-        assert tts.has_own_back(entry(unique_back=True))
+        assert tts.has_own_back(entry(unique_back=True), self.SHARED)
 
     def test_a_deck_of_one_shares_a_back_with_nothing_else(self):
-        assert tts.has_own_back(entry(unique_back=False, width=1, height=1))
+        assert tts.has_own_back(entry(unique_back=False, width=1, height=1), self.SHARED)
 
     def test_a_grid_sharing_one_picture_is_the_generic_card_back(self):
-        assert not tts.has_own_back(entry(unique_back=False, width=10, height=7))
+        assert not tts.has_own_back(entry(unique_back=False, width=10, height=7), self.SHARED)
+
+    def test_a_grid_whose_back_no_other_card_uses_is_the_cards_own(self):
+        # `06015a` Dream-Gate: a 10x7 deck whose back is Pointless Reality.
+        users = {'back-url': {'06015a'}}
+        assert tts.has_own_back(entry(unique_back=False, width=10, height=7), users)
+
+    def test_back_users_counts_ids_not_objects(self):
+        # Two objects of one card, as Whateley Ruins has in Dunwich and its
+        # Return to, still make one user.
+        index = {'02250': [entry(back='B'), entry(back='B')], '01044': [entry(back='G')]}
+        users = tts.back_users(index)
+        assert users['B'] == {'02250'}
+        assert users['G'] == {'01044'}
 
     def test_arkhamdb_giving_a_back_image_means_a_second_face(self):
         assert tts.wants_back(card('01125', backimagesrc='/x.png'))
@@ -187,6 +202,24 @@ class TestBestCorrelation:
         other = Image.new('RGB', (100, 140), 'black')
         other.paste(Image.new('RGB', (100, 70), 'white'), (0, 0))
         assert tts.best_correlation(tts.orientation.squared(one), other) < 0.9
+
+
+class TestSideImage:
+    def test_a_unique_back_is_cut_slot_for_slot_with_the_face(self):
+        sheet = Image.new('RGB', (1000, 700))
+        image = tts.side_image(sheet, entry(unique_back=True, width=10, height=7, slot=11), '~back')
+        assert image.size == (100, 100)
+
+    def test_a_shared_back_picture_is_taken_whole(self):
+        # `06015a` Dream-Gate: a 10x7 deck whose one back picture is its own.
+        sheet = Image.new('RGB', (750, 1050))
+        image = tts.side_image(sheet, entry(unique_back=False, width=10, height=7), '~back')
+        assert image.size == (750, 1050)
+
+    def test_a_face_is_always_cut_from_the_grid(self):
+        sheet = Image.new('RGB', (1000, 700))
+        image = tts.side_image(sheet, entry(unique_back=False, width=10, height=7), '')
+        assert image.size == (100, 100)
 
 
 class TestFaceScores:

@@ -173,3 +173,17 @@ class TestLevels:
         info.update(rel='x.tif', path='x.tif', stem='Guardian_Some Card_Asset')
         _resolved, _problems, _extras, unlevelled, _backs = rename.resolve_folder([info], index)
         assert len(unlevelled) == 1
+
+
+class TestDropBacklessFronts:
+    def test_a_front_missing_the_back_arkhamdb_gives_it_is_left_out(self):
+        # `54032` The 9th Ward: the archive's shared-back scan does not reach it.
+        written = {'54032@rttcu.jpg': 'a', '54033@rttcu.jpg': 'b', '54033@rttcu~back.jpg': 'c'}
+        by_code = {'54032': {'backimagesrc': '/x.png'}, '54033': {'backimagesrc': '/y.png'}}
+        assert rename.drop_backless_fronts(written, by_code) == ['54032@rttcu.jpg']
+        assert set(written) == {'54033@rttcu.jpg', '54033@rttcu~back.jpg'}
+
+    def test_a_single_sided_card_is_kept(self):
+        written = {'01044@core.jpg': 'a'}
+        assert rename.drop_backless_fronts(written, {'01044': {}}) == []
+        assert set(written) == {'01044@core.jpg'}

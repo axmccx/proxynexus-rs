@@ -74,9 +74,8 @@ that must not be cut — a dark card, a flat border, a gradient, and corner wedg
 
 | Collection | Images | With a strip |
 |---|---|---|
-| `ahlcg-tts` | 5916 | 1056 |
-| `ahlcg-ch2` | 585 | 28 |
-| `ahlcg-hq` | 491 | 2 |
+| `ahlcg-tts` | 6063 | 1071 |
+| `ahlcg-hq` | 488 | 2 |
 
 Depths run 1-6px. `ahlcg-hq` comes from scans cut to the card and has no sheet ground to carry; its
 two are worth looking at rather than trusting.

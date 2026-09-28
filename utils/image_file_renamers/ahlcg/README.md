@@ -100,14 +100,14 @@ The ArkhamDB catalog is downloaded on first run and cached as `ahlcg_catalog_cac
 agendas — face the same way. They are stored portrait, as
 [AGOT's plots are](../agot/rotate_horizontal.py), but neither source stores them facing
 consistently, so some acts in a campaign would print upside down relative to the rest. Each is
-compared against ArkhamDB's own picture rather than turned on a rule. It turns 49 of the 491
-Google Drive images and 1 of the 6054 SCED ones: SCED is generated and already consistent, the
+compared against ArkhamDB's own picture rather than turned on a rule. It turns 49 of the 488
+Google Drive images and 1 of the 6063 SCED ones: SCED is generated and already consistent, the
 Google Drive archive is hand-made and is not.
 
 **[corner_infill_arc.py](../../corner_infill/README.md)** removes the ground outside each card's
 rounded corners. It matters because Proxy Nexus builds bleed by repeating the outermost pixel, so
 a black wedge left in a corner becomes the whole bleed. Nearly all the work is on the SCED images —
-3331 of 6054 have a corner to fill, against 3 of 491 from Google Drive, which were cut to the card
+3335 of 6063 have a corner to fill, against 3 of 488 from Google Drive, which were cut to the card
 and so hold the card's own border colour there.
 
 **[ahlcg_edge_trim.py](../../ahlcg_edge_trim/README.md)** removes the same ground where it runs
@@ -122,19 +122,17 @@ It is the last step because it is the one that decides where the card ends. Run 
 
 | Collection | Images | With a strip |
 |---|---|---|
-| `ahlcg-tts` | 6054 | 1067 |
-| `ahlcg-ch2` | 585 | 28 |
-| `ahlcg-hq` | 491 | 2 |
+| `ahlcg-tts` | 6063 | 1071 |
+| `ahlcg-hq` | 488 | 2 |
 
-18% of the SCED collection, spread over 59 of its 68 packs rather than concentrated in one — the
+18% of the SCED collection, spread over 60 of its 69 packs rather than concentrated in one — the
 Dunwich cycle runs to 88%. The Google Drive images were cut to the card and have no sheet ground to
 carry, so its two are worth looking at rather than trusting.
 
 A collection built before this step existed does not have to be rebuilt to get it: the script reads
 a folder of finished images and writes a corrected copy, so pointing it at the collection itself
 works. `--no-copy-through` then writes only the files that changed, which is what to compare
-against the collection they came from. The same goes for `ahlcg-ch2`, which
-[is not built here](#the-google-drive-source) but carries the same ground.
+against the collection they came from.
 
 ## Finishing the face check
 
@@ -169,15 +167,18 @@ renamed.
 Sides are `_Side A` / `_Side B`, except acts and agendas, which write the side into the label and
 give each face its own title. A back that names itself is placed by matching ArkhamDB's
 `back_name`, and a back shared by several cards is written out once per card it backs.
+A front whose back is not reached is left out rather than written alone: `54032` The 9th Ward,
+`54033` Library of Ebla and `54060` Winding Gulf sit at positions the shared-back scan covering
+their neighbours does not reach, and SCED supplies both sides of each instead.
 
 **`rename_tts.py`** takes the ArkhamDB id from the `.gmnotes` file beside each card object, and the
 picture by cutting the sheet slot the object names. Nothing is matched on a filename. That places
-4506 of the 4622 cards outright; SCED names an object after the face it puts on the table, which is
+4502 of the 4622 cards outright; SCED names an object after the face it puts on the table, which is
 not always the code ArkhamDB indexes it under, so four fallbacks follow:
 
 | | | |
 |---|---|---|
-| The hidden half ArkhamDB links to | 25 | `03325b` Songs That the Hyades Shall Sing, hiding `03325` Shores of Hali |
+| The hidden half ArkhamDB links to | 29 | `03325b` Songs That the Hyades Shall Sing, hiding `03325` Shores of Hali |
 | The face suffix ArkhamDB adds | 58 | `04128a` At the Station against SCED's `04128` |
 | The per-copy suffix SCED adds | 4 | One `10512` Alkaline Rail against SCED's `10512a` and `10512b`, one per printed copy |
 | The card ArkhamDB calls it a duplicate of | 29 | A reprint with the same art: `60307` Switchblade is cut from `01044` |
@@ -198,6 +199,12 @@ it holds no image for, among them the Scarlet Keys keys and most of Edge of the 
 Vale, and SCED holds every one of those backs. A location among them is checked against ArkhamDB's
 front alone, which made the same call as the two-picture check on 815 of 824 settled locations.
 
+A back is the card's own when its deck gives every slot a back of its own, when the deck holds
+the one card, or when no other card uses that picture as its back. The last covers `02250`
+Whateley Ruins, `06015a` Dream-Gate and `10578` Weed-Choked Beach, each in a deck of many that
+carries its own back as the deck's one back picture, where the generic backs serve thousands of
+ids.
+
 ## Tests
 
 ```bash
@@ -214,12 +221,6 @@ Each class folder holds 13 files against the Core Set's 14, and drops whichever 
 duplicated name it did not scan: `01018` Beat Cop, `01030` Magnifying Glass, `01048` Leo De Luca,
 `01066` Blinding Light, `01084` Lucky!. `98004` Roland Banks is a novella promo ArkhamDB files
 under `core` that is not in the box.
-
-**Six cards get a front but no back**, three from each source. In SCED, `02250` Whateley Ruins,
-`06015a` Dream-Gate and `10578` Weed-Choked Beach sit in decks given the generic card back where
-ArkhamDB has a second face. In the Google Drive source, `54032` The 9th Ward, `54033` Library of
-Ebla and `54060` Winding Gulf sit at positions the shared-back scan covering their neighbours does
-not reach.
 
 **A sheet can be gone** from Steam's CDN. Where SCED holds the card more than once that is
 recoverable, and a dead sheet sends its cards to the next copy; one Chapter 1 card needs it,
