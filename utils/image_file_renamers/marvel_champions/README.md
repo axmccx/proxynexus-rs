@@ -12,7 +12,7 @@ print.
 
 A private Google Drive, shared on Discord by the person who made it:
 `https://drive.google.com/drive/folders/1zG_uVhdVLqWuiPSwKvvQgCp3Ze7-YlsU`. Not public, so it
-cannot be fetched without their link. 12GB, a folder per product.
+cannot be fetched without their link. 13GB, a folder per product.
 
 One PNG per card face, 1590x2200, already named by MarvelCDB code:
 
@@ -24,9 +24,9 @@ _Shared Backs/Hero Back.png                             the generic backs
 ```
 
 Every image already carries a bleed border, stretched outward from the art rather than mirrored,
-by `oriented_bleed.py`, which the drive carries alongside the images. So the images are named
-`.bleed` and Proxy Nexus builds no bleed of its own. `card-library.json` records what the drive
-holds; nothing here reads it, since the filenames carry the codes.
+by the owner's `oriented_bleed.py`. So the images are named `.bleed` and Proxy Nexus builds no
+bleed of its own. `card-library.json` records what the drive holds; nothing here reads it, since
+the filenames carry the codes.
 
 ## Running it
 
@@ -54,23 +54,28 @@ links to it.
 
 **Alternate arts** are written as a printing of their own, named after the product they came in:
 `08013_front Stealth Strike (Gambit).png` becomes `08013@alt_gambit.bleed.jpg`. The `alt_` keeps
-them clear of the pack codes, several of which a product shares a name with. 32 of the drive's 56
+them clear of the pack codes, several of which a product shares a name with. 137 of the drive's 173
 are alt arts of out-of-print cards; the rest belong to packs still in print and are dropped with
 them.
 
-**A card the drive has only one side of** is kept and reported: `04160a`, `04161a` and `04162a`,
-the Hydra Campaign's basic upgrades, and `26002` Vision's Intangible have a front and no back, so
-they print with the generic back. A back with no front would be left out instead, since a
-collection will not import one.
+**Reprints** are written from the card they reprint. MarvelCDB gives a reprint its own code in the
+pack that reprints it, and the drive draws the card only under the code it reprints: Captain
+America's Hawkeye, `03012`, is the Core Set's `01066_front.png`. The image is written as
+`03012@cap.bleed.jpg`, so a pack is complete even when the pack it reprints from is still in
+print. 227 of the out-of-print faces are filled this way, mostly from the Core Set, Ant-Man,
+Ms. Marvel and Venom. A reprint the drive draws under its own code keeps that image.
 
-**The images are saved as JPEG at quality 92**, which takes the collection from 21GB to 2.2GB. At
+**A card the drive has only one side of** is kept and reported, and prints with the generic back.
+A back with no front would be left out instead, since a collection will not import one.
+
+**The images are saved as JPEG at quality 92**, which takes the collection from 12.3GB to 2.5GB. At
 that quality the sample measured 42-43dB against the PNG, and quality 95 would cost 37% more disk
 for 1.5dB. `--quality` overrides it.
 
 **[fix_orientation.py](fix_orientation.py)** turns the landscape cards (main schemes, side schemes
 and player side schemes) so they all face the same way. They are stored portrait, a quarter turn
-from how they are printed, and the drive turns them the other way from the convention: 337 of its
-376 need a half turn. They end up read by turning the card clockwise, which is how every landscape
+from how they are printed, and the drive turns them the other way from the convention: 341 of its
+380 need a half turn. They end up read by turning the card clockwise, which is how every landscape
 card in a Proxy Nexus collection is stored; `--ccw` does the opposite.
 
 MarvelCDB has no picture of many of these faces, so the images are compared against each other
@@ -88,24 +93,23 @@ JPEG because a 12MB PNG each is a lot to embed in the binary.
 
 | | |
 |---|---|
-| Images | 2384 |
-| Of the 2583 out-of-print images | 2351 |
-| Alternate arts | 32, as printings of their own |
-| Size | 2.2GB |
+| Images | 2720 |
+| Of the 2583 out-of-print images | 2582 |
+| Alternate arts | 137, as printings of their own |
+| Size | 2.5GB |
 | Bleed | in the image |
 
 Plus one face beyond the catalog, the back of Wasp's `13001c` giant form, which MarvelCDB does not
-list. No card is missing its front.
+list.
 
 The 38 out-of-print sets include The Wrecking Crew, which Fantasy Flight marks out of print. The
 Once and Future Kang is not among them: it left Asmodee's distribution catalogue in September
 2026, which is usually the first step, but Fantasy Flight has not marked it, so the drive's 58
 faces for it are skipped.
 
-**What is missing.** 232 of the 2583, and 227 of those are reprints: MarvelCDB gives a reprint its
-own code, and the drive draws the card under the code it reprints instead. The adapter gives a
-reprint its original's title, so Proxy Nexus offers the original's image for them anyway. The
-other 5 are cards the drive does not have.
+**What is missing.** 1 of the 2583: `10098` Shang-Chi, which MarvelCDB lists a second time beside
+`04098`, with the same pack and position. `04098` is in the collection, and Proxy Nexus resolves
+the card to it.
 
 ## Reporting what is where
 
@@ -128,6 +132,6 @@ uv run --with pytest --with Pillow --with numpy --no-project \
     pytest utils/image_file_renamers/marvel_champions/tests/ -v
 ```
 
-Covers the output names, alternate arts and what is skipped for `rename_proxies.py`; which way
+Covers the output names, alternate arts, reprints and what is skipped for `rename_proxies.py`; which way
 round an image is, against synthetic profiles, for `fix_orientation.py`; and which faces are
 counted for `report_coverage.py`. No network calls.

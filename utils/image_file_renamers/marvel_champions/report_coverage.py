@@ -161,9 +161,8 @@ def summary(faces, by_code, pack_names, held, set_rows):
         '## What is missing',
         '',
         f'{len(missing)} of the {len(faces)} are in no collection here, {reprints} of them',
-        'reprints: MarvelCDB gives a reprint its own code, and the image of that card sits',
-        "under the code it reprints instead. The per-card CSVs",
-        'list every face a source lacks, with a `reprint_of` column naming the card it reprints.',
+        'reprints. The per-card CSVs list every face a source lacks, with a `reprint_of`',
+        'column naming the card it reprints.',
     ]
     return lines
 

@@ -20,7 +20,7 @@ pack, so those are written as a printing of their own:
 
 The images are PNGs that already carry a bleed, so they are written as `.bleed`
 and Proxy Nexus builds none of its own. They are saved as JPEG at quality 92,
-which takes the collection from 21GB to 2GB.
+which takes the collection from 12.3GB to 2.5GB.
 
 See README.md for where the images come from and what they cover.
 """
@@ -93,6 +93,41 @@ def report_one_sided(written, by_code, reports):
             reports['Two-faced cards the source has the front of only'].append(card)
 
 
+def original(card, by_code):
+    """The card a reprint reprints, following reprints of reprints."""
+    seen = set()
+    while card.get('duplicate_of_code') in by_code and card['code'] not in seen:
+        seen.add(card['code'])
+        card = by_code[card['duplicate_of_code']]
+    return card
+
+
+def add_reprints(written, by_code, wanted, reports):
+    """Give each reprint the source lacks the image of the card it reprints.
+
+    MarvelCDB gives a reprint a code of its own, in the pack that reprints it,
+    and the source draws the card only under the code it reprints. The image is
+    written under the reprint's code and pack, so the pack is complete whether
+    or not the pack it reprints from is kept.
+    """
+    faces = {}
+    for name, path in written.items():
+        code, rest = name.split('@')
+        if not rest.startswith('alt_'):
+            faces[(code, 'back' if '~back' in rest else 'front')] = path
+
+    for card in by_code.values():
+        first = original(card, by_code)
+        if first is card or card['pack_code'] not in wanted:
+            continue
+        for face in ('front', 'back'):
+            if (card['code'], face) in faces or (first['code'], face) not in faces:
+                continue
+            written[output_name(card['code'], face, card['pack_code'])] = faces[(first['code'], face)]
+            reports['Reprints drawn from the card they reprint'].append(
+                f"{card['code']} {face}  from {first['code']}")
+
+
 def collect(source, by_code, reports):
     """Every card face in the source, as output name -> path."""
     written = {}
@@ -156,6 +191,7 @@ def main():
 
     reports = defaultdict(list)
     written = collect(source, by_code, reports)
+    add_reprints(written, by_code, wanted, reports)
     report_one_sided(written, by_code, reports)
     kept = {}
     for name, path in written.items():

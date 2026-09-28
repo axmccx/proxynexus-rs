@@ -122,6 +122,38 @@ class TestProxyNames:
         assert rename_proxies.output_name("08013", "front", "alt_gambit") \
             == "08013@alt_gambit.bleed.jpg"
 
+    def test_a_reprint_takes_the_image_of_the_card_it_reprints(self):
+        by_code = {
+            "01088": {"code": "01088", "pack_code": "core"},
+            "05023": {"code": "05023", "pack_code": "ms_marvel"},
+            "03021": {"code": "03021", "pack_code": "cap", "duplicate_of_code": "01088"},
+            "36026": {"code": "36026", "pack_code": "storm", "duplicate_of_code": "05023"},
+            "43027": {"code": "43027", "pack_code": "x23", "duplicate_of_code": "36026"},
+            "20013": {"code": "20013", "pack_code": "venom"},
+            "30016": {"code": "30016", "pack_code": "spiderham", "duplicate_of_code": "20013"},
+            "09022": {"code": "09022", "pack_code": "drs", "duplicate_of_code": "01088"},
+            "21023": {"code": "21023", "pack_code": "mts", "duplicate_of_code": "01088"},
+            "06022": {"code": "06022", "pack_code": "thor", "duplicate_of_code": "01088"},
+        }
+        written = {"01088@core.bleed.jpg": "energy", "05023@ms_marvel.bleed.jpg": "endurance",
+                   "01088@alt_promo.bleed.jpg": "promo", "09022@drs.bleed.jpg": "own",
+                   "21023@mts.bleed.jpg": "own mts"}
+        reports = defaultdict(list)
+
+        rename_proxies.add_reprints(written, by_code, {"cap", "storm", "x23", "spiderham",
+                                                       "drs", "mts"}, reports)
+
+        assert written["03021@cap.bleed.jpg"] == "energy"
+        assert written["43027@x23.bleed.jpg"] == "endurance"
+        # A reprint the source draws keeps its own image.
+        assert written["09022@drs.bleed.jpg"] == "own"
+        assert written["21023@mts.bleed.jpg"] == "own mts"
+        # Nothing to take when the source lacks the original too.
+        assert "30016@spiderham.bleed.jpg" not in written
+        assert "03021@cap~back.bleed.jpg" not in written
+        # Nor for a pack not asked for.
+        assert "06022@thor.bleed.jpg" not in written
+
 
 
 class TestWantedFaces:
