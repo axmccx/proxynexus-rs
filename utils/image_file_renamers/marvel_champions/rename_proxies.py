@@ -20,7 +20,7 @@ pack, so those are written as a printing of their own:
 
 The images are PNGs that already carry a bleed, so they are written as `.bleed`
 and Proxy Nexus builds none of its own. They are saved as JPEG at quality 92,
-which takes the collection from 12.3GB to 2.5GB.
+which takes the collection from 10.8GB to 2.3GB.
 
 See README.md for where the images come from and what they cover.
 """
@@ -102,13 +102,15 @@ def original(card, by_code):
     return card
 
 
-def add_reprints(written, by_code, wanted, reports):
-    """Give each reprint the source lacks the image of the card it reprints.
+def add_reprints(kept, written, by_code, wanted, reports):
+    """Give each reprint the source lacks an image of the card it reprints.
 
-    MarvelCDB gives a reprint a code of its own, in the pack that reprints it,
-    and the source draws the card only under the code it reprints. The image is
-    written under the reprint's code and pack, so the pack is complete whether
-    or not the pack it reprints from is kept.
+    The adapter makes a reprint a version of the card it reprints, so one image
+    of that card covers every pack it is printed in. MarvelCDB gives a reprint
+    a code of its own, and the source draws the card only under the code it
+    reprints, often in a pack still in print and so not kept. That image is
+    kept once, under the original's own code and pack, when no kept image
+    covers the card already.
     """
     faces = {}
     for name, path in written.items():
@@ -116,16 +118,24 @@ def add_reprints(written, by_code, wanted, reports):
         if not rest.startswith('alt_'):
             faces[(code, 'back' if '~back' in rest else 'front')] = path
 
+    covered = set()
+    for name in kept:
+        code, rest = name.split('@')
+        if not rest.startswith('alt_'):
+            covered.add((original(by_code[code], by_code)['code'],
+                         'back' if '~back' in rest else 'front'))
+
     for card in by_code.values():
         first = original(card, by_code)
         if first is card or card['pack_code'] not in wanted:
             continue
         for face in ('front', 'back'):
-            if (card['code'], face) in faces or (first['code'], face) not in faces:
+            if (first['code'], face) in covered or (first['code'], face) not in faces:
                 continue
-            written[output_name(card['code'], face, card['pack_code'])] = faces[(first['code'], face)]
-            reports['Reprints drawn from the card they reprint'].append(
-                f"{card['code']} {face}  from {first['code']}")
+            kept[output_name(first['code'], face, first['pack_code'])] = faces[(first['code'], face)]
+            covered.add((first['code'], face))
+            reports['Reprinted cards kept from the pack they reprint'].append(
+                f"{first['code']}@{first['pack_code']} {face}, for {card['code']}@{card['pack_code']}")
 
 
 def collect(source, by_code, reports):
@@ -191,7 +201,6 @@ def main():
 
     reports = defaultdict(list)
     written = collect(source, by_code, reports)
-    add_reprints(written, by_code, wanted, reports)
     report_one_sided(written, by_code, reports)
     kept = {}
     for name, path in written.items():
@@ -200,6 +209,9 @@ def main():
             kept[name] = path
         else:
             reports['Packs not asked for'].append(os.path.relpath(path, source))
+    add_reprints(kept, written, by_code, wanted, reports)
+    used = {os.path.relpath(path, source) for path in kept.values()}
+    reports['Packs not asked for'] = [p for p in reports['Packs not asked for'] if p not in used]
     written = kept
 
     per_pack = Counter(by_code[name.split('@')[0]]['pack_code'] for name in written)

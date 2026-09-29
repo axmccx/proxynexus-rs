@@ -198,31 +198,42 @@ fn printed_cards(mcdb_cards: Vec<McdbCard>) -> Vec<McdbCard> {
         .collect()
 }
 
+/// A reprint is a version of the card it reprints rather than a card of its
+/// own, so one image of the card covers every pack it is printed in. Each
+/// version keeps its MarvelCDB code as its `api_id`, which is what a
+/// collection's filenames name it by.
 #[cfg(not(target_arch = "wasm32"))]
 fn build_cards_and_versions(mcdb_cards: Vec<McdbCard>) -> (Vec<Card>, Vec<CardVersion>) {
     let titles = card_titles(&mcdb_cards);
+    let by_code: HashMap<&str, &McdbCard> = mcdb_cards
+        .iter()
+        .map(|card| (card.code.as_str(), card))
+        .collect();
     let mut cards = Vec::with_capacity(mcdb_cards.len());
     let mut card_versions = Vec::with_capacity(mcdb_cards.len());
 
-    for card in mcdb_cards {
-        let title = titles
-            .get(&card.code)
-            .cloned()
-            .unwrap_or_else(|| card.name.clone());
+    for card in &mcdb_cards {
+        let first = original(&by_code, card);
+        if first.code == card.code {
+            let title = titles
+                .get(&card.code)
+                .cloned()
+                .unwrap_or_else(|| card.name.clone());
 
-        cards.push(Card {
-            id: card.code.clone(),
-            title_normalized: normalize_title(&title),
-            title,
-            back_group: back_group_for(&card.type_code),
-        });
+            cards.push(Card {
+                id: card.code.clone(),
+                title_normalized: normalize_title(&title),
+                title,
+                back_group: back_group_for(&card.type_code),
+            });
+        }
 
         card_versions.push(CardVersion {
-            card_id: card.code,
-            pack_id: card.pack_code,
+            card_id: first.code.clone(),
+            pack_id: card.pack_code.clone(),
             quantity: card.quantity.unwrap_or(1),
             position: Some(card.position),
-            api_id: None,
+            api_id: Some(card.code.clone()),
         });
     }
 
@@ -453,11 +464,52 @@ mod tests {
             },
             at("40020", "Swarm Tactics", "event", "next_evol", 20),
         ];
-        let (cards, versions) = build_cards_and_versions(raw);
+        let (cards, _) = build_cards_and_versions(raw);
 
         assert_eq!(title_of(&cards, "12020"), "Swarm Tactics");
-        assert_eq!(title_of(&cards, "13020"), "Swarm Tactics");
         assert_eq!(title_of(&cards, "40020"), "Swarm Tactics (next_evol 20)");
-        assert_eq!(versions.len(), 3);
+    }
+
+    #[test]
+    fn a_reprint_is_a_version_of_the_card_it_reprints() {
+        let raw = vec![
+            at("01088", "Energy", "resource", "core", 88),
+            McdbCard {
+                duplicate_of_code: Some("01088".to_string()),
+                ..at("32022", "Energy", "resource", "mut_gen", 22)
+            },
+            McdbCard {
+                duplicate_of_code: Some("01088".to_string()),
+                ..at("32052", "Energy", "resource", "mut_gen", 52)
+            },
+            McdbCard {
+                duplicate_of_code: Some("32022".to_string()),
+                ..at("40061", "Energy", "resource", "next_evol", 61)
+            },
+        ];
+        let (cards, versions) = build_cards_and_versions(raw);
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].id, "01088");
+        let placed: Vec<(&str, &str, Option<i64>, Option<&str>)> = versions
+            .iter()
+            .map(|v| {
+                (
+                    v.card_id.as_str(),
+                    v.pack_id.as_str(),
+                    v.position,
+                    v.api_id.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            placed,
+            [
+                ("01088", "core", Some(88), Some("01088")),
+                ("01088", "mut_gen", Some(22), Some("32022")),
+                ("01088", "mut_gen", Some(52), Some("32052")),
+                ("01088", "next_evol", Some(61), Some("40061")),
+            ]
+        );
     }
 }

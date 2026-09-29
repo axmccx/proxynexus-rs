@@ -122,38 +122,36 @@ class TestProxyNames:
         assert rename_proxies.output_name("08013", "front", "alt_gambit") \
             == "08013@alt_gambit.bleed.jpg"
 
-    def test_a_reprint_takes_the_image_of_the_card_it_reprints(self):
+    def test_a_reprinted_card_is_kept_once_from_the_pack_it_reprints(self):
         by_code = {
             "01088": {"code": "01088", "pack_code": "core"},
-            "05023": {"code": "05023", "pack_code": "ms_marvel"},
             "03021": {"code": "03021", "pack_code": "cap", "duplicate_of_code": "01088"},
+            "09022": {"code": "09022", "pack_code": "drs", "duplicate_of_code": "01088"},
+            "06022": {"code": "06022", "pack_code": "thor", "duplicate_of_code": "01088"},
+            "05023": {"code": "05023", "pack_code": "ms_marvel"},
             "36026": {"code": "36026", "pack_code": "storm", "duplicate_of_code": "05023"},
             "43027": {"code": "43027", "pack_code": "x23", "duplicate_of_code": "36026"},
+            "08013": {"code": "08013", "pack_code": "bkw"},
+            "15013": {"code": "15013", "pack_code": "scw", "duplicate_of_code": "08013"},
             "20013": {"code": "20013", "pack_code": "venom"},
             "30016": {"code": "30016", "pack_code": "spiderham", "duplicate_of_code": "20013"},
-            "09022": {"code": "09022", "pack_code": "drs", "duplicate_of_code": "01088"},
-            "21023": {"code": "21023", "pack_code": "mts", "duplicate_of_code": "01088"},
-            "06022": {"code": "06022", "pack_code": "thor", "duplicate_of_code": "01088"},
         }
         written = {"01088@core.bleed.jpg": "energy", "05023@ms_marvel.bleed.jpg": "endurance",
-                   "01088@alt_promo.bleed.jpg": "promo", "09022@drs.bleed.jpg": "own",
-                   "21023@mts.bleed.jpg": "own mts"}
+                   "36026@storm.bleed.jpg": "storm's endurance", "08013@bkw.bleed.jpg": "strike",
+                   "01088@alt_promo.bleed.jpg": "promo"}
+        kept = {"36026@storm.bleed.jpg": "storm's endurance", "08013@bkw.bleed.jpg": "strike"}
         reports = defaultdict(list)
 
-        rename_proxies.add_reprints(written, by_code, {"cap", "storm", "x23", "spiderham",
-                                                       "drs", "mts"}, reports)
+        rename_proxies.add_reprints(kept, written, by_code,
+                                    {"cap", "drs", "storm", "x23", "bkw", "scw", "spiderham"},
+                                    reports)
 
-        assert written["03021@cap.bleed.jpg"] == "energy"
-        assert written["43027@x23.bleed.jpg"] == "endurance"
-        # A reprint the source draws keeps its own image.
-        assert written["09022@drs.bleed.jpg"] == "own"
-        assert written["21023@mts.bleed.jpg"] == "own mts"
-        # Nothing to take when the source lacks the original too.
-        assert "30016@spiderham.bleed.jpg" not in written
-        assert "03021@cap~back.bleed.jpg" not in written
-        # Nor for a pack not asked for.
-        assert "06022@thor.bleed.jpg" not in written
-
+        # One image of the card covers every pack reprinting it.
+        assert kept == {"01088@core.bleed.jpg": "energy",
+                        "36026@storm.bleed.jpg": "storm's endurance",
+                        "08013@bkw.bleed.jpg": "strike"}
+        assert reports["Reprinted cards kept from the pack they reprint"] == [
+            "01088@core front, for 03021@cap"]
 
 
 class TestWantedFaces:
@@ -183,3 +181,21 @@ class TestWantedFaces:
         printed = [c['code'] for c in report_coverage.printed_cards(cards)]
 
         assert printed == ['01097a', '31002a']
+
+
+class TestCovered:
+    def test_any_image_of_the_card_a_reprint_reprints_prints_it(self):
+        by_code = {
+            "01088": {"code": "01088", "pack_code": "core"},
+            "03021": {"code": "03021", "pack_code": "cap", "duplicate_of_code": "01088"},
+            "09022": {"code": "09022", "pack_code": "drs", "duplicate_of_code": "01088"},
+            "03012": {"code": "03012", "pack_code": "cap", "duplicate_of_code": "01066"},
+            "01066": {"code": "01066", "pack_code": "core"},
+            "13001a": {"code": "13001a", "pack_code": "wsp"},
+        }
+        faces = {"03021@cap": None, "09022@drs": None, "03012@cap": None,
+                 "13001a@wsp": None, "13001a@wsp~back": None}
+        have = {"01088@core", "13001a@wsp"}
+
+        assert report_coverage.covered(have, faces, by_code) == {
+            "03021@cap", "09022@drs", "13001a@wsp"}

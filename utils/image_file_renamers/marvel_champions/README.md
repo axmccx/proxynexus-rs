@@ -58,17 +58,20 @@ them clear of the pack codes, several of which a product shares a name with. 137
 are alt arts of out-of-print cards; the rest belong to packs still in print and are dropped with
 them.
 
-**Reprints** are written from the card they reprint. MarvelCDB gives a reprint its own code in the
-pack that reprints it, and the drive draws the card only under the code it reprints: Captain
-America's Hawkeye, `03012`, is the Core Set's `01066_front.png`. The image is written as
-`03012@cap.bleed.jpg`, so a pack is complete even when the pack it reprints from is still in
-print. 227 of the out-of-print faces are filled this way, mostly from the Core Set, Ant-Man,
-Ms. Marvel and Venom. A reprint the drive draws under its own code keeps that image.
+**Reprints** are versions of the card they reprint. MarvelCDB gives a reprint its own code in the
+pack that reprints it, and the adapter files that code as a version of the original card, so one
+image of the card covers every pack it is printed in. The drive draws most reprints only under the
+code they reprint, often in a pack still in print: Captain America's Energy, `03021`, is the Core
+Set's `01088_front.png`. When no kept image covers such a card, the original's is kept under its
+own code and pack, as `01088@core.bleed.jpg`, so the out-of-print packs reprinting it are complete.
+44 images are kept this way, from the Core Set, Ant-Man, Ms. Marvel and Venom. A reprint the drive
+draws under its own code keeps that image, as a printing of the original card in the reprint's
+pack.
 
 **A card the drive has only one side of** is kept and reported, and prints with the generic back.
 A back with no front would be left out instead, since a collection will not import one.
 
-**The images are saved as JPEG at quality 92**, which takes the collection from 12.3GB to 2.5GB. At
+**The images are saved as JPEG at quality 92**, which takes the collection from 10.8GB to 2.3GB. At
 that quality the sample measured 42-43dB against the PNG, and quality 95 would cost 37% more disk
 for 1.5dB. `--quality` overrides it.
 
@@ -93,10 +96,10 @@ JPEG because a 12MB PNG each is a lot to embed in the binary.
 
 | | |
 |---|---|
-| Images | 2720 |
+| Images | 2537 |
 | Of the 2583 out-of-print images | 2582 |
 | Alternate arts | 137, as printings of their own |
-| Size | 2.5GB |
+| Size | 2.3GB |
 | Bleed | in the image |
 
 Plus one face beyond the catalog, the back of Wasp's `13001c` giant form, which MarvelCDB does not

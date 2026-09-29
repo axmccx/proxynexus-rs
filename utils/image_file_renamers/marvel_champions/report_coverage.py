@@ -62,6 +62,30 @@ def slots(folder):
     return {name.split('.')[0] for name in os.listdir(folder)}
 
 
+def original(card, by_code):
+    """The card a reprint reprints, following reprints of reprints."""
+    seen = set()
+    while card.get('duplicate_of_code') in by_code and card['code'] not in seen:
+        seen.add(card['code'])
+        card = by_code[card['duplicate_of_code']]
+    return card
+
+
+def covered(have, faces, by_code):
+    """The wanted faces a collection can print.
+
+    A reprint is a version of the card it reprints, as the adapter reads it,
+    so any image of that card prints it, whichever pack the image is filed under.
+    """
+    def card_face(code, back):
+        card = by_code.get(code)
+        return (original(card, by_code)['code'] if card else code, back)
+
+    printed = {card_face(slot.split('@')[0], slot.endswith('~back')) for slot in have}
+    return {slot for slot in faces
+            if card_face(slot.split('@')[0], slot.endswith('~back')) in printed}
+
+
 def write_csv(path, rows):
     with open(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
@@ -103,11 +127,11 @@ def missing_rows(faces, by_code, pack_names, held, source):
     return rows
 
 
-def summary(faces, by_code, pack_names, held, set_rows):
+def summary(faces, by_code, pack_names, held, cover, set_rows):
     """The markdown report, as a list of lines."""
     names = list(held)
-    covered = set().union(*held.values()) & set(faces)
-    missing = set(faces) - covered
+    printable = set().union(*cover.values())
+    missing = set(faces) - printable
     reprints = sum(1 for slot in missing if faces[slot][0].get('duplicate_of_code'))
     empty = sum(1 for row in set_rows if row['images_printed'] and not
                 sum(row[f'in_{name}'] for name in names))
@@ -127,12 +151,12 @@ def summary(faces, by_code, pack_names, held, set_rows):
     for name in names:
         have = held[name]
         cards = {slot.replace('~back', '') for slot in have}
-        lines.append(f'| `{name}` | {len(have)} | {len(cards)} | {len(have & set(faces))} |')
+        lines.append(f'| `{name}` | {len(have)} | {len(cards)} | {len(cover[name])} |')
     lines += [
         '',
-        f'Together they hold {len(covered)} of the {len(faces)}.'
+        f'Together they print {len(printable)} of the {len(faces)}.'
         if len(held) > 1 else
-        f'That is {len(covered)} of the {len(faces)}.',
+        f'That is {len(printable)} of the {len(faces)}.',
         '',
         '## The out-of-print sets',
         '',
@@ -151,9 +175,12 @@ def summary(faces, by_code, pack_names, held, set_rows):
         '',
         '## Sets left out, because they are still in print',
         '',
-        f'{len(in_print)} sets, none of them in a collection here:',
+        f'{len(in_print)} sets:',
         '',
         ', '.join(f'{pack_names.get(code, code)} (`{code}`)' for code in in_print) + '.',
+        '',
+        'A card of theirs that an out-of-print set reprints is kept, under its own code and',
+        'set, so the out-of-print set is complete.',
         '',
         'The Once and Future Kang is among them: it left Asmodee\'s distribution catalogue in',
         'September 2026, but Fantasy Flight has not marked it out of print.',
@@ -180,18 +207,19 @@ def main():
     faces = wanted_faces(printed_cards(cards))
     held = {os.path.basename(os.path.abspath(folder.rstrip(os.sep))):
             slots(os.path.expanduser(folder)) for folder in args.collections}
+    cover = {name: covered(have, faces, by_code) for name, have in held.items()}
 
     out = os.path.expanduser(args.output)
     os.makedirs(out, exist_ok=True)
-    set_rows = per_set_rows(faces, held, pack_names)
+    set_rows = per_set_rows(faces, cover, pack_names)
     print('wrote:')
     write_csv(os.path.join(out, 'marvel-champions-collection-differences.csv'), set_rows)
     for name in held:
         write_csv(os.path.join(out, f'{name}-missing.csv'),
-                  missing_rows(faces, by_code, pack_names, held, name))
+                  missing_rows(faces, by_code, pack_names, cover, name))
     path = os.path.join(out, 'marvel-champions-collections.md')
     with open(path, 'w', encoding='utf-8') as handle:
-        handle.write('\n'.join(summary(faces, by_code, pack_names, held, set_rows)) + '\n')
+        handle.write('\n'.join(summary(faces, by_code, pack_names, held, cover, set_rows)) + '\n')
     print(f'            {path}')
 
 
