@@ -376,7 +376,7 @@ pub async fn generate_pdf(
         surface.set_stroke(Some(Stroke {
             paint: rgb::Color::new(16, 16, 16).into(),
             width: options.cut_line_thickness,
-            miter_limit: 0.0,
+            miter_limit: 10.0,
             line_cap: Default::default(),
             line_join: Default::default(),
             opacity: NormalizedF32::new(1.0).unwrap(),
