@@ -7,6 +7,7 @@ pub mod lotrlcg;
 pub mod marvel_champions;
 pub mod netrunner;
 pub mod netrunner_reboot;
+pub mod swlcg;
 pub mod whconquest;
 pub mod whinvasion;
 use crate::card_source::DecklistProvider;
