@@ -10,6 +10,7 @@ use crate::games::lotrlcg::adapter::LotrLcgAdapter;
 use crate::games::marvel_champions::adapter::MarvelChampionsAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
+use crate::games::swlcg::adapter::SwlcgAdapter;
 use crate::games::whconquest::adapter::WhcAdapter;
 use crate::games::whinvasion::adapter::WhiAdapter;
 use async_trait::async_trait;
@@ -75,6 +76,7 @@ impl<'a> CatalogManager<'a> {
             Box::new(WhcAdapter::new()),
             Box::new(CocAdapter::new()),
             Box::new(MarvelChampionsAdapter::new()),
+            Box::new(SwlcgAdapter::new()),
         ];
 
         Self { db, adapters }

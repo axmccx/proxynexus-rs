@@ -1,0 +1,207 @@
+[
+  {
+    "code": "core-set",
+    "name": "Core Set",
+    "position": 1
+  },
+  {
+    "code": "the-desolation-of-hoth",
+    "name": "The Desolation of Hoth",
+    "position": 2
+  },
+  {
+    "code": "the-search-for-skywalker",
+    "name": "The Search for Skywalker",
+    "position": 3
+  },
+  {
+    "code": "a-dark-time",
+    "name": "A Dark Time",
+    "position": 4
+  },
+  {
+    "code": "assault-on-echo-base",
+    "name": "Assault on Echo Base",
+    "position": 5
+  },
+  {
+    "code": "the-battle-of-hoth",
+    "name": "The Battle of Hoth",
+    "position": 6
+  },
+  {
+    "code": "escape-from-hoth",
+    "name": "Escape from Hoth",
+    "position": 7
+  },
+  {
+    "code": "edge-of-darkness",
+    "name": "Edge of Darkness",
+    "position": 8
+  },
+  {
+    "code": "balance-of-the-force",
+    "name": "Balance of the Force",
+    "position": 9
+  },
+  {
+    "code": "heroes-and-legends",
+    "name": "Heroes and Legends",
+    "position": 10
+  },
+  {
+    "code": "lure-of-the-dark-side",
+    "name": "Lure of the Dark Side",
+    "position": 11
+  },
+  {
+    "code": "knowledge-and-defense",
+    "name": "Knowledge and Defense",
+    "position": 12
+  },
+  {
+    "code": "join-us-or-die",
+    "name": "Join Us or Die",
+    "position": 13
+  },
+  {
+    "code": "it-binds-all-things",
+    "name": "It Binds All Things",
+    "position": 14
+  },
+  {
+    "code": "darkness-and-light",
+    "name": "Darkness and Light",
+    "position": 15
+  },
+  {
+    "code": "between-the-shadows",
+    "name": "Between the Shadows",
+    "position": 16
+  },
+  {
+    "code": "ready-for-takeoff",
+    "name": "Ready for Takeoff",
+    "position": 17
+  },
+  {
+    "code": "draw-their-fire",
+    "name": "Draw Their Fire",
+    "position": 18
+  },
+  {
+    "code": "evasive-maneuvers",
+    "name": "Evasive Maneuvers",
+    "position": 19
+  },
+  {
+    "code": "attack-run",
+    "name": "Attack Run",
+    "position": 20
+  },
+  {
+    "code": "chain-of-command",
+    "name": "Chain of Command",
+    "position": 21
+  },
+  {
+    "code": "jump-to-lightspeed",
+    "name": "Jump to Lightspeed",
+    "position": 22
+  },
+  {
+    "code": "imperial-entanglements",
+    "name": "Imperial Entanglements",
+    "position": 23
+  },
+  {
+    "code": "solos-command",
+    "name": "Solo's Command",
+    "position": 24
+  },
+  {
+    "code": "new-alliances",
+    "name": "New Alliances",
+    "position": 25
+  },
+  {
+    "code": "the-forest-moon",
+    "name": "The Forest Moon",
+    "position": 26
+  },
+  {
+    "code": "so-be-it",
+    "name": "So Be It",
+    "position": 27
+  },
+  {
+    "code": "press-the-attack",
+    "name": "Press the Attack",
+    "position": 28
+  },
+  {
+    "code": "redemption-and-return",
+    "name": "Redemption and Return",
+    "position": 29
+  },
+  {
+    "code": "galactic-ambitions",
+    "name": "Galactic Ambitions",
+    "position": 30
+  },
+  {
+    "code": "ancient-rivals",
+    "name": "Ancient Rivals",
+    "position": 31
+  },
+  {
+    "code": "a-wretched-hive",
+    "name": "A Wretched Hive",
+    "position": 32
+  },
+  {
+    "code": "meditation-and-mastery",
+    "name": "Meditation and Mastery",
+    "position": 33
+  },
+  {
+    "code": "scrap-metal",
+    "name": "Scrap Metal",
+    "position": 34
+  },
+  {
+    "code": "power-of-the-force",
+    "name": "Power of the Force",
+    "position": 35
+  },
+  {
+    "code": "technological-terror",
+    "name": "Technological Terror",
+    "position": 36
+  },
+  {
+    "code": "allies-of-necessity",
+    "name": "Allies of Necessity",
+    "position": 37
+  },
+  {
+    "code": "aggressive-negotiations",
+    "name": "Aggressive Negotiations",
+    "position": 38
+  },
+  {
+    "code": "desperate-circumstances",
+    "name": "Desperate Circumstances",
+    "position": 39
+  },
+  {
+    "code": "swayed-by-the-dark-side",
+    "name": "Swayed by the Dark Side",
+    "position": 40
+  },
+  {
+    "code": "trust-in-the-force",
+    "name": "Trust in the Force",
+    "position": 41
+  }
+]
