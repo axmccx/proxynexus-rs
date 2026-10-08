@@ -67,7 +67,7 @@
   {
     "unique_id": "0486",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (48.6)",
     "pack_code": "a-dark-time",
     "card_type": "Fate",
     "side": "Light",
@@ -145,7 +145,7 @@
   {
     "unique_id": "0496",
     "name": "Battle of Hoth",
-    "label": "Battle of Hoth",
+    "label": "Battle of Hoth (49.6)",
     "pack_code": "a-dark-time",
     "card_type": "Fate",
     "side": "Light",
@@ -327,7 +327,7 @@
   {
     "unique_id": "0522",
     "name": "Ugnaught",
-    "label": "Ugnaught",
+    "label": "Ugnaught (52.2)",
     "pack_code": "a-dark-time",
     "card_type": "Unit",
     "side": "Dark",
@@ -444,7 +444,7 @@
   {
     "unique_id": "2365",
     "name": "A New Hope",
-    "label": "A New Hope",
+    "label": "A New Hope (236.5)",
     "pack_code": "a-wretched-hive",
     "card_type": "Event",
     "side": "Light",
@@ -756,7 +756,7 @@
   {
     "unique_id": "2405",
     "name": "Prized Possession",
-    "label": "Prized Possession",
+    "label": "Prized Possession (240.5)",
     "pack_code": "a-wretched-hive",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -899,7 +899,7 @@
   {
     "unique_id": "2664",
     "name": "Wookiee Warrior",
-    "label": "Wookiee Warrior",
+    "label": "Wookiee Warrior (266.4)",
     "pack_code": "aggressive-negotiations",
     "card_type": "Unit",
     "side": "Light",
@@ -1081,7 +1081,7 @@
   {
     "unique_id": "2686",
     "name": "Security Protocols",
-    "label": "Security Protocols",
+    "label": "Security Protocols (268.6)",
     "pack_code": "aggressive-negotiations",
     "card_type": "Fate",
     "side": "Dark",
@@ -1133,7 +1133,7 @@
   {
     "unique_id": "2694",
     "name": "Prized Possession",
-    "label": "Prized Possession",
+    "label": "Prized Possession (269.4)",
     "pack_code": "aggressive-negotiations",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -1146,7 +1146,7 @@
   {
     "unique_id": "2695",
     "name": "Hidden Vibroknife",
-    "label": "Hidden Vibroknife",
+    "label": "Hidden Vibroknife (269.5)",
     "pack_code": "aggressive-negotiations",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -1159,7 +1159,7 @@
   {
     "unique_id": "2696",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (269.6)",
     "pack_code": "aggressive-negotiations",
     "card_type": "Fate",
     "side": "Dark",
@@ -1289,7 +1289,7 @@
   {
     "unique_id": "2624",
     "name": "Necessary Alliances",
-    "label": "Necessary Alliances",
+    "label": "Necessary Alliances (262.4)",
     "pack_code": "allies-of-necessity",
     "card_type": "Enhancement",
     "side": "Light",
@@ -1367,7 +1367,7 @@
   {
     "unique_id": "2634",
     "name": "Secret Information",
-    "label": "Secret Information",
+    "label": "Secret Information (263.4)",
     "pack_code": "allies-of-necessity",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -1783,7 +1783,7 @@
   {
     "unique_id": "2326",
     "name": "Well Equipped",
-    "label": "Well Equipped",
+    "label": "Well Equipped (232.6)",
     "pack_code": "ancient-rivals",
     "card_type": "Fate",
     "side": "Light",
@@ -1809,7 +1809,7 @@
   {
     "unique_id": "2332",
     "name": "Han Solo",
-    "label": "Han Solo",
+    "label": "Han Solo (233.2)",
     "pack_code": "ancient-rivals",
     "card_type": "Unit",
     "side": "Light",
@@ -1822,7 +1822,7 @@
   {
     "unique_id": "2333",
     "name": "Chewbacca",
-    "label": "Chewbacca",
+    "label": "Chewbacca (233.3)",
     "pack_code": "ancient-rivals",
     "card_type": "Unit",
     "side": "Light",
@@ -1848,7 +1848,7 @@
   {
     "unique_id": "2335",
     "name": "Don't Get Cocky",
-    "label": "Don't Get Cocky",
+    "label": "Don't Get Cocky (233.5)",
     "pack_code": "ancient-rivals",
     "card_type": "Event",
     "side": "Light",
@@ -1861,7 +1861,7 @@
   {
     "unique_id": "2336",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (233.6)",
     "pack_code": "ancient-rivals",
     "card_type": "Fate",
     "side": "Light",
@@ -1887,7 +1887,7 @@
   {
     "unique_id": "2342",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (234.2)",
     "pack_code": "ancient-rivals",
     "card_type": "Unit",
     "side": "Dark",
@@ -1913,7 +1913,7 @@
   {
     "unique_id": "2344",
     "name": "Join Me",
-    "label": "Join Me",
+    "label": "Join Me (234.4)",
     "pack_code": "ancient-rivals",
     "card_type": "Event",
     "side": "Dark",
@@ -1965,7 +1965,7 @@
   {
     "unique_id": "2352",
     "name": "Dengar",
-    "label": "Dengar",
+    "label": "Dengar (235.2)",
     "pack_code": "ancient-rivals",
     "card_type": "Unit",
     "side": "Dark",
@@ -2004,7 +2004,7 @@
   {
     "unique_id": "2355",
     "name": "Captured",
-    "label": "Captured",
+    "label": "Captured (235.5)",
     "pack_code": "ancient-rivals",
     "card_type": "Event",
     "side": "Dark",
@@ -2017,7 +2017,7 @@
   {
     "unique_id": "2356",
     "name": "Preparation and Planning",
-    "label": "Preparation and Planning",
+    "label": "Preparation and Planning (235.6)",
     "pack_code": "ancient-rivals",
     "card_type": "Fate",
     "side": "Dark",
@@ -2095,7 +2095,7 @@
   {
     "unique_id": "0536",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (53.6)",
     "pack_code": "assault-on-echo-base",
     "card_type": "Fate",
     "side": "Light",
@@ -2173,7 +2173,7 @@
   {
     "unique_id": "0546",
     "name": "Don't Get Cocky",
-    "label": "Don't Get Cocky",
+    "label": "Don't Get Cocky (54.6)",
     "pack_code": "assault-on-echo-base",
     "card_type": "Event",
     "side": "Light",
@@ -2225,7 +2225,7 @@
   {
     "unique_id": "0554",
     "name": "Tauntaun",
-    "label": "Tauntaun",
+    "label": "Tauntaun (55.4)",
     "pack_code": "assault-on-echo-base",
     "card_type": "Unit",
     "side": "Light",
@@ -2277,7 +2277,7 @@
   {
     "unique_id": "0562",
     "name": "General Veers",
-    "label": "General Veers",
+    "label": "General Veers (56.2)",
     "pack_code": "assault-on-echo-base",
     "card_type": "Unit",
     "side": "Dark",
@@ -2407,7 +2407,7 @@
   {
     "unique_id": "0576",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (57.6)",
     "pack_code": "assault-on-echo-base",
     "card_type": "Fate",
     "side": "Dark",
@@ -2589,7 +2589,7 @@
   {
     "unique_id": "1572",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (157.2)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Light",
@@ -2602,7 +2602,7 @@
   {
     "unique_id": "1573",
     "name": "Red Five",
-    "label": "Red Five",
+    "label": "Red Five (157.3)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Light",
@@ -2615,7 +2615,7 @@
   {
     "unique_id": "1574",
     "name": "R2-D2",
-    "label": "R2-D2",
+    "label": "R2-D2 (157.4)",
     "pack_code": "attack-run",
     "card_type": "Enhancement",
     "side": "Light",
@@ -2719,7 +2719,7 @@
   {
     "unique_id": "1586",
     "name": "Supporting Fire",
-    "label": "Supporting Fire",
+    "label": "Supporting Fire (158.6)",
     "pack_code": "attack-run",
     "card_type": "Fate",
     "side": "Light",
@@ -2745,7 +2745,7 @@
   {
     "unique_id": "1592",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (159.2)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Dark",
@@ -2758,7 +2758,7 @@
   {
     "unique_id": "1593",
     "name": "Vader's TIE Advanced",
-    "label": "Vader's TIE Advanced",
+    "label": "Vader's TIE Advanced (159.3)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Dark",
@@ -2771,7 +2771,7 @@
   {
     "unique_id": "1594",
     "name": "Black Squadron Fighter",
-    "label": "Black Squadron Fighter",
+    "label": "Black Squadron Fighter (159.4)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Dark",
@@ -2823,7 +2823,7 @@
   {
     "unique_id": "1602",
     "name": "Boba Fett",
-    "label": "Boba Fett",
+    "label": "Boba Fett (160.2)",
     "pack_code": "attack-run",
     "card_type": "Unit",
     "side": "Dark",
@@ -2901,7 +2901,7 @@
   {
     "unique_id": "0912",
     "name": "Obi-Wan Kenobi",
-    "label": "Obi-Wan Kenobi",
+    "label": "Obi-Wan Kenobi (91.2)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3057,7 +3057,7 @@
   {
     "unique_id": "0932",
     "name": "Dash Rendar",
-    "label": "Dash Rendar",
+    "label": "Dash Rendar (93.2)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3135,7 +3135,7 @@
   {
     "unique_id": "0942",
     "name": "Mara Jade",
-    "label": "Mara Jade",
+    "label": "Mara Jade (94.2)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Dark",
@@ -3174,7 +3174,7 @@
   {
     "unique_id": "0945",
     "name": "Join Me",
-    "label": "Join Me",
+    "label": "Join Me (94.5)",
     "pack_code": "balance-of-the-force",
     "card_type": "Event",
     "side": "Dark",
@@ -3382,7 +3382,7 @@
   {
     "unique_id": "bfl58",
     "name": "Change of Plan",
-    "label": "Change of Plan",
+    "label": "Change of Plan (Light)",
     "pack_code": "balance-of-the-force",
     "card_type": "Fate",
     "side": "Light",
@@ -3499,7 +3499,7 @@
   {
     "unique_id": "bfl10",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (Light)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3564,7 +3564,7 @@
   {
     "unique_id": "bfd40",
     "name": "Emperor Palpatine",
-    "label": "Emperor Palpatine",
+    "label": "Emperor Palpatine (Dark)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Dark",
@@ -3707,7 +3707,7 @@
   {
     "unique_id": "bfl33",
     "name": "R2-D2",
-    "label": "R2-D2",
+    "label": "R2-D2 (Light)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3759,7 +3759,7 @@
   {
     "unique_id": "bfl36",
     "name": "Wedge Antilles",
-    "label": "Wedge Antilles",
+    "label": "Wedge Antilles (Light)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3785,7 +3785,7 @@
   {
     "unique_id": "bfl38",
     "name": "Red Five",
-    "label": "Red Five",
+    "label": "Red Five (Light)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -3798,7 +3798,7 @@
   {
     "unique_id": "bfd35",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (Dark)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Dark",
@@ -3876,7 +3876,7 @@
   {
     "unique_id": "bfd58",
     "name": "Change of Plan",
-    "label": "Change of Plan",
+    "label": "Change of Plan (Dark)",
     "pack_code": "balance-of-the-force",
     "card_type": "Fate",
     "side": "Dark",
@@ -4019,7 +4019,7 @@
   {
     "unique_id": "bfd38",
     "name": "Admiral Piett",
-    "label": "Admiral Piett",
+    "label": "Admiral Piett (Dark)",
     "pack_code": "balance-of-the-force",
     "card_type": "Unit",
     "side": "Dark",
@@ -4071,7 +4071,7 @@
   {
     "unique_id": "1272",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (127.2)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Light",
@@ -4149,7 +4149,7 @@
   {
     "unique_id": "1282",
     "name": "Yoda",
-    "label": "Yoda",
+    "label": "Yoda (128.2)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Light",
@@ -4188,7 +4188,7 @@
   {
     "unique_id": "1285",
     "name": "Lightsaber Deflection",
-    "label": "Lightsaber Deflection",
+    "label": "Lightsaber Deflection (128.5)",
     "pack_code": "between-the-shadows",
     "card_type": "Event",
     "side": "Light",
@@ -4227,7 +4227,7 @@
   {
     "unique_id": "1292",
     "name": "Obi-Wan Kenobi",
-    "label": "Obi-Wan Kenobi",
+    "label": "Obi-Wan Kenobi (129.2)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Light",
@@ -4240,7 +4240,7 @@
   {
     "unique_id": "1293",
     "name": "R2-D2",
-    "label": "R2-D2",
+    "label": "R2-D2 (129.3)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Light",
@@ -4617,7 +4617,7 @@
   {
     "unique_id": "1342",
     "name": "Boba Fett",
-    "label": "Boba Fett",
+    "label": "Boba Fett (134.2)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Dark",
@@ -4630,7 +4630,7 @@
   {
     "unique_id": "1343",
     "name": "Freelance Hunter",
-    "label": "Freelance Hunter",
+    "label": "Freelance Hunter (134.3)",
     "pack_code": "between-the-shadows",
     "card_type": "Unit",
     "side": "Dark",
@@ -4656,7 +4656,7 @@
   {
     "unique_id": "1345",
     "name": "Prized Possession",
-    "label": "Prized Possession",
+    "label": "Prized Possession (134.5)",
     "pack_code": "between-the-shadows",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -4968,7 +4968,7 @@
   {
     "unique_id": "1385",
     "name": "Pay Out",
-    "label": "Pay Out",
+    "label": "Pay Out (138.5)",
     "pack_code": "between-the-shadows",
     "card_type": "Event",
     "side": "Dark",
@@ -5332,7 +5332,7 @@
   {
     "unique_id": "1633",
     "name": "Advisor to the Emperor",
-    "label": "Advisor to the Emperor",
+    "label": "Advisor to the Emperor (163.3)",
     "pack_code": "chain-of-command",
     "card_type": "Unit",
     "side": "Dark",
@@ -5553,7 +5553,7 @@
   {
     "unique_id": "0012",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (1.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5631,7 +5631,7 @@
   {
     "unique_id": "0022",
     "name": "Yoda",
-    "label": "Yoda",
+    "label": "Yoda (2.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5709,7 +5709,7 @@
   {
     "unique_id": "0032",
     "name": "Obi-Wan Kenobi",
-    "label": "Obi-Wan Kenobi",
+    "label": "Obi-Wan Kenobi (3.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5787,7 +5787,7 @@
   {
     "unique_id": "0042",
     "name": "Red Five",
-    "label": "Red Five",
+    "label": "Red Five (4.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5800,7 +5800,7 @@
   {
     "unique_id": "0043",
     "name": "R2-D2",
-    "label": "R2-D2",
+    "label": "R2-D2 (4.3)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5865,7 +5865,7 @@
   {
     "unique_id": "0052",
     "name": "C-3PO",
-    "label": "C-3PO",
+    "label": "C-3PO (5.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -5904,7 +5904,7 @@
   {
     "unique_id": "0055",
     "name": "Lightsaber Deflection",
-    "label": "Lightsaber Deflection",
+    "label": "Lightsaber Deflection (5.5)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -5969,7 +5969,7 @@
   {
     "unique_id": "0064",
     "name": "Return of the Jedi",
-    "label": "Return of the Jedi",
+    "label": "Return of the Jedi (6.4)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -5995,7 +5995,7 @@
   {
     "unique_id": "0066",
     "name": "Force Rejuvenation",
-    "label": "Force Rejuvenation",
+    "label": "Force Rejuvenation (6.6)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -6099,7 +6099,7 @@
   {
     "unique_id": "0082",
     "name": "Red Two",
-    "label": "Red Two",
+    "label": "Red Two (8.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6177,7 +6177,7 @@
   {
     "unique_id": "0092",
     "name": "Mon Mothma",
-    "label": "Mon Mothma",
+    "label": "Mon Mothma (9.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6190,7 +6190,7 @@
   {
     "unique_id": "0093",
     "name": "Battlefield Engineers",
-    "label": "Battlefield Engineers",
+    "label": "Battlefield Engineers (9.3)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6255,7 +6255,7 @@
   {
     "unique_id": "0102",
     "name": "Leia Organa",
-    "label": "Leia Organa",
+    "label": "Leia Organa (10.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6333,7 +6333,7 @@
   {
     "unique_id": "0112",
     "name": "Home One",
-    "label": "Home One",
+    "label": "Home One (11.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6411,7 +6411,7 @@
   {
     "unique_id": "0122",
     "name": "Admiral Ackbar",
-    "label": "Admiral Ackbar",
+    "label": "Admiral Ackbar (12.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6619,7 +6619,7 @@
   {
     "unique_id": "0146",
     "name": "A New Hope",
-    "label": "A New Hope",
+    "label": "A New Hope (14.6)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -6645,7 +6645,7 @@
   {
     "unique_id": "0152",
     "name": "Han Solo",
-    "label": "Han Solo",
+    "label": "Han Solo (15.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Light",
@@ -6671,7 +6671,7 @@
   {
     "unique_id": "0154",
     "name": "Cloud City Casino",
-    "label": "Cloud City Casino",
+    "label": "Cloud City Casino (15.4)",
     "pack_code": "core-set",
     "card_type": "Enhancement",
     "side": "Light",
@@ -6684,7 +6684,7 @@
   {
     "unique_id": "0155",
     "name": "Swindled",
-    "label": "Swindled",
+    "label": "Swindled (15.5)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -6762,7 +6762,7 @@
   {
     "unique_id": "0165",
     "name": "Rescue Mission",
-    "label": "Rescue Mission",
+    "label": "Rescue Mission (16.5)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Light",
@@ -6957,7 +6957,7 @@
   {
     "unique_id": "0192",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (19.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -6970,7 +6970,7 @@
   {
     "unique_id": "0193",
     "name": "Dark Side Apprentice",
-    "label": "Dark Side Apprentice",
+    "label": "Dark Side Apprentice (19.3)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7035,7 +7035,7 @@
   {
     "unique_id": "0202",
     "name": "Advisor to the Emperor",
-    "label": "Advisor to the Emperor",
+    "label": "Advisor to the Emperor (20.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7113,7 +7113,7 @@
   {
     "unique_id": "0212",
     "name": "Vader's TIE Advanced",
-    "label": "Vader's TIE Advanced",
+    "label": "Vader's TIE Advanced (21.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7126,7 +7126,7 @@
   {
     "unique_id": "0213",
     "name": "TIE Advanced",
-    "label": "TIE Advanced",
+    "label": "TIE Advanced (21.3)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7139,7 +7139,7 @@
   {
     "unique_id": "0214",
     "name": "Black Squadron Pilot",
-    "label": "Black Squadron Pilot",
+    "label": "Black Squadron Pilot (21.4)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7230,7 +7230,7 @@
   {
     "unique_id": "0225",
     "name": "Force Stasis",
-    "label": "Force Stasis",
+    "label": "Force Stasis (22.5)",
     "pack_code": "core-set",
     "card_type": "Event",
     "side": "Dark",
@@ -7269,7 +7269,7 @@
   {
     "unique_id": "0232",
     "name": "Emperor Palpatine",
-    "label": "Emperor Palpatine",
+    "label": "Emperor Palpatine (23.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7282,7 +7282,7 @@
   {
     "unique_id": "0233",
     "name": "Emperor's Royal Guard",
-    "label": "Emperor's Royal Guard",
+    "label": "Emperor's Royal Guard (23.3)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7581,7 +7581,7 @@
   {
     "unique_id": "0272",
     "name": "\"Backstabber\"",
-    "label": "\"Backstabber\"",
+    "label": "\"Backstabber\" (27.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -7659,7 +7659,7 @@
   {
     "unique_id": "0282",
     "name": "Grand Moff Tarkin",
-    "label": "Grand Moff Tarkin",
+    "label": "Grand Moff Tarkin (28.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -8049,7 +8049,7 @@
   {
     "unique_id": "0332",
     "name": "Boba Fett",
-    "label": "Boba Fett",
+    "label": "Boba Fett (33.2)",
     "pack_code": "core-set",
     "card_type": "Unit",
     "side": "Dark",
@@ -8088,7 +8088,7 @@
   {
     "unique_id": "0335",
     "name": "Blaster Pistol",
-    "label": "Blaster Pistol",
+    "label": "Blaster Pistol (33.5)",
     "pack_code": "core-set",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -8517,7 +8517,7 @@
   {
     "unique_id": "1232",
     "name": "C-3PO",
-    "label": "C-3PO",
+    "label": "C-3PO (123.2)",
     "pack_code": "darkness-and-light",
     "card_type": "Unit",
     "side": "Light",
@@ -8569,7 +8569,7 @@
   {
     "unique_id": "1236",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (123.6)",
     "pack_code": "darkness-and-light",
     "card_type": "Fate",
     "side": "Light",
@@ -8790,7 +8790,7 @@
   {
     "unique_id": "1265",
     "name": "Prized Possession",
-    "label": "Prized Possession",
+    "label": "Prized Possession (126.5)",
     "pack_code": "darkness-and-light",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -8803,7 +8803,7 @@
   {
     "unique_id": "1266",
     "name": "Chain Reaction",
-    "label": "Chain Reaction",
+    "label": "Chain Reaction (126.6)",
     "pack_code": "darkness-and-light",
     "card_type": "Event",
     "side": "Dark",
@@ -8920,7 +8920,7 @@
   {
     "unique_id": "2713",
     "name": "Battlefield Engineers",
-    "label": "Battlefield Engineers",
+    "label": "Battlefield Engineers (271.3)",
     "pack_code": "desperate-circumstances",
     "card_type": "Unit",
     "side": "Light",
@@ -9037,7 +9037,7 @@
   {
     "unique_id": "2726",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (272.6)",
     "pack_code": "desperate-circumstances",
     "card_type": "Fate",
     "side": "Light",
@@ -9115,7 +9115,7 @@
   {
     "unique_id": "2736",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (273.6)",
     "pack_code": "desperate-circumstances",
     "card_type": "Fate",
     "side": "Dark",
@@ -9193,7 +9193,7 @@
   {
     "unique_id": "2746",
     "name": "Security Protocols",
-    "label": "Security Protocols",
+    "label": "Security Protocols (274.6)",
     "pack_code": "desperate-circumstances",
     "card_type": "Fate",
     "side": "Dark",
@@ -9258,7 +9258,7 @@
   {
     "unique_id": "1465",
     "name": "Force Rejuvenation",
-    "label": "Force Rejuvenation",
+    "label": "Force Rejuvenation (146.5)",
     "pack_code": "draw-their-fire",
     "card_type": "Event",
     "side": "Light",
@@ -9271,7 +9271,7 @@
   {
     "unique_id": "1466",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (146.6)",
     "pack_code": "draw-their-fire",
     "card_type": "Fate",
     "side": "Light",
@@ -9401,7 +9401,7 @@
   {
     "unique_id": "1484",
     "name": "Spacer Cantina",
-    "label": "Spacer Cantina",
+    "label": "Spacer Cantina (148.4)",
     "pack_code": "draw-their-fire",
     "card_type": "Enhancement",
     "side": "Light",
@@ -9427,7 +9427,7 @@
   {
     "unique_id": "1486",
     "name": "Stay on Target",
-    "label": "Stay on Target",
+    "label": "Stay on Target (148.6)",
     "pack_code": "draw-their-fire",
     "card_type": "Fate",
     "side": "Light",
@@ -9505,7 +9505,7 @@
   {
     "unique_id": "1496",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (149.6)",
     "pack_code": "draw-their-fire",
     "card_type": "Fate",
     "side": "Dark",
@@ -9609,7 +9609,7 @@
   {
     "unique_id": "0692",
     "name": "Chewbacca",
-    "label": "Chewbacca",
+    "label": "Chewbacca (69.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Light",
@@ -9739,7 +9739,7 @@
   {
     "unique_id": "0706",
     "name": "Swindled",
-    "label": "Swindled",
+    "label": "Swindled (70.6)",
     "pack_code": "edge-of-darkness",
     "card_type": "Event",
     "side": "Light",
@@ -9765,7 +9765,7 @@
   {
     "unique_id": "0712",
     "name": "Lando Calrissian",
-    "label": "Lando Calrissian",
+    "label": "Lando Calrissian (71.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Light",
@@ -9791,7 +9791,7 @@
   {
     "unique_id": "0714",
     "name": "Cloud City Casino",
-    "label": "Cloud City Casino",
+    "label": "Cloud City Casino (71.4)",
     "pack_code": "edge-of-darkness",
     "card_type": "Enhancement",
     "side": "Light",
@@ -9843,7 +9843,7 @@
   {
     "unique_id": "0722",
     "name": "Millennium Falcon",
-    "label": "Millennium Falcon",
+    "label": "Millennium Falcon (72.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Light",
@@ -9921,7 +9921,7 @@
   {
     "unique_id": "0732",
     "name": "Lobot",
-    "label": "Lobot",
+    "label": "Lobot (73.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Light",
@@ -10519,7 +10519,7 @@
   {
     "unique_id": "0806",
     "name": "Captured",
-    "label": "Captured",
+    "label": "Captured (80.6)",
     "pack_code": "edge-of-darkness",
     "card_type": "Event",
     "side": "Dark",
@@ -10545,7 +10545,7 @@
   {
     "unique_id": "0812",
     "name": "Jabba the Hutt",
-    "label": "Jabba the Hutt",
+    "label": "Jabba the Hutt (81.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Dark",
@@ -10701,7 +10701,7 @@
   {
     "unique_id": "0832",
     "name": "Assassin Droid",
-    "label": "Assassin Droid",
+    "label": "Assassin Droid (83.2)",
     "pack_code": "edge-of-darkness",
     "card_type": "Unit",
     "side": "Dark",
@@ -11130,7 +11130,7 @@
   {
     "unique_id": "0885",
     "name": "Apology Accepted",
-    "label": "Apology Accepted",
+    "label": "Apology Accepted (88.5)",
     "pack_code": "edge-of-darkness",
     "card_type": "Event",
     "side": "Dark",
@@ -11325,7 +11325,7 @@
   {
     "unique_id": "0642",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (64.2)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -11338,7 +11338,7 @@
   {
     "unique_id": "0643",
     "name": "Snowspeeder",
-    "label": "Snowspeeder",
+    "label": "Snowspeeder (64.3)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -11351,7 +11351,7 @@
   {
     "unique_id": "0644",
     "name": "Tauntaun",
-    "label": "Tauntaun",
+    "label": "Tauntaun (64.4)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -11377,7 +11377,7 @@
   {
     "unique_id": "0646",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (64.6)",
     "pack_code": "escape-from-hoth",
     "card_type": "Fate",
     "side": "Light",
@@ -11403,7 +11403,7 @@
   {
     "unique_id": "0652",
     "name": "Han Solo",
-    "label": "Han Solo",
+    "label": "Han Solo (65.2)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -11481,7 +11481,7 @@
   {
     "unique_id": "0662",
     "name": "Executor",
-    "label": "Executor",
+    "label": "Executor (66.2)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Dark",
@@ -11559,7 +11559,7 @@
   {
     "unique_id": "0672",
     "name": "Dengar",
-    "label": "Dengar",
+    "label": "Dengar (67.2)",
     "pack_code": "escape-from-hoth",
     "card_type": "Unit",
     "side": "Dark",
@@ -11611,7 +11611,7 @@
   {
     "unique_id": "0676",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (67.6)",
     "pack_code": "escape-from-hoth",
     "card_type": "Fate",
     "side": "Dark",
@@ -12105,7 +12105,7 @@
   {
     "unique_id": "2172",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (217.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12261,7 +12261,7 @@
   {
     "unique_id": "2192",
     "name": "Emperor Palpatine",
-    "label": "Emperor Palpatine",
+    "label": "Emperor Palpatine (219.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12287,7 +12287,7 @@
   {
     "unique_id": "2194",
     "name": "Sith Library",
-    "label": "Sith Library",
+    "label": "Sith Library (219.4)",
     "pack_code": "galactic-ambitions",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -12313,7 +12313,7 @@
   {
     "unique_id": "2196",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (219.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Dark",
@@ -12339,7 +12339,7 @@
   {
     "unique_id": "2202",
     "name": "\"Backstabber\"",
-    "label": "\"Backstabber\"",
+    "label": "\"Backstabber\" (220.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12365,7 +12365,7 @@
   {
     "unique_id": "2204",
     "name": "Black Squadron Pilot",
-    "label": "Black Squadron Pilot",
+    "label": "Black Squadron Pilot (220.4)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12391,7 +12391,7 @@
   {
     "unique_id": "2206",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (220.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Dark",
@@ -12495,7 +12495,7 @@
   {
     "unique_id": "2222",
     "name": "Zuckuss",
-    "label": "Zuckuss",
+    "label": "Zuckuss (222.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12508,7 +12508,7 @@
   {
     "unique_id": "2223",
     "name": "4-LOM",
-    "label": "4-LOM",
+    "label": "4-LOM (222.3)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Dark",
@@ -12625,7 +12625,7 @@
   {
     "unique_id": "2236",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (223.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Dark",
@@ -12651,7 +12651,7 @@
   {
     "unique_id": "2242",
     "name": "Leia Organa",
-    "label": "Leia Organa",
+    "label": "Leia Organa (224.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Light",
@@ -12781,7 +12781,7 @@
   {
     "unique_id": "2256",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (225.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Light",
@@ -12807,7 +12807,7 @@
   {
     "unique_id": "2262",
     "name": "Mon Mothma",
-    "label": "Mon Mothma",
+    "label": "Mon Mothma (226.2)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Light",
@@ -12820,7 +12820,7 @@
   {
     "unique_id": "2263",
     "name": "Kyle Katarn",
-    "label": "Kyle Katarn",
+    "label": "Kyle Katarn (226.3)",
     "pack_code": "galactic-ambitions",
     "card_type": "Unit",
     "side": "Light",
@@ -13015,7 +13015,7 @@
   {
     "unique_id": "2286",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (228.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Light",
@@ -13093,7 +13093,7 @@
   {
     "unique_id": "2296",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (229.6)",
     "pack_code": "galactic-ambitions",
     "card_type": "Fate",
     "side": "Light",
@@ -13327,7 +13327,7 @@
   {
     "unique_id": "0986",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (98.6)",
     "pack_code": "heroes-and-legends",
     "card_type": "Fate",
     "side": "Light",
@@ -13561,7 +13561,7 @@
   {
     "unique_id": "1016",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (101.6)",
     "pack_code": "heroes-and-legends",
     "card_type": "Fate",
     "side": "Dark",
@@ -13587,7 +13587,7 @@
   {
     "unique_id": "1712",
     "name": "Lando Calrissian",
-    "label": "Lando Calrissian",
+    "label": "Lando Calrissian (171.2)",
     "pack_code": "imperial-entanglements",
     "card_type": "Unit",
     "side": "Light",
@@ -13613,7 +13613,7 @@
   {
     "unique_id": "1714",
     "name": "Cloud City Casino",
-    "label": "Cloud City Casino",
+    "label": "Cloud City Casino (171.4)",
     "pack_code": "imperial-entanglements",
     "card_type": "Enhancement",
     "side": "Light",
@@ -13665,7 +13665,7 @@
   {
     "unique_id": "1722",
     "name": "Chewbacca",
-    "label": "Chewbacca",
+    "label": "Chewbacca (172.2)",
     "pack_code": "imperial-entanglements",
     "card_type": "Unit",
     "side": "Light",
@@ -13717,7 +13717,7 @@
   {
     "unique_id": "1726",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (172.6)",
     "pack_code": "imperial-entanglements",
     "card_type": "Fate",
     "side": "Light",
@@ -13795,7 +13795,7 @@
   {
     "unique_id": "1736",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (173.6)",
     "pack_code": "imperial-entanglements",
     "card_type": "Fate",
     "side": "Light",
@@ -13912,7 +13912,7 @@
   {
     "unique_id": "1753",
     "name": "Renegade Squadron Operative",
-    "label": "Renegade Squadron Operative",
+    "label": "Renegade Squadron Operative (175.3)",
     "pack_code": "imperial-entanglements",
     "card_type": "Unit",
     "side": "Light",
@@ -14107,7 +14107,7 @@
   {
     "unique_id": "1776",
     "name": "Rescue Mission",
-    "label": "Rescue Mission",
+    "label": "Rescue Mission (177.6)",
     "pack_code": "imperial-entanglements",
     "card_type": "Event",
     "side": "Light",
@@ -14133,7 +14133,7 @@
   {
     "unique_id": "1782",
     "name": "Grand Moff Tarkin",
-    "label": "Grand Moff Tarkin",
+    "label": "Grand Moff Tarkin (178.2)",
     "pack_code": "imperial-entanglements",
     "card_type": "Unit",
     "side": "Dark",
@@ -14185,7 +14185,7 @@
   {
     "unique_id": "1786",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (178.6)",
     "pack_code": "imperial-entanglements",
     "card_type": "Fate",
     "side": "Dark",
@@ -14250,7 +14250,7 @@
   {
     "unique_id": "1795",
     "name": "Tractor Beam",
-    "label": "Tractor Beam",
+    "label": "Tractor Beam (179.5)",
     "pack_code": "imperial-entanglements",
     "card_type": "Event",
     "side": "Dark",
@@ -14328,7 +14328,7 @@
   {
     "unique_id": "1805",
     "name": "Control Room",
-    "label": "Control Room",
+    "label": "Control Room (180.5)",
     "pack_code": "imperial-entanglements",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -14497,7 +14497,7 @@
   {
     "unique_id": "1826",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (182.6)",
     "pack_code": "imperial-entanglements",
     "card_type": "Fate",
     "side": "Dark",
@@ -14562,7 +14562,7 @@
   {
     "unique_id": "1835",
     "name": "Force Stasis",
-    "label": "Force Stasis",
+    "label": "Force Stasis (183.5)",
     "pack_code": "imperial-entanglements",
     "card_type": "Event",
     "side": "Dark",
@@ -14679,7 +14679,7 @@
   {
     "unique_id": "1172",
     "name": "Leia Organa",
-    "label": "Leia Organa",
+    "label": "Leia Organa (117.2)",
     "pack_code": "it-binds-all-things",
     "card_type": "Unit",
     "side": "Light",
@@ -14731,7 +14731,7 @@
   {
     "unique_id": "1176",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (117.6)",
     "pack_code": "it-binds-all-things",
     "card_type": "Fate",
     "side": "Light",
@@ -14913,7 +14913,7 @@
   {
     "unique_id": "1202",
     "name": "Admiral Piett",
-    "label": "Admiral Piett",
+    "label": "Admiral Piett (120.2)",
     "pack_code": "it-binds-all-things",
     "card_type": "Unit",
     "side": "Dark",
@@ -14939,7 +14939,7 @@
   {
     "unique_id": "1204",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (120.4)",
     "pack_code": "it-binds-all-things",
     "card_type": "Fate",
     "side": "Dark",
@@ -14952,7 +14952,7 @@
   {
     "unique_id": "1205",
     "name": "Battle of Hoth",
-    "label": "Battle of Hoth",
+    "label": "Battle of Hoth (120.5)",
     "pack_code": "it-binds-all-things",
     "card_type": "Fate",
     "side": "Dark",
@@ -14965,7 +14965,7 @@
   {
     "unique_id": "1206",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (120.6)",
     "pack_code": "it-binds-all-things",
     "card_type": "Fate",
     "side": "Dark",
@@ -15069,7 +15069,7 @@
   {
     "unique_id": "1122",
     "name": "Yoda",
-    "label": "Yoda",
+    "label": "Yoda (112.2)",
     "pack_code": "join-us-or-die",
     "card_type": "Unit",
     "side": "Light",
@@ -15095,7 +15095,7 @@
   {
     "unique_id": "1124",
     "name": "Dagobah Training Grounds",
-    "label": "Dagobah Training Grounds",
+    "label": "Dagobah Training Grounds (112.4)",
     "pack_code": "join-us-or-die",
     "card_type": "Enhancement",
     "side": "Light",
@@ -15186,7 +15186,7 @@
   {
     "unique_id": "1135",
     "name": "Hidden Outpost",
-    "label": "Hidden Outpost",
+    "label": "Hidden Outpost (113.5)",
     "pack_code": "join-us-or-die",
     "card_type": "Enhancement",
     "side": "Light",
@@ -15355,7 +15355,7 @@
   {
     "unique_id": "1156",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (115.6)",
     "pack_code": "join-us-or-die",
     "card_type": "Fate",
     "side": "Dark",
@@ -15511,7 +15511,7 @@
   {
     "unique_id": "1666",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (166.6)",
     "pack_code": "jump-to-lightspeed",
     "card_type": "Fate",
     "side": "Light",
@@ -15615,7 +15615,7 @@
   {
     "unique_id": "1682",
     "name": "Han Solo",
-    "label": "Han Solo",
+    "label": "Han Solo (168.2)",
     "pack_code": "jump-to-lightspeed",
     "card_type": "Unit",
     "side": "Light",
@@ -15628,7 +15628,7 @@
   {
     "unique_id": "1683",
     "name": "Millennium Falcon",
-    "label": "Millennium Falcon",
+    "label": "Millennium Falcon (168.3)",
     "pack_code": "jump-to-lightspeed",
     "card_type": "Unit",
     "side": "Light",
@@ -15706,7 +15706,7 @@
   {
     "unique_id": "1693",
     "name": "Dark Side Apprentice",
-    "label": "Dark Side Apprentice",
+    "label": "Dark Side Apprentice (169.3)",
     "pack_code": "jump-to-lightspeed",
     "card_type": "Unit",
     "side": "Dark",
@@ -15797,7 +15797,7 @@
   {
     "unique_id": "1704",
     "name": "Hidden Vibroknife",
-    "label": "Hidden Vibroknife",
+    "label": "Hidden Vibroknife (170.4)",
     "pack_code": "jump-to-lightspeed",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -15953,7 +15953,7 @@
   {
     "unique_id": "1084",
     "name": "Tauntaun",
-    "label": "Tauntaun",
+    "label": "Tauntaun (108.4)",
     "pack_code": "knowledge-and-defense",
     "card_type": "Unit",
     "side": "Light",
@@ -15979,7 +15979,7 @@
   {
     "unique_id": "1086",
     "name": "Battle of Hoth",
-    "label": "Battle of Hoth",
+    "label": "Battle of Hoth (108.6)",
     "pack_code": "knowledge-and-defense",
     "card_type": "Fate",
     "side": "Light",
@@ -16135,7 +16135,7 @@
   {
     "unique_id": "1106",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (110.6)",
     "pack_code": "knowledge-and-defense",
     "card_type": "Fate",
     "side": "Dark",
@@ -16291,7 +16291,7 @@
   {
     "unique_id": "1026",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (102.6)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Fate",
     "side": "Light",
@@ -16317,7 +16317,7 @@
   {
     "unique_id": "1032",
     "name": "Dash Rendar",
-    "label": "Dash Rendar",
+    "label": "Dash Rendar (103.2)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Unit",
     "side": "Light",
@@ -16369,7 +16369,7 @@
   {
     "unique_id": "1036",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (103.6)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Fate",
     "side": "Light",
@@ -16395,7 +16395,7 @@
   {
     "unique_id": "1042",
     "name": "Mara Jade",
-    "label": "Mara Jade",
+    "label": "Mara Jade (104.2)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Unit",
     "side": "Dark",
@@ -16434,7 +16434,7 @@
   {
     "unique_id": "1045",
     "name": "Sith Library",
-    "label": "Sith Library",
+    "label": "Sith Library (104.5)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -16512,7 +16512,7 @@
   {
     "unique_id": "1055",
     "name": "Control Room",
-    "label": "Control Room",
+    "label": "Control Room (105.5)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -16525,7 +16525,7 @@
   {
     "unique_id": "1056",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (105.6)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Fate",
     "side": "Dark",
@@ -16551,7 +16551,7 @@
   {
     "unique_id": "1062",
     "name": "Zuckuss",
-    "label": "Zuckuss",
+    "label": "Zuckuss (106.2)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Unit",
     "side": "Dark",
@@ -16564,7 +16564,7 @@
   {
     "unique_id": "1063",
     "name": "4-LOM",
-    "label": "4-LOM",
+    "label": "4-LOM (106.3)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Unit",
     "side": "Dark",
@@ -16603,7 +16603,7 @@
   {
     "unique_id": "1066",
     "name": "Pay Out",
-    "label": "Pay Out",
+    "label": "Pay Out (106.6)",
     "pack_code": "lure-of-the-dark-side",
     "card_type": "Event",
     "side": "Dark",
@@ -16655,7 +16655,7 @@
   {
     "unique_id": "2414",
     "name": "Gotal Outcast",
-    "label": "Gotal Outcast",
+    "label": "Gotal Outcast (241.4)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Unit",
     "side": "Light",
@@ -16668,7 +16668,7 @@
   {
     "unique_id": "2415",
     "name": "Return of the Jedi",
-    "label": "Return of the Jedi",
+    "label": "Return of the Jedi (241.5)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Event",
     "side": "Light",
@@ -16681,7 +16681,7 @@
   {
     "unique_id": "2416",
     "name": "Preparation and Planning",
-    "label": "Preparation and Planning",
+    "label": "Preparation and Planning (241.6)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Fate",
     "side": "Light",
@@ -16707,7 +16707,7 @@
   {
     "unique_id": "2422",
     "name": "Wedge Antilles",
-    "label": "Wedge Antilles",
+    "label": "Wedge Antilles (242.2)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Unit",
     "side": "Light",
@@ -16720,7 +16720,7 @@
   {
     "unique_id": "2423",
     "name": "Red Two",
-    "label": "Red Two",
+    "label": "Red Two (242.3)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Unit",
     "side": "Light",
@@ -16733,7 +16733,7 @@
   {
     "unique_id": "2424",
     "name": "Pilot Ready Room",
-    "label": "Pilot Ready Room",
+    "label": "Pilot Ready Room (242.4)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Enhancement",
     "side": "Light",
@@ -16824,7 +16824,7 @@
   {
     "unique_id": "2435",
     "name": "Spacer Cantina",
-    "label": "Spacer Cantina",
+    "label": "Spacer Cantina (243.5)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Enhancement",
     "side": "Light",
@@ -16837,7 +16837,7 @@
   {
     "unique_id": "2436",
     "name": "Stay on Target",
-    "label": "Stay on Target",
+    "label": "Stay on Target (243.6)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Fate",
     "side": "Light",
@@ -16980,7 +16980,7 @@
   {
     "unique_id": "2455",
     "name": "Blaster Pistol",
-    "label": "Blaster Pistol",
+    "label": "Blaster Pistol (245.5)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -16993,7 +16993,7 @@
   {
     "unique_id": "2456",
     "name": "Well Equipped",
-    "label": "Well Equipped",
+    "label": "Well Equipped (245.6)",
     "pack_code": "meditation-and-mastery",
     "card_type": "Fate",
     "side": "Dark",
@@ -17149,7 +17149,7 @@
   {
     "unique_id": "1916",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (191.6)",
     "pack_code": "new-alliances",
     "card_type": "Fate",
     "side": "Light",
@@ -17227,7 +17227,7 @@
   {
     "unique_id": "1926",
     "name": "Battle of Endor",
-    "label": "Battle of Endor",
+    "label": "Battle of Endor (192.6)",
     "pack_code": "new-alliances",
     "card_type": "Fate",
     "side": "Light",
@@ -17266,7 +17266,7 @@
   {
     "unique_id": "1933",
     "name": "Expendable Scout",
-    "label": "Expendable Scout",
+    "label": "Expendable Scout (193.3)",
     "pack_code": "new-alliances",
     "card_type": "Unit",
     "side": "Dark",
@@ -17292,7 +17292,7 @@
   {
     "unique_id": "1935",
     "name": "Secret Objective",
-    "label": "Secret Objective",
+    "label": "Secret Objective (193.5)",
     "pack_code": "new-alliances",
     "card_type": "Fate",
     "side": "Dark",
@@ -17487,7 +17487,7 @@
   {
     "unique_id": "2512",
     "name": "Ezra Bridger",
-    "label": "Ezra Bridger",
+    "label": "Ezra Bridger (251.2)",
     "pack_code": "power-of-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -17604,7 +17604,7 @@
   {
     "unique_id": "2525",
     "name": "Hidden Outpost",
-    "label": "Hidden Outpost",
+    "label": "Hidden Outpost (252.5)",
     "pack_code": "power-of-the-force",
     "card_type": "Enhancement",
     "side": "Light",
@@ -17773,7 +17773,7 @@
   {
     "unique_id": "2546",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (254.6)",
     "pack_code": "power-of-the-force",
     "card_type": "Fate",
     "side": "Dark",
@@ -17851,7 +17851,7 @@
   {
     "unique_id": "2556",
     "name": "Stay on Target",
-    "label": "Stay on Target",
+    "label": "Stay on Target (255.6)",
     "pack_code": "power-of-the-force",
     "card_type": "Fate",
     "side": "Dark",
@@ -17877,7 +17877,7 @@
   {
     "unique_id": "2072",
     "name": "C-3PO",
-    "label": "C-3PO",
+    "label": "C-3PO (207.2)",
     "pack_code": "press-the-attack",
     "card_type": "Unit",
     "side": "Light",
@@ -17955,7 +17955,7 @@
   {
     "unique_id": "2082",
     "name": "Major Bren Derlin",
-    "label": "Major Bren Derlin",
+    "label": "Major Bren Derlin (208.2)",
     "pack_code": "press-the-attack",
     "card_type": "Unit",
     "side": "Light",
@@ -18059,7 +18059,7 @@
   {
     "unique_id": "2094",
     "name": "Expendable Scout",
-    "label": "Expendable Scout",
+    "label": "Expendable Scout (209.4)",
     "pack_code": "press-the-attack",
     "card_type": "Unit",
     "side": "Dark",
@@ -18241,7 +18241,7 @@
   {
     "unique_id": "2116",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (211.6)",
     "pack_code": "press-the-attack",
     "card_type": "Fate",
     "side": "Dark",
@@ -18306,7 +18306,7 @@
   {
     "unique_id": "1415",
     "name": "Pilot Ready Room",
-    "label": "Pilot Ready Room",
+    "label": "Pilot Ready Room (141.5)",
     "pack_code": "ready-for-takeoff",
     "card_type": "Enhancement",
     "side": "Light",
@@ -18345,7 +18345,7 @@
   {
     "unique_id": "1422",
     "name": "Lando Calrissian",
-    "label": "Lando Calrissian",
+    "label": "Lando Calrissian (142.2)",
     "pack_code": "ready-for-takeoff",
     "card_type": "Unit",
     "side": "Light",
@@ -18449,7 +18449,7 @@
   {
     "unique_id": "1434",
     "name": "TIE Advanced",
-    "label": "TIE Advanced",
+    "label": "TIE Advanced (143.4)",
     "pack_code": "ready-for-takeoff",
     "card_type": "Unit",
     "side": "Dark",
@@ -18657,7 +18657,7 @@
   {
     "unique_id": "2122",
     "name": "Luke Skywalker",
-    "label": "Luke Skywalker",
+    "label": "Luke Skywalker (212.2)",
     "pack_code": "redemption-and-return",
     "card_type": "Unit",
     "side": "Light",
@@ -18891,7 +18891,7 @@
   {
     "unique_id": "2152",
     "name": "Emperor Palpatine",
-    "label": "Emperor Palpatine",
+    "label": "Emperor Palpatine (215.2)",
     "pack_code": "redemption-and-return",
     "card_type": "Unit",
     "side": "Dark",
@@ -18904,7 +18904,7 @@
   {
     "unique_id": "2153",
     "name": "Emperor's Royal Guard",
-    "label": "Emperor's Royal Guard",
+    "label": "Emperor's Royal Guard (215.3)",
     "pack_code": "redemption-and-return",
     "card_type": "Unit",
     "side": "Dark",
@@ -19047,7 +19047,7 @@
   {
     "unique_id": "2462",
     "name": "R2-D2",
-    "label": "R2-D2",
+    "label": "R2-D2 (246.2)",
     "pack_code": "scrap-metal",
     "card_type": "Unit",
     "side": "Light",
@@ -19060,7 +19060,7 @@
   {
     "unique_id": "2463",
     "name": "C-3PO",
-    "label": "C-3PO",
+    "label": "C-3PO (246.3)",
     "pack_code": "scrap-metal",
     "card_type": "Unit",
     "side": "Light",
@@ -19099,7 +19099,7 @@
   {
     "unique_id": "2466",
     "name": "Well Equipped",
-    "label": "Well Equipped",
+    "label": "Well Equipped (246.6)",
     "pack_code": "scrap-metal",
     "card_type": "Fate",
     "side": "Light",
@@ -19177,7 +19177,7 @@
   {
     "unique_id": "2476",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (247.6)",
     "pack_code": "scrap-metal",
     "card_type": "Fate",
     "side": "Light",
@@ -19255,7 +19255,7 @@
   {
     "unique_id": "2486",
     "name": "Feeding Frenzy",
-    "label": "Feeding Frenzy",
+    "label": "Feeding Frenzy (248.6)",
     "pack_code": "scrap-metal",
     "card_type": "Event",
     "side": "Dark",
@@ -19320,7 +19320,7 @@
   {
     "unique_id": "2495",
     "name": "Apology Accepted",
-    "label": "Apology Accepted",
+    "label": "Apology Accepted (249.5)",
     "pack_code": "scrap-metal",
     "card_type": "Event",
     "side": "Dark",
@@ -19333,7 +19333,7 @@
   {
     "unique_id": "2496",
     "name": "Preparation and Planning",
-    "label": "Preparation and Planning",
+    "label": "Preparation and Planning (249.6)",
     "pack_code": "scrap-metal",
     "card_type": "Fate",
     "side": "Dark",
@@ -19359,7 +19359,7 @@
   {
     "unique_id": "2502",
     "name": "Jabba the Hutt",
-    "label": "Jabba the Hutt",
+    "label": "Jabba the Hutt (250.2)",
     "pack_code": "scrap-metal",
     "card_type": "Unit",
     "side": "Dark",
@@ -19372,7 +19372,7 @@
   {
     "unique_id": "2503",
     "name": "Twi'lek Sycophant",
-    "label": "Twi'lek Sycophant",
+    "label": "Twi'lek Sycophant (250.3)",
     "pack_code": "scrap-metal",
     "card_type": "Unit",
     "side": "Dark",
@@ -19385,7 +19385,7 @@
   {
     "unique_id": "2504",
     "name": "Freelance Hunter",
-    "label": "Freelance Hunter",
+    "label": "Freelance Hunter (250.4)",
     "pack_code": "scrap-metal",
     "card_type": "Unit",
     "side": "Dark",
@@ -19437,7 +19437,7 @@
   {
     "unique_id": "2012",
     "name": "Admiral Ackbar",
-    "label": "Admiral Ackbar",
+    "label": "Admiral Ackbar (201.2)",
     "pack_code": "so-be-it",
     "card_type": "Unit",
     "side": "Light",
@@ -19723,7 +19723,7 @@
   {
     "unique_id": "2046",
     "name": "Feeding Frenzy",
-    "label": "Feeding Frenzy",
+    "label": "Feeding Frenzy (204.6)",
     "pack_code": "so-be-it",
     "card_type": "Event",
     "side": "Dark",
@@ -19788,7 +19788,7 @@
   {
     "unique_id": "2055",
     "name": "Control Room",
-    "label": "Control Room",
+    "label": "Control Room (205.5)",
     "pack_code": "so-be-it",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -19905,7 +19905,7 @@
   {
     "unique_id": "1852",
     "name": "Han Solo",
-    "label": "Han Solo",
+    "label": "Han Solo (185.2)",
     "pack_code": "solos-command",
     "card_type": "Unit",
     "side": "Light",
@@ -20152,7 +20152,7 @@
   {
     "unique_id": "1883",
     "name": "Assassin Droid",
-    "label": "Assassin Droid",
+    "label": "Assassin Droid (188.3)",
     "pack_code": "solos-command",
     "card_type": "Unit",
     "side": "Dark",
@@ -20191,7 +20191,7 @@
   {
     "unique_id": "1886",
     "name": "Prized Possession",
-    "label": "Prized Possession",
+    "label": "Prized Possession (188.6)",
     "pack_code": "solos-command",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -20412,7 +20412,7 @@
   {
     "unique_id": "2765",
     "name": "Coordinated Strike",
-    "label": "Coordinated Strike",
+    "label": "Coordinated Strike (276.5)",
     "pack_code": "swayed-by-the-dark-side",
     "card_type": "Event",
     "side": "Light",
@@ -20425,7 +20425,7 @@
   {
     "unique_id": "2766",
     "name": "Seeds of Decay",
-    "label": "Seeds of Decay",
+    "label": "Seeds of Decay (276.6)",
     "pack_code": "swayed-by-the-dark-side",
     "card_type": "Fate",
     "side": "Light",
@@ -20737,7 +20737,7 @@
   {
     "unique_id": "2566",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (256.6)",
     "pack_code": "technological-terror",
     "card_type": "Fate",
     "side": "Light",
@@ -20893,7 +20893,7 @@
   {
     "unique_id": "2586",
     "name": "Well Equipped",
-    "label": "Well Equipped",
+    "label": "Well Equipped (258.6)",
     "pack_code": "technological-terror",
     "card_type": "Fate",
     "side": "Dark",
@@ -20932,7 +20932,7 @@
   {
     "unique_id": "2593",
     "name": "Fleet Navigator",
-    "label": "Fleet Navigator",
+    "label": "Fleet Navigator (259.3)",
     "pack_code": "technological-terror",
     "card_type": "Unit",
     "side": "Dark",
@@ -20971,7 +20971,7 @@
   {
     "unique_id": "2596",
     "name": "Control Room",
-    "label": "Control Room",
+    "label": "Control Room (259.6)",
     "pack_code": "technological-terror",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -21023,7 +21023,7 @@
   {
     "unique_id": "2604",
     "name": "Ugnaught",
-    "label": "Ugnaught",
+    "label": "Ugnaught (260.4)",
     "pack_code": "technological-terror",
     "card_type": "Unit",
     "side": "Dark",
@@ -21101,7 +21101,7 @@
   {
     "unique_id": "0594",
     "name": "Snowspeeder",
-    "label": "Snowspeeder",
+    "label": "Snowspeeder (59.4)",
     "pack_code": "the-battle-of-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -21270,7 +21270,7 @@
   {
     "unique_id": "0615",
     "name": "Coordinated Strike",
-    "label": "Coordinated Strike",
+    "label": "Coordinated Strike (61.5)",
     "pack_code": "the-battle-of-hoth",
     "card_type": "Event",
     "side": "Light",
@@ -21517,7 +21517,7 @@
   {
     "unique_id": "0376",
     "name": "Heat of Battle",
-    "label": "Heat of Battle",
+    "label": "Heat of Battle (37.6)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Fate",
     "side": "Light",
@@ -21543,7 +21543,7 @@
   {
     "unique_id": "0382",
     "name": "Wedge Antilles",
-    "label": "Wedge Antilles",
+    "label": "Wedge Antilles (38.2)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -21569,7 +21569,7 @@
   {
     "unique_id": "0384",
     "name": "Snowspeeder",
-    "label": "Snowspeeder",
+    "label": "Snowspeeder (38.4)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Unit",
     "side": "Light",
@@ -21595,7 +21595,7 @@
   {
     "unique_id": "0386",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (38.6)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Fate",
     "side": "Light",
@@ -21751,7 +21751,7 @@
   {
     "unique_id": "0406",
     "name": "Twist of Fate",
-    "label": "Twist of Fate",
+    "label": "Twist of Fate (40.6)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Fate",
     "side": "Dark",
@@ -21777,7 +21777,7 @@
   {
     "unique_id": "0412",
     "name": "Darth Vader",
-    "label": "Darth Vader",
+    "label": "Darth Vader (41.2)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Unit",
     "side": "Dark",
@@ -21907,7 +21907,7 @@
   {
     "unique_id": "0426",
     "name": "Battle of Hoth",
-    "label": "Battle of Hoth",
+    "label": "Battle of Hoth (42.6)",
     "pack_code": "the-desolation-of-hoth",
     "card_type": "Fate",
     "side": "Dark",
@@ -22011,7 +22011,7 @@
   {
     "unique_id": "1972",
     "name": "Home One",
-    "label": "Home One",
+    "label": "Home One (197.2)",
     "pack_code": "the-forest-moon",
     "card_type": "Unit",
     "side": "Light",
@@ -22089,7 +22089,7 @@
   {
     "unique_id": "1982",
     "name": "Lobot",
-    "label": "Lobot",
+    "label": "Lobot (198.2)",
     "pack_code": "the-forest-moon",
     "card_type": "Unit",
     "side": "Light",
@@ -22193,7 +22193,7 @@
   {
     "unique_id": "1994",
     "name": "Sith Library",
-    "label": "Sith Library",
+    "label": "Sith Library (199.4)",
     "pack_code": "the-forest-moon",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -22245,7 +22245,7 @@
   {
     "unique_id": "2002",
     "name": "Executor",
-    "label": "Executor",
+    "label": "Executor (200.2)",
     "pack_code": "the-forest-moon",
     "card_type": "Unit",
     "side": "Dark",
@@ -22414,7 +22414,7 @@
   {
     "unique_id": "0443",
     "name": "Renegade Squadron Operative",
-    "label": "Renegade Squadron Operative",
+    "label": "Renegade Squadron Operative (44.3)",
     "pack_code": "the-search-for-skywalker",
     "card_type": "Unit",
     "side": "Light",
@@ -22453,7 +22453,7 @@
   {
     "unique_id": "0446",
     "name": "Target of Opportunity",
-    "label": "Target of Opportunity",
+    "label": "Target of Opportunity (44.6)",
     "pack_code": "the-search-for-skywalker",
     "card_type": "Fate",
     "side": "Light",
@@ -22518,7 +22518,7 @@
   {
     "unique_id": "0455",
     "name": "Tauntaun",
-    "label": "Tauntaun",
+    "label": "Tauntaun (45.5)",
     "pack_code": "the-search-for-skywalker",
     "card_type": "Unit",
     "side": "Light",
@@ -22583,7 +22583,7 @@
   {
     "unique_id": "0464",
     "name": "Fleet Navigator",
-    "label": "Fleet Navigator",
+    "label": "Fleet Navigator (46.4)",
     "pack_code": "the-search-for-skywalker",
     "card_type": "Unit",
     "side": "Dark",
@@ -22713,7 +22713,7 @@
   {
     "unique_id": "2802",
     "name": "Obi-Wan Kenobi",
-    "label": "Obi-Wan Kenobi",
+    "label": "Obi-Wan Kenobi (280.2)",
     "pack_code": "trust-in-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -22765,7 +22765,7 @@
   {
     "unique_id": "2806",
     "name": "Allies of Necessity",
-    "label": "Allies of Necessity",
+    "label": "Allies of Necessity (280.6)",
     "pack_code": "trust-in-the-force",
     "card_type": "Fate",
     "side": "Light",
@@ -22791,7 +22791,7 @@
   {
     "unique_id": "2812",
     "name": "Major Bren Derlin",
-    "label": "Major Bren Derlin",
+    "label": "Major Bren Derlin (281.2)",
     "pack_code": "trust-in-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -22817,7 +22817,7 @@
   {
     "unique_id": "2814",
     "name": "Wilderness Fighters",
-    "label": "Wilderness Fighters",
+    "label": "Wilderness Fighters (281.4)",
     "pack_code": "trust-in-the-force",
     "card_type": "Unit",
     "side": "Light",
@@ -22947,7 +22947,7 @@
   {
     "unique_id": "2832",
     "name": "General Veers",
-    "label": "General Veers",
+    "label": "General Veers (283.2)",
     "pack_code": "trust-in-the-force",
     "card_type": "Unit",
     "side": "Dark",
@@ -23077,7 +23077,7 @@
   {
     "unique_id": "2846",
     "name": "Protection",
-    "label": "Protection",
+    "label": "Protection (284.6)",
     "pack_code": "trust-in-the-force",
     "card_type": "Fate",
     "side": "Dark",
@@ -23103,7 +23103,7 @@
   {
     "unique_id": "2852",
     "name": "Ezra Bridger",
-    "label": "Ezra Bridger",
+    "label": "Ezra Bridger (285.2)",
     "pack_code": "promise-of-power",
     "card_type": "Unit",
     "side": "Light",
@@ -23155,7 +23155,7 @@
   {
     "unique_id": "2856",
     "name": "Echoes of the Force",
-    "label": "Echoes of the Force",
+    "label": "Echoes of the Force (285.6)",
     "pack_code": "promise-of-power",
     "card_type": "Fate",
     "side": "Light",
@@ -23428,7 +23428,7 @@
   {
     "unique_id": "2893",
     "name": "Twi'lek Sycophant",
-    "label": "Twi'lek Sycophant",
+    "label": "Twi'lek Sycophant (289.3)",
     "pack_code": "promise-of-power",
     "card_type": "Unit",
     "side": "Dark",
@@ -23441,7 +23441,7 @@
   {
     "unique_id": "2894",
     "name": "Secret Information",
-    "label": "Secret Information",
+    "label": "Secret Information (289.4)",
     "pack_code": "promise-of-power",
     "card_type": "Enhancement",
     "side": "Dark",
@@ -23454,7 +23454,7 @@
   {
     "unique_id": "2895",
     "name": "Chain Reaction",
-    "label": "Chain Reaction",
+    "label": "Chain Reaction (289.5)",
     "pack_code": "promise-of-power",
     "card_type": "Event",
     "side": "Dark",
