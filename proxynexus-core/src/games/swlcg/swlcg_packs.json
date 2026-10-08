@@ -203,5 +203,10 @@
     "code": "trust-in-the-force",
     "name": "Trust in the Force",
     "position": 41
+  },
+  {
+    "code": "promise-of-power",
+    "name": "Promise of Power",
+    "position": 42
   }
 ]
