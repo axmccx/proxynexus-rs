@@ -4,9 +4,9 @@ use crate::card_store::normalize_title;
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::error::Result;
+use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::swlcg::models::{SwlcgCard, SwlcgPack};
-use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use async_trait::async_trait;
 
