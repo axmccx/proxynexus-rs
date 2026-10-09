@@ -48,7 +48,7 @@ pub struct SwlcgCard {
     pub label: String,
     /// Matches the `{pack_id}` portion of the image naming convention.
     pub pack_code: String,
-    /// Card's type. Options: Affiliation, Enhancement, Event, Fate, Mission, 
+    /// Card's type. Options: Affiliation, Enhancement, Event, Fate, Mission,
     ///  Objective, Unit.
     pub card_type: String,
     /// Card's side. Options: Dark, Light.
