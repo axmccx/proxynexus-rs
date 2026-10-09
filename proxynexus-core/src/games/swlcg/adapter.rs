@@ -4,9 +4,9 @@ use crate::card_store::normalize_title;
 use crate::catalog::{Card, CardVersion, Catalog, CatalogProvider, Pack};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::error::Result;
-use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::games::swlcg::models::{SwlcgCard, SwlcgPack};
+use crate::games::GameAdapterInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use async_trait::async_trait;
 
@@ -35,7 +35,7 @@ impl GameAdapterInfo for SwlcgAdapter {
 }
 
 // Which generic card back a card needs, classified by `side`.
-// Balance of the Force packs have different backs than other packs, 
+// Balance of the Force packs have different backs than other packs,
 // so we need to check for that as well.
 #[cfg(not(target_arch = "wasm32"))]
 const LIGHT_BACK: &str = "light";
@@ -47,7 +47,11 @@ const BOTF_LIGHT_BACK: &str = "botf-light";
 const BOTF_DARK_BACK: &str = "botf-dark";
 
 #[cfg(not(target_arch = "wasm32"))]
-fn back_group_for(pack_code: &str, side: &str, objective_set_number: Option<i64>) -> Option<String> {
+fn back_group_for(
+    pack_code: &str,
+    side: &str,
+    objective_set_number: Option<i64>,
+) -> Option<String> {
     let is_botf_pack = pack_code == "balance-of-the-force" && objective_set_number.is_none();
     match (is_botf_pack, side) {
         (true, "Light") => Some(BOTF_LIGHT_BACK.to_string()),
@@ -93,13 +97,11 @@ impl CatalogProvider for SwlcgAdapter {
     async fn fetch_catalog(&self) -> Result<Catalog> {
         // Load all packs (sets/expansions). All data is stored in a
         // single JSON file.
-        let swlcg_packs: Vec<SwlcgPack> =
-            serde_json::from_str(include_str!("swlcg_packs.json"))?;
+        let swlcg_packs: Vec<SwlcgPack> = serde_json::from_str(include_str!("swlcg_packs.json"))?;
 
         // Load every card across every pack. `swlcg_cards.json` is one bulk
         // file covering the whole catalog.
-        let swlcg_cards: Vec<SwlcgCard> =
-            serde_json::from_str(include_str!("swlcg_cards.json"))?;
+        let swlcg_cards: Vec<SwlcgCard> = serde_json::from_str(include_str!("swlcg_cards.json"))?;
 
         let packs: Vec<Pack> = swlcg_packs
             .into_iter()
@@ -150,7 +152,7 @@ mod tests {
             objective_set_sequence,
         }
     }
- 
+
     #[test]
     fn maps_unique_id_and_pack_code_onto_card_and_version() {
         // 0235, in the real catalog, is "Force Lightning" from
@@ -176,7 +178,7 @@ mod tests {
         assert_eq!(versions[0].pack_id, "core-set");
         assert_eq!(versions[0].position, Some(235));
     }
-  
+
     #[test]
     fn card_quantity_is_carried_through_when_present() {
         let raw = card(
@@ -194,7 +196,7 @@ mod tests {
         let (_, versions) = build_cards_and_versions(vec![raw]);
 
         // Quantity is always 1, since each card is listed individually in the JSON.
-        assert_eq!(versions[0].quantity, 1); 
+        assert_eq!(versions[0].quantity, 1);
     }
 
     #[test]
@@ -210,7 +212,7 @@ mod tests {
             Some(204),
             Some(2),
         );
-        
+
         let (_, versions) = build_cards_and_versions(vec![raw]);
 
         assert_eq!(versions[0].position, Some(2042));

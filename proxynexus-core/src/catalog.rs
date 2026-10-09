@@ -1,6 +1,5 @@
-use crate::db_storage::{DbStorage, quote_sql_string};
+use crate::db_storage::{quote_sql_string, DbStorage};
 use crate::error::Result;
-use crate::games::GameAdapterInfo;
 use crate::games::agot::adapter::AgotAdapter;
 use crate::games::agot1st::adapter::Agot1stAdapter;
 use crate::games::ahlcg::adapter::AhlcgAdapter;
@@ -13,9 +12,10 @@ use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use crate::games::swlcg::adapter::SwlcgAdapter;
 use crate::games::whconquest::adapter::WhcAdapter;
 use crate::games::whinvasion::adapter::WhiAdapter;
+use crate::games::GameAdapterInfo;
 use async_trait::async_trait;
-use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
+use gluesql::FromGlueRow;
 use tracing::{error, info};
 
 #[derive(FromGlueRow)]
