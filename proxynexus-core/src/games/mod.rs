@@ -16,6 +16,7 @@ use crate::games::agot::adapter::AgotAdapter;
 use crate::games::ahlcg::adapter::AhlcgAdapter;
 use crate::games::l5r::adapter::L5rAdapter;
 use crate::games::lotrlcg::adapter::LotrLcgAdapter;
+use crate::games::marvel_champions::adapter::MarvelChampionsAdapter;
 use crate::games::netrunner::adapter::NetrunnerAdapter;
 use crate::games::netrunner_reboot::adapter::NetrunnerRebootAdapter;
 use serde::de::DeserializeOwned;
@@ -23,6 +24,18 @@ use serde::de::DeserializeOwned;
 pub trait GameAdapterInfo {
     fn game_id(&self) -> &'static str;
     fn game_name(&self) -> &'static str;
+
+    /// The pack api ids offered as sets, or `None` to offer every pack.
+    fn listed_packs(&self) -> Option<&'static [&'static str]> {
+        None
+    }
+}
+
+pub fn listed_packs(game_id: &str) -> Option<&'static [&'static str]> {
+    match game_id {
+        "marvel-champions" => MarvelChampionsAdapter::new().listed_packs(),
+        _ => None,
+    }
 }
 
 pub fn get_decklist_adapter(game_id: &str) -> Option<Box<dyn DecklistProvider>> {

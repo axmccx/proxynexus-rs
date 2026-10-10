@@ -36,7 +36,55 @@ impl GameAdapterInfo for MarvelChampionsAdapter {
     fn game_name(&self) -> &'static str {
         "Marvel Champions"
     }
+
+    fn listed_packs(&self) -> Option<&'static [&'static str]> {
+        Some(OUT_OF_PRINT_PACKS)
+    }
 }
+
+/// The packs Fantasy Flight lists as out of print. Packs still in print stay in
+/// the catalog, since out-of-print packs reprint their cards, but are not
+/// offered as sets.
+const OUT_OF_PRINT_PACKS: &[&str] = &[
+    "trors",
+    "gmw",
+    "mts",
+    "sm",
+    "mut_gen",
+    "next_evol",
+    "gob",
+    "hood",
+    "mojo",
+    "twc",
+    "cap",
+    "thor",
+    "bkw",
+    "drs",
+    "hlk",
+    "wsp",
+    "qsv",
+    "scw",
+    "stld",
+    "gam",
+    "drax",
+    "nebu",
+    "warm",
+    "valk",
+    "vision",
+    "nova",
+    "ironheart",
+    "spiderham",
+    "spdr",
+    "cyclops",
+    "phoenix",
+    "wolv",
+    "storm",
+    "gambit",
+    "rogue",
+    "psylocke",
+    "x23",
+    "deadpool",
+];
 
 // Which generic card back a card needs, classified by `type_code`. Villains
 // have their own back, separate from the rest of the encounter deck.

@@ -2,6 +2,7 @@ use crate::card_source::{CardSource, Cardlist, SetName};
 use crate::db_storage::{DbStorage, build_in_clause, quote_sql_string};
 use crate::error::{ProxyNexusError, Result};
 use crate::file_naming::back_index;
+use crate::games::listed_packs;
 use crate::models::{CardRequest, CardSide, Decklist, Printing, ResolvedCardRequests};
 use gluesql::FromGlueRow;
 use gluesql::core::row_conversion::SelectExt;
@@ -13,6 +14,7 @@ use tracing::warn;
 struct PackRow {
     pack_name: String,
     pack_id: String,
+    pack_api_id: String,
     coll_name: Option<String>,
     coll_count: i64,
     date_release: Option<String>,
@@ -143,13 +145,19 @@ impl CardSource for SetName {
 pub struct CardStore<'a> {
     db: &'a mut DbStorage,
     pub active_game_id: String,
+    listed_packs: Option<&'static [&'static str]>,
 }
 
 type CardOverride<'a> = (&'a str, Option<String>, Option<i64>, Option<String>);
 
 impl<'a> CardStore<'a> {
     pub fn new(db: &'a mut DbStorage, active_game_id: String) -> Result<Self> {
-        Ok(Self { db, active_game_id })
+        let listed_packs = listed_packs(&active_game_id);
+        Ok(Self {
+            db,
+            active_game_id,
+            listed_packs,
+        })
     }
 
     pub async fn get_all_card_names(&mut self) -> Result<Vec<String>> {
@@ -367,6 +375,7 @@ impl<'a> CardStore<'a> {
             "SELECT
                 p.name as pack_name,
                 p.id as pack_id,
+                p.api_id as pack_api_id,
                 col.name AS coll_name,
                 COUNT(pr.id) as coll_count,
                 p.date_release
@@ -433,6 +442,12 @@ impl<'a> CardStore<'a> {
             let pack_rows = payload.rows_as::<PackRow>()?;
 
             for row in pack_rows {
+                if self
+                    .listed_packs
+                    .is_some_and(|listed| !listed.contains(&row.pack_api_id.as_str()))
+                {
+                    continue;
+                }
                 let date_release = row.date_release;
 
                 let entry = pack_data
@@ -1484,6 +1499,19 @@ mod tests {
 
         assert_eq!(core.collections, vec!["1 in enhanced".to_string()]);
         assert_eq!((core.total, core.printable), (1, 1));
+    }
+
+    #[tokio::test]
+    async fn only_listed_packs_are_offered_and_still_print_from_unlisted_ones() {
+        let (_dir, mut db) = two_packs_one_image().await;
+        let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
+        store.listed_packs = Some(&["revised_core_set"]);
+
+        let packs = store.get_available_packs().await.unwrap();
+
+        let ids: Vec<&str> = packs.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, ["p_rev"]);
+        assert_eq!((packs[0].total, packs[0].printable), (1, 1));
     }
 
     #[tokio::test]
