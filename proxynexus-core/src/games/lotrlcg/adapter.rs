@@ -68,6 +68,15 @@ fn ffg_release_dates() -> Result<Vec<(String, String)>> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+fn non_hob_title(name: &str, pack_name: &str, hob_titles: &HashSet<String>) -> String {
+    if hob_titles.contains(&normalize_title(name)) {
+        format!("{} ({})", name, pack_name)
+    } else {
+        name.to_string()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl CatalogProvider for LotrLcgAdapter {
     async fn fetch_catalog(&self) -> Result<Catalog> {
@@ -103,6 +112,10 @@ impl CatalogProvider for LotrLcgAdapter {
             card_ids.len(),
             card_titles.len()
         );
+        let hob_titles: HashSet<String> = all_hob_cards
+            .iter()
+            .map(|c| normalize_title(&c.title))
+            .collect();
 
         for c in &all_hob_cards {
             let clean_pack_id = normalize_title(&c.card_set);
@@ -165,8 +178,9 @@ impl CatalogProvider for LotrLcgAdapter {
                 continue;
             }
 
-            let base_normalized = normalize_title(&rc.name);
             let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&rc.pack_name);
+            let title = non_hob_title(&rc.name, &clean_pack_name, &hob_titles);
+            let base_normalized = normalize_title(&title);
             let display_name = format!("ALeP - {}", clean_pack_name);
             let clean_pack_id = normalize_title(&clean_pack_name);
             let normalized_id = normalize_title(&format!("{}-{}", rc.name, clean_pack_id));
@@ -189,7 +203,7 @@ impl CatalogProvider for LotrLcgAdapter {
             if seen_cards.insert(normalized_id.clone()) {
                 cards.push(Card {
                     id: normalized_id.clone(),
-                    title: rc.name,
+                    title,
                     title_normalized: base_normalized,
                     back_group: Some(back_group.to_string()),
                 });
@@ -211,10 +225,10 @@ impl CatalogProvider for LotrLcgAdapter {
 
         let ringsdb_cards = crate::games::lotrlcg::api::fetch_all_cards().await?;
         for rc in ringsdb_cards {
-            let base_normalized = normalize_title(&rc.name);
-
             let is_alep = rc.pack_name.replace(".English", "").starts_with("ALeP - ");
             let clean_pack_name = crate::games::lotrlcg::canonical_pack_name(&rc.pack_name);
+            let title = non_hob_title(&rc.name, &clean_pack_name, &hob_titles);
+            let base_normalized = normalize_title(&title);
 
             let display_name = if is_alep {
                 format!("ALeP - {}", clean_pack_name)
@@ -251,7 +265,7 @@ impl CatalogProvider for LotrLcgAdapter {
             if seen_cards.insert(normalized_id.clone()) {
                 cards.push(Card {
                     id: normalized_id.clone(),
-                    title: rc.name,
+                    title,
                     title_normalized: base_normalized,
                     back_group: Some(back_group.to_string()),
                 });
@@ -284,6 +298,27 @@ impl CatalogProvider for LotrLcgAdapter {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_non_hob_card_sharing_a_hob_title_gets_its_pack_name() {
+        let hob_titles: HashSet<String> = ["Ghân-buri-Ghân", "Raise the Shire"]
+            .iter()
+            .map(|t| normalize_title(t))
+            .collect();
+
+        assert_eq!(
+            non_hob_title("Ghân-buri-Ghân", "The Brandywine Pursuit", &hob_titles),
+            "Ghân-buri-Ghân (The Brandywine Pursuit)"
+        );
+        assert_eq!(
+            non_hob_title("Raise the Shire", "The Scouring of the Shire", &hob_titles),
+            "Raise the Shire (The Scouring of the Shire)"
+        );
+        assert_eq!(
+            non_hob_title("Finduilas", "First Age", &hob_titles),
+            "Finduilas"
+        );
+    }
 
     #[test]
     fn the_committed_release_dates_parse_and_cover_the_ffg_line() {

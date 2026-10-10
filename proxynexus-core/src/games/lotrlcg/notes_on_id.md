@@ -51,14 +51,18 @@ Aragorn (Core)   Aragorn (TLR)      # shared title, each card gets its own suffi
 Valor                                # title used by one card, no need for a suffix
 ```
 
-### Known gap: ALeP titles
+### ALeP and RingsDB titles
 
-Suffixes are only applied to cards from the Hall of Beorn card export. ALeP cards come from a
-separate endpoint with no `Slug` to take a suffix from, so their titles are stored as-is. 71 ALeP
-cards share a title with another card, mostly a Hall of Beorn one.
+ALeP cards and RingsDB-only cards have no `Slug` to take a suffix from. When one shares a
+normalized title with a Hall of Beorn card, its pack name is appended instead:
 
-Effect: typing that title in the card list resolves to whichever card was printed most recently.
-The others are only reachable through the variant selector. Set selection should still load the correct variants.
+```
+Ghân-buri-Ghân (The Brandywine Pursuit)
+Raise the Shire (The Scouring of the Shire)
+```
+
+Printings are grouped by `title_normalized`, so without the suffix these cards are listed as variants of the
+Hall of Beorn card that has the same title.
 
 ## `card_versions.api_id`
 
