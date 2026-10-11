@@ -53,7 +53,7 @@ pub struct Agot1stCard {
     pub label: String,
     /// Matches the `{pack_id}` portion of the image naming convention.
     pub pack_code: String,
-    /// Card type. Options: Agenda, Attachment, Character, Event, House, Location, Plot.
+    /// Card type. Options: Agenda, Attachment, Character, Event, House, Location, Plot, Title.
     pub card_type: String,
     /// Card's house. Options: Baratheon, Greyjoy, Lannister, Martell,
     ///  Neutral, Stark, Targaryen. Can also be a comma separated list
