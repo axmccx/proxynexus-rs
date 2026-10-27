@@ -191,7 +191,7 @@ impl<'a> CardStore<'a> {
         let mut entries: Vec<CardlistEntry> = Vec::new();
 
         for line in text.lines() {
-            let line = line.split('#').next().unwrap_or("").trim();
+            let line = line.trim();
             if line.is_empty() {
                 continue;
             }
@@ -1417,16 +1417,40 @@ mod tests {
 
         let mut store = CardStore::new(&mut db, "lotrlcg".to_string()).unwrap();
 
-        // The trailing "# comment" must not swallow the position segment --
-        // position uses ":" now, so it no longer collides with "#" comments.
         let result = store
-            .parse_cardlist_into_card_requests("1x Gandalf [tples:37:enhanced] # my copy")
+            .parse_cardlist_into_card_requests("1x Gandalf [tples:37:enhanced] also: [other]")
             .await
             .unwrap();
 
         assert_eq!(result.requests.len(), 1);
         assert_eq!(result.requests[0].printing, Some("tples".to_string()));
         assert_eq!(result.requests[0].position, Some(37));
+    }
+
+    #[tokio::test]
+    async fn a_title_containing_a_hash_resolves_from_a_cardlist() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DbStorage::new_sled(temp_dir.path()).unwrap();
+        db.initialize_schema().await.unwrap();
+        let title = "Example (pack #71)";
+        db.execute("INSERT INTO packs (id, api_id, name, game_id) VALUES ('game_pack', 'pack', 'Pack', 'game')").await.unwrap();
+        db.execute(&format!(
+            "INSERT INTO cards (id, api_id, game_id, title, title_normalized) VALUES ('game_example', 'example', 'game', '{}', '{}')",
+            title,
+            normalize_title(title)
+        )).await.unwrap();
+        db.execute("INSERT INTO card_versions (id, card_id, pack_id, quantity, position) VALUES ('version_example', 'game_example', 'game_pack', 1, 71)").await.unwrap();
+
+        let mut store = CardStore::new(&mut db, "game".to_string()).unwrap();
+        let result = store
+            .parse_cardlist_into_card_requests(title)
+            .await
+            .unwrap();
+
+        assert!(result.not_found.is_empty(), "{:?}", result.not_found);
+        assert_eq!(result.requests.len(), 1);
+        assert_eq!(result.requests[0].title, title);
+        assert_eq!(result.requests[0].id, "example");
     }
 
     #[tokio::test]

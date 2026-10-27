@@ -175,7 +175,7 @@ fn format_query_output(
         } else {
             let padded_base = format!("{:width$}", base, width = max_base_len);
             lines.push(format!(
-                "{}    # also: {}",
+                "{}    also: {}",
                 padded_base,
                 alternatives.join(", ")
             ));
